@@ -1,0 +1,1 @@
+{"rustc":5143539826398525814,"features":"[\"default\", \"libc\", \"use_std\"]","target":7909691370224454540,"profile":4526152405984878336,"path":16710528905090431595,"deps":[["libc v0.2.43","libc",10671877750109515886]],"local":[{"Precalculated":"2.0.1"}],"rustflags":["-C","link-args=-Wl,-rpath,/Users/jerome/v8/v8/out/x64.debug/"],"edition":"Edition2015"}

@@ -1,0 +1,1 @@
+{"rustc":5143539826398525814,"features":"[]","target":15141810095851877438,"profile":4526152405984878336,"path":14898521623346852375,"deps":[],"local":[{"Precalculated":"0.1.1"}],"rustflags":["-C","link-args=-Wl,-rpath,/Users/jerome/v8/v8/out/x64.debug/"],"edition":"Edition2015"}

@@ -1,0 +1,13 @@
+[package]
+name = "fly"
+version = "0.1.0"
+authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
+
+[dependencies]
+tokio = "*"
+log = "*"
+env_logger = "*"
+
+[dependencies.js]
+path = "js"
+version = "0.1.0"

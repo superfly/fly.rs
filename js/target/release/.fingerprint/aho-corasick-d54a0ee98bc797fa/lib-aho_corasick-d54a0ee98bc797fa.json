@@ -1,0 +1,1 @@
+{"rustc":5143539826398525814,"features":"[]","target":16787750737973419935,"profile":4526152405984878336,"path":6060854207617271931,"deps":[["memchr v2.0.1","memchr",17877321009437574246]],"local":[{"Precalculated":"0.6.6"}],"rustflags":["-C","link-args=-Wl,-rpath,/Users/jerome/v8/v8/out/x64.debug/"],"edition":"Edition2015"}

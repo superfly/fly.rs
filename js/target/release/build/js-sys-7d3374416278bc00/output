@@ -1,0 +1,50 @@
+TARGET = Some("x86_64-apple-darwin")
+OPT_LEVEL = Some("3")
+TARGET = Some("x86_64-apple-darwin")
+HOST = Some("x86_64-apple-darwin")
+TARGET = Some("x86_64-apple-darwin")
+TARGET = Some("x86_64-apple-darwin")
+HOST = Some("x86_64-apple-darwin")
+CXX_x86_64-apple-darwin = None
+CXX_x86_64_apple_darwin = None
+HOST_CXX = None
+CXX = None
+HOST = Some("x86_64-apple-darwin")
+TARGET = Some("x86_64-apple-darwin")
+HOST = Some("x86_64-apple-darwin")
+CXXFLAGS_x86_64-apple-darwin = None
+CXXFLAGS_x86_64_apple_darwin = None
+HOST_CXXFLAGS = None
+CXXFLAGS = None
+DEBUG = Some("false")
+running: "c++" "-O3" "-ffunction-sections" "-fdata-sections" "-fPIC" "-m64" "-Wall" "-Wextra" "--std=c++11" "-fkeep-inline-functions" "-o" "/Users/jerome/projects/github.com/superfly/fly-v8-rs/js/target/release/build/js-sys-7d3374416278bc00/out/src/binding.o" "-c" "src/binding.cc"
+cargo:warning=clang: warning: optimization flag '-fkeep-inline-functions' is not supported [-Wignored-optimization-argument]
+exit code: 0
+TARGET = Some("x86_64-apple-darwin")
+TARGET = Some("x86_64-apple-darwin")
+HOST = Some("x86_64-apple-darwin")
+AR_x86_64-apple-darwin = None
+AR_x86_64_apple_darwin = None
+HOST_AR = None
+AR = None
+TARGET = Some("x86_64-apple-darwin")
+TARGET = Some("x86_64-apple-darwin")
+running: "ar" "crs" "/Users/jerome/projects/github.com/superfly/fly-v8-rs/js/target/release/build/js-sys-7d3374416278bc00/out/libflyv8.a" "/Users/jerome/projects/github.com/superfly/fly-v8-rs/js/target/release/build/js-sys-7d3374416278bc00/out/src/binding.o"
+exit code: 0
+TARGET = Some("x86_64-apple-darwin")
+cargo:rustc-link-lib=static=flyv8
+cargo:rustc-link-search=native=/Users/jerome/projects/github.com/superfly/fly-v8-rs/js/target/release/build/js-sys-7d3374416278bc00/out
+TARGET = Some("x86_64-apple-darwin")
+HOST = Some("x86_64-apple-darwin")
+CXXSTDLIB_x86_64-apple-darwin = None
+CXXSTDLIB_x86_64_apple_darwin = None
+HOST_CXXSTDLIB = None
+CXXSTDLIB = None
+TARGET = Some("x86_64-apple-darwin")
+cargo:rustc-link-lib=c++
+cargo:rustc-link-search=native=/Users/jerome/v8/v8/out/x64.debug/
+cargo:rustc-link-lib=dylib=v8
+cargo:rustc-link-lib=dylib=v8_libbase
+cargo:rustc-link-lib=dylib=v8_libplatform
+cargo:rustc-link-lib=dylib=icui18n
+cargo:rustc-link-lib=dylib=icuuc
