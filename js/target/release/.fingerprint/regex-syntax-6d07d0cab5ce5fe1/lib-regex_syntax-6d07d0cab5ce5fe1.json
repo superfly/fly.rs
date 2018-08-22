@@ -1,1 +1,0 @@
-{"rustc":5143539826398525814,"features":"[]","target":675341555152045435,"profile":4526152405984878336,"path":17045514551328259859,"deps":[["ucd-util v0.1.1","ucd_util",16178538461251098549]],"local":[{"Precalculated":"0.6.2"}],"rustflags":["-C","link-args=-Wl,-rpath,/Users/jerome/v8/v8/out/x64.debug/"],"edition":"Edition2015"}

@@ -1,1 +1,0 @@
-{"rustc":5143539826398525814,"features":"[]","target":15287622993677008815,"profile":4526152405984878336,"path":15530126720365253904,"deps":[["lazy_static v1.1.0","lazy_static",11412806729211641762]],"local":[{"Precalculated":"0.3.6"}],"rustflags":["-C","link-args=-Wl,-rpath,/Users/jerome/v8/v8/out/x64.debug/"],"edition":"Edition2015"}
