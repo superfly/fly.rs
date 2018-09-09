@@ -29,14 +29,14 @@ use std::time::{Duration, Instant};
 use futures::sync::mpsc;
 
 #[derive(Debug, Copy, Clone)]
-struct JSRuntime(pub *const js_runtime);
+pub struct JSRuntime(pub *const js_runtime);
 unsafe impl Send for JSRuntime {}
 unsafe impl Sync for JSRuntime {}
 
 #[derive(Debug)]
 pub struct Runtime {
-  ptr: JSRuntime,
-  rt: Mutex<tokio::runtime::current_thread::Handle>,
+  pub ptr: JSRuntime,
+  pub rt: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
 }
 
@@ -68,7 +68,7 @@ impl Runtime {
       let mut l = current_thread::Runtime::new().unwrap();
       let task = Interval::new_interval(Duration::from_secs(5))
         .for_each(move |_| {
-          println!("keepalive");
+          // println!("keepalive");
           Ok(())
         })
         .map_err(|e| panic!("interval errored; err={:?}", e));
@@ -308,12 +308,16 @@ fn null_buf() -> fly_bytes {
   }
 }
 
-fn send_base(ptr: *const js_runtime, builder: &mut FlatBufferBuilder, args: &msg::BaseArgs) -> i32 {
+pub fn send_base(
+  ptr: *const js_runtime,
+  builder: &mut FlatBufferBuilder,
+  args: &msg::BaseArgs,
+) -> i32 {
   let buf = create_msg(builder, args);
   unsafe { js_send(ptr, buf) }
 }
 
-fn create_msg(builder: &mut FlatBufferBuilder, args: &msg::BaseArgs) -> fly_bytes {
+pub fn create_msg(builder: &mut FlatBufferBuilder, args: &msg::BaseArgs) -> fly_bytes {
   let base = msg::Base::create(builder, &args);
   msg::finish_base_buffer(builder, base);
   let data = builder.finished_data();

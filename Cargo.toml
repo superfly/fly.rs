@@ -17,3 +17,4 @@ flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 msg = { path = "msg" }
 serde = "*"
 serde_derive = "1.0"
+hyper = "0.12"

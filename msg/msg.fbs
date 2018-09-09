@@ -1,28 +1,10 @@
 namespace fly;
 
 union Any {
-  Start,
-  StartRes,
-  CodeFetch,
-  CodeFetchRes,
-  CodeCache,
-  Exit,
   TimerStart,
   TimerReady,
   TimerClear,
-  Environ,
-  EnvironRes,
-  FetchReq,
-  FetchRes,
-  MakeTempDir,
-  MakeTempDirRes,
-  MkdirSync,
-  ReadFileSync,
-  ReadFileSyncRes,
-  StatSync,
-  StatSyncRes,
-  SetEnv,
-  WriteFileSync,
+  HttpRequest,
 }
 
 enum ErrorKind: byte {
@@ -77,42 +59,6 @@ table Base {
   error: string;
   msg: Any;
 }
-
-table Start {
-  unused: int8;
-}
-
-table StartRes {
-  cwd: string;
-  argv: [string];
-  debug_flag: bool;
-}
-
-table CodeFetch {
-  module_specifier: string;
-  containing_file: string;
-}
-
-table CodeFetchRes {
-  // If it's a non-http module, moduleName and filename will be the same.
-  // For http modules, moduleName is its resolved http URL, and filename
-  // is the location of the locally downloaded source code.
-  module_name: string;
-  filename: string;
-  source_code: string;
-  output_code: string; // Non-empty only if cached.
-}
-
-table CodeCache {
-  filename: string;
-  source_code: string;
-  output_code: string;
-}
-
-table Exit {
-  code: int;
-}
-
 table TimerStart {
   id: uint;
   interval: bool;
@@ -128,78 +74,18 @@ table TimerClear {
   id: uint;
 }
 
-table Environ {}
+enum HttpMethod : byte { Get, Head, Post, Put, Patch, Delete, Connect, Options, Trace }
 
-table SetEnv {
-    key: string;
-    value: string;
+table HeaderPair {
+  key: string;
+  value: string;
 }
 
-table EnvironRes {
-    map: [EnvPair];
-}
-
-table EnvPair {
-    key: string;
-    value: string;
-}
-
-table FetchReq {
+table HttpRequest {
   id: uint;
   url: string;
-  // header_line: [string];
-}
-
-table FetchRes {
-  id: uint;
-  status: int;
-  header_line: [string];
-  body: [ubyte];
-}
-
-table MakeTempDir {
-  dir: string;
-  prefix: string;
-  suffix: string;
-}
-
-table MakeTempDirRes {
-  path: string;
-}
-
-table MkdirSync {
-  path: string;
-  mode: uint;
-  // mode specified by https://godoc.org/os#FileMode
-}
-
-table ReadFileSync {
-  filename: string;
-}
-
-table ReadFileSyncRes {
-  data: [ubyte];
-}
-
-table StatSync {
-  filename: string;
-  lstat: bool;
-}
-
-table StatSyncRes {
-  is_file: bool;
-  is_symlink: bool;
-  len: ulong;
-  modified:ulong;
-  accessed:ulong;
-  created:ulong;
-}
-
-table WriteFileSync {
-  filename: string;
-  data: [ubyte];
-  perm: uint;
-  // perm specified by https://godoc.org/os#FileMode
+  method: HttpMethod;
+  headers: [HeaderPair];
 }
 
 root_type Base;

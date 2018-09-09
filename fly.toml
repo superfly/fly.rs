@@ -3,3 +3,7 @@ port = 8888
 [apps]
   [apps.hello-world]
   filename = "hello-world.js"
+
+[hostnames]
+  [hostnames."helloworld.test"]
+  app = "hello-world"
