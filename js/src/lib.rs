@@ -1,5 +1,3 @@
-#![feature(test)]
-
 extern crate js_sys;
 
 use js_sys::*;
@@ -14,17 +12,20 @@ extern crate env_logger;
 #[macro_use]
 mod macros;
 
-use std::ffi::{CStr, CString};
+use std::ffi::{CStr, CString, IntoStringError};
 use std::slice;
 use std::str;
+
+extern crate libc;
+use libc::c_char;
 
 #[derive(Debug)]
 pub struct Runtime(*const js_runtime);
 unsafe impl Send for Runtime {}
 
 impl Runtime {
-  pub fn new(snapshot: c_string) -> Runtime {
-    unsafe { Runtime(js_runtime_new(snapshot)) }
+  pub fn new() -> Runtime {
+    unsafe { Runtime(js_runtime_new()) }
   }
 
   pub fn global(&self) -> Object {
@@ -40,7 +41,7 @@ impl Runtime {
     Runtime(raw)
   }
 
-  pub fn release(&self) {
+  fn release(&self) {
     unsafe {
       js_runtime_release(self.as_raw());
     }
@@ -52,13 +53,19 @@ unsafe impl Send for Value {}
 
 impl Value {
   pub fn to_string(&self) -> ::std::string::String {
-    let len = unsafe { js_value_string_utf8_len(self.as_raw()) } as usize;
-    let mut buf = vec![0u8; len];
     unsafe {
-      let ptr = mem::transmute(buf.as_mut_ptr());
-      js_value_string_write_utf8(self.as_raw(), ptr, len as i32);
-      ::std::string::String::from_utf8_unchecked(buf)
+      let s = js_value_to_string(self.as_raw());
+      let buf = slice::from_raw_parts(s.ptr, s.len as usize);
+      CString::from_vec_unchecked(buf.to_vec())
+        .into_string()
+        .unwrap()
     }
+    // unsafe {
+
+    //   let ptr = mem::transmute(buf.as_mut_ptr());
+    //   js_value_string_write_utf8(self.as_raw(), ptr, len as i32);
+    //   ::std::string::String::from_utf8_unchecked(buf)
+    // }
   }
 
   pub fn to_i64(&self) -> i64 {
@@ -164,8 +171,19 @@ impl CallbackInfo {
 
 static INIT: Once = Once::new();
 
-pub fn init() {
-  INIT.call_once(|| unsafe { js_init() });
+pub fn init(natives: &'static [u8], snapshot: &'static [u8]) {
+  INIT.call_once(|| unsafe {
+    js_init(
+      fly_buf {
+        ptr: natives.as_ptr(),
+        len: natives.len(),
+      },
+      fly_buf {
+        ptr: snapshot.as_ptr(),
+        len: snapshot.len(),
+      },
+    )
+  });
 }
 
 pub mod sys {
@@ -182,11 +200,11 @@ mod tests {
   #[bench]
   fn bench_to_string(b: &mut Bencher) {
     init();
-    let snap = unsafe {
-      let c_to_print = CString::new("").unwrap();
-      js_snapshot_create(c_to_print.as_ptr())
-    };
-    let rt = Runtime::new(snap);
+    // let snap = unsafe {
+    //   let c_to_print = CString::new("").unwrap();
+    //   js_snapshot_create(c_to_print.as_ptr())
+    // };
+    let rt = Runtime::new();
 
     let v = Value::from_raw(unsafe { js_global(rt.as_raw()) });
 
@@ -198,11 +216,11 @@ mod tests {
   #[bench]
   fn bench_get_global(b: &mut Bencher) {
     init();
-    let snap = unsafe {
-      let c_to_print = CString::new("").unwrap();
-      js_snapshot_create(c_to_print.as_ptr())
-    };
-    let rt = Runtime::new(snap);
+    // let snap = unsafe {
+    //   let c_to_print = CString::new("").unwrap();
+    //   js_snapshot_create(c_to_print.as_ptr())
+    // };
+    let rt = Runtime::new();
     b.iter(|| {
       rt.global();
     })

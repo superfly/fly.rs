@@ -4,10 +4,16 @@ version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 
 [dependencies]
-tokio = "*"
+tokio = "0.1"
+futures = "0.1"
+tokio-io-pool = "*"
 log = "*"
 env_logger = "*"
-
-[dependencies.js]
-path = "js"
-version = "0.1.0"
+js-sys = {path = "js-sys"}
+lazy_static = "*"
+toml = "0.4"
+libc = "*"
+flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
+msg = { path = "msg" }
+serde = "*"
+serde_derive = "1.0"

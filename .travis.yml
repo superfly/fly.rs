@@ -1,0 +1,9 @@
+language: c++
+
+cache:
+  ccache: true
+  directories:
+    - third_party/v8/build/linux/debian_sid_amd64-sysroot/
+
+before_script:
+  - ccache -s

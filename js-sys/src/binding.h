@@ -10,30 +10,28 @@ extern "C"
 {
 #endif
 
-  // typedef v8::Isolate *IsolatePtr;
-  // typedef v8::Persistent<v8::Context> *PersistentContext;
-
   typedef struct
   {
     v8::Isolate *isolate;
     v8::Persistent<v8::Context> context;
+    void *data;
+    v8::Persistent<v8::Function> recv;
+    const v8::FunctionCallbackInfo<v8::Value> *current_args;
   } js_runtime;
-
-  // typedef v8::Persistent<v8::Value> js_value;
-
-  typedef struct
-  {
-    js_runtime *runtime;
-    v8::Persistent<v8::Value> value;
-  } js_value;
 
   typedef struct
   {
     const char *ptr;
     int len;
-  } fly_string;
+  } fly_buf;
 
-  typedef fly_string StartupData;
+  typedef struct
+  {
+    uint8_t *alloc_ptr; // Start of memory allocation (returned from `malloc()`).
+    size_t alloc_len;   // Length of the memory allocation.
+    uint8_t *data_ptr;  // Start of logical contents (within the allocation).
+    size_t data_len;    // Length of logical contents.
+  } fly_bytes;
 
   typedef struct
   {
@@ -47,36 +45,21 @@ extern "C"
     size_t peak_malloced_memory;
     size_t number_of_native_contexts;
     size_t number_of_detached_contexts;
-    size_t does_zap_garbage;
+    bool does_zap_garbage;
   } HeapStats;
 
   extern const char *js_version();
-  extern void js_init();
-  // extern v8::Isolate *js_isolate_new(StartupData);
-  extern js_runtime *js_runtime_new(StartupData startup_data);
-  extern StartupData js_snapshot_create(const char *);
-  extern HeapStats js_isolate_heap_statistics(v8::Isolate *);
-  extern v8::Persistent<v8::Context> *js_context_new(v8::Isolate *isoptr);
-  extern js_value *js_global(js_runtime *rt);
-  extern void js_global_set_function(js_runtime *rt, const char *name, v8::FunctionCallback cb);
-  extern void js_eval(js_runtime *rt, const char *code);
-  extern js_runtime *js_callback_info_runtime(const v8::FunctionCallbackInfo<v8::Value> &info);
-  extern js_value *js_callback_info_get(const v8::FunctionCallbackInfo<v8::Value> &info, int index);
-  extern int js_callback_info_length(const v8::FunctionCallbackInfo<v8::Value> &info);
-  extern fly_string js_value_to_string(js_value *);
-  extern bool js_value_is_function(js_value *v);
-  extern js_value *js_value_call(js_runtime *rt, js_value *v);
-  extern int64_t js_value_to_i64(js_value *v);
+  extern void js_init(fly_buf natives_blob, fly_buf snapshot_blob);
 
-  extern void js_runtime_release(js_runtime *rt);
-  extern void js_value_release(js_value *v);
+  extern js_runtime *js_runtime_new(void *);
+  extern fly_buf js_snapshot_create(const char *);
+  extern int js_send(const js_runtime *, fly_bytes);
+  extern void js_set_response(const js_runtime *, fly_bytes);
+  extern void *js_get_data(const js_runtime *);
+  extern HeapStats js_runtime_heap_statistics(const js_runtime *);
+  extern void js_eval(js_runtime *rt, const char *filename, const char *code);
 
-  extern bool js_value_set(js_value *v, const char *name, js_value *prop);
-  extern js_value *js_function_new(js_runtime *rt, v8::FunctionCallback cb);
-
-  extern bool js_value_is_object(js_value *v);
-  extern int js_value_string_utf8_len(js_value *v);
-  extern void js_value_string_write_utf8(js_value *v, char *buf, int len);
+  extern void js_runtime_terminate(js_runtime *rt);
 
 #ifdef __cplusplus
 } // extern "C"

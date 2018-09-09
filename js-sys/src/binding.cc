@@ -18,15 +18,131 @@ static inline v8::Local<v8::String> v8_str(v8::Isolate *iso, const char *s)
   return v8::String::NewFromUtf8(iso, s, v8::NewStringType::kNormal).ToLocalChecked();
 }
 
-fly_string DupString(const v8::String::Utf8Value &src)
+// Extracts a C string from a v8::V8 Utf8Value.
+const char *ToCString(const v8::String::Utf8Value &value)
+{
+  return *value ? *value : "<string conversion failed>";
+}
+
+fly_buf str_to_buf(const v8::String::Utf8Value &src)
 {
   char *data = static_cast<char *>(malloc(src.length()));
   memcpy(data, *src, src.length());
-  return (fly_string){data, src.length()};
+  return (fly_buf){data, src.length()};
 }
-fly_string DupString(v8::Isolate *iso, const v8::Local<v8::Value> &val)
+
+fly_buf str_to_buf(v8::Isolate *iso, const v8::Local<v8::Value> &val)
 {
-  return DupString(v8::String::Utf8Value(iso, val));
+  return str_to_buf(v8::String::Utf8Value(iso, val));
+}
+
+extern "C" void msg_from_js(const js_runtime *, fly_bytes);
+
+// TODO: handle in rust
+void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
+{
+  // CHECK_EQ(args.Length(), 1);
+  auto *isolate = args.GetIsolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::String::Utf8Value str(isolate, args[0]);
+  const char *cstr = ToCString(str);
+  printf("%s\n", cstr);
+  fflush(stdout);
+}
+
+static v8::Local<v8::Uint8Array> ImportBuf(v8::Isolate *isolate, fly_bytes buf)
+{
+  if (buf.alloc_ptr == nullptr)
+  {
+    // If alloc_ptr isn't set, we memcpy.
+    // This is currently used for flatbuffers created in Rust.
+    auto ab = v8::ArrayBuffer::New(isolate, buf.data_len);
+    memcpy(ab->GetContents().Data(), buf.data_ptr, buf.data_len);
+    auto view = v8::Uint8Array::New(ab, 0, buf.data_len);
+    return view;
+  }
+  else
+  {
+    auto ab = v8::ArrayBuffer::New(
+        isolate, reinterpret_cast<void *>(buf.alloc_ptr), buf.alloc_len,
+        v8::ArrayBufferCreationMode::kInternalized);
+    auto view =
+        v8::Uint8Array::New(ab, buf.data_ptr - buf.alloc_ptr, buf.data_len);
+    return view;
+  }
+}
+
+static fly_bytes ExportBuf(v8::Isolate *isolate,
+                           v8::Local<v8::ArrayBufferView> view)
+{
+  auto ab = view->Buffer();
+  auto contents = ab->Externalize();
+
+  fly_bytes buf;
+  buf.alloc_ptr = reinterpret_cast<uint8_t *>(contents.Data());
+  buf.alloc_len = contents.ByteLength();
+  buf.data_ptr = buf.alloc_ptr + view->ByteOffset();
+  buf.data_len = view->ByteLength();
+
+  // Prevent JS from modifying buffer contents after exporting.
+  ab->Neuter();
+
+  return buf;
+}
+
+static void FreeBuf(fly_bytes buf) { free(buf.alloc_ptr); }
+
+void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
+{
+  v8::Isolate *isolate = args.GetIsolate();
+  js_runtime *rt = static_cast<js_runtime *>(isolate->GetData(0));
+  // DCHECK_EQ(d->isolate, isolate);
+
+  v8::Locker locker(rt->isolate);
+  v8::EscapableHandleScope handle_scope(isolate);
+
+  // TODO: bring back checks
+  // CHECK_EQ(args.Length(), 1);
+  v8::Local<v8::Value> ab_v = args[0];
+  // CHECK(ab_v->IsArrayBufferView());
+
+  auto buf = ExportBuf(isolate, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
+
+  // DCHECK_EQ(d->currentArgs, nullptr);
+  rt->current_args = &args;
+
+  msg_from_js(rt, buf);
+
+  // Buffer is only valid until the end of the callback.
+  // TODO(piscisaureus):
+  //   It's possible that data in the buffer is needed after the callback
+  //   returns, e.g. when the handler offloads work to a thread pool, therefore
+  //   make the callback responsible for releasing the buffer.
+  FreeBuf(buf);
+
+  rt->current_args = nullptr;
+}
+
+// Sets the recv callback.
+void Recv(const v8::FunctionCallbackInfo<v8::Value> &args)
+{
+  v8::Isolate *isolate = args.GetIsolate();
+  js_runtime *rt = reinterpret_cast<js_runtime *>(isolate->GetData(0));
+  // DCHECK_EQ(d->isolate, isolate);
+
+  v8::HandleScope handle_scope(isolate);
+
+  if (!rt->recv.IsEmpty())
+  {
+    isolate->ThrowException(v8_str(isolate, "libdeno.recv already called."));
+    return;
+  }
+
+  v8::Local<v8::Value> v = args[0];
+  // CHECK(v->IsFunction());
+  v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(v);
+
+  rt->recv.Reset(isolate, func);
 }
 
 extern "C"
@@ -36,25 +152,33 @@ extern "C"
     return v8::V8::GetVersion();
   }
 
-  void js_init()
+  void js_init(fly_buf natives_blob, fly_buf snapshot_blob)
   {
-    v8::V8::InitializeExternalStartupData("/Users/jerome/v8/v8/out/x64.debug/");
+    v8::StartupData natives;
+    natives.data = natives_blob.ptr;
+    natives.raw_size = natives_blob.len;
+    v8::V8::SetNativesDataBlob(&natives);
+
+    // TODO: make a custom snapshot
+    v8::StartupData snapshot;
+    snapshot.data = snapshot_blob.ptr;
+    snapshot.raw_size = snapshot_blob.len;
+    v8::V8::SetSnapshotDataBlob(&snapshot);
+
+    // v8::V8::InitializeExternalStartupData(natives_blob, snapshot_blob);
     auto p = v8::platform::CreateDefaultPlatform();
     v8::V8::InitializePlatform(p);
     v8::V8::Initialize();
     return;
   }
 
-  js_runtime *js_runtime_new(StartupData startup_data)
+  js_runtime *js_runtime_new(void *data)
   {
     js_runtime *rt = new js_runtime;
 
     v8::Isolate::CreateParams create_params;
+    // TODO: create custom, better, allocator
     create_params.array_buffer_allocator = allocator;
-    v8::StartupData *data = new v8::StartupData;
-    data->data = startup_data.ptr;
-    data->raw_size = startup_data.len;
-    create_params.snapshot_blob = data;
 
     v8::Isolate *isolate = v8::Isolate::New(create_params);
     isolate->SetData(0, rt);
@@ -65,172 +189,94 @@ extern "C"
     {
       v8::HandleScope handle_scope(isolate);
       auto context = v8::Context::New(isolate, nullptr, v8::MaybeLocal<v8::ObjectTemplate>());
+
+      v8::Context::Scope context_scope(context);
+
+      auto global = context->Global();
+
+      auto libfly = v8::Object::New(isolate);
+      global->Set(context, v8_str(isolate, "libfly"), libfly).FromJust();
+
+      auto print_tmpl = v8::FunctionTemplate::New(isolate, Print);
+      auto print_val = print_tmpl->GetFunction(context).ToLocalChecked();
+      libfly->Set(context, v8_str(isolate, "log"), print_val).FromJust();
+
+      auto send_tmpl = v8::FunctionTemplate::New(isolate, Send);
+      auto send_val = send_tmpl->GetFunction(context).ToLocalChecked();
+      libfly->Set(context, v8_str(isolate, "send"), send_val).FromJust();
+
+      auto recv_tmpl = v8::FunctionTemplate::New(isolate, Recv);
+      auto recv_val = recv_tmpl->GetFunction(context).ToLocalChecked();
+      libfly->Set(context, v8_str(isolate, "recv"), recv_val).FromJust();
+
       rt->context.Reset(rt->isolate, context);
     }
+
+    rt->data = data;
 
     return rt;
   }
 
-  void js_runtime_release(js_runtime *rt)
+  void *js_get_data(const js_runtime *rt)
+  {
+    return rt->data;
+  }
+
+  int js_send(const js_runtime *rt, fly_bytes buf)
+  {
+    v8::Locker locker(rt->isolate);
+    v8::Isolate::Scope isolate_scope(rt->isolate);
+    v8::HandleScope handle_scope(rt->isolate);
+
+    auto context = rt->context.Get(rt->isolate);
+    v8::Context::Scope context_scope(context);
+
+    v8::TryCatch try_catch(rt->isolate);
+
+    auto recv = rt->recv.Get(rt->isolate);
+    if (recv.IsEmpty())
+    {
+      // rt->last_exception = "libdeno.recv has not been called.";
+      return 0;
+    }
+
+    v8::Local<v8::Value> args[1];
+    args[0] = ImportBuf(rt->isolate, buf);
+    recv->Call(context->Global(), 1, args);
+
+    if (try_catch.HasCaught())
+    {
+      //   HandleException(context, try_catch.Exception());
+      return 0;
+    }
+
+    return 1;
+  }
+
+  void js_set_response(const js_runtime *rt, fly_bytes buf)
+  {
+    auto ab = ImportBuf(rt->isolate, buf);
+    rt->current_args->GetReturnValue().Set(ab);
+  }
+
+  void js_runtime_terminate(js_runtime *rt)
   {
     rt->context.Reset();
     rt->isolate->Dispose();
     free(rt);
   }
 
-  js_runtime *js_callback_info_runtime(const v8::FunctionCallbackInfo<v8::Value> &info)
-  {
-    v8::Local<v8::External> ext = info.Data().As<v8::External>();
-    return static_cast<js_runtime *>(ext->Value());
-  }
-
-  js_value *js_global(js_runtime *rt)
-  {
-    VALUE_SCOPE(rt->isolate, rt->context);
-
-    auto global = ctx->Global();
-    js_value *v = new js_value;
-    v->value.Reset(rt->isolate, global);
-    v->runtime = rt;
-    return v;
-  }
-
-  bool js_value_set(js_value *v, const char *name, js_value *prop)
-  {
-    VALUE_SCOPE(v->runtime->isolate, v->runtime->context);
-
-    auto maybeObj = v->value.Get(v->runtime->isolate);
-    if (!maybeObj->IsObject())
-      return false;
-
-    auto obj = maybeObj->ToObject(v->runtime->isolate);
-    return obj->Set(v8_str(v->runtime->isolate, name), prop->value.Get(prop->runtime->isolate));
-  }
-
-  js_value *js_function_new(js_runtime *rt, v8::FunctionCallback cb)
-  {
-    VALUE_SCOPE(rt->isolate, rt->context);
-    v8::Local<v8::External> data = v8::External::New(rt->isolate, rt);
-    auto fn = v8::FunctionTemplate::New(rt->isolate, cb, data);
-    auto val = fn->GetFunction(ctx).ToLocalChecked();
-    js_value *v = new js_value;
-    v->value.Reset(rt->isolate, val);
-    v->runtime = rt;
-    return v;
-  }
-
-  int js_callback_info_length(const v8::FunctionCallbackInfo<v8::Value> &info)
-  {
-    return info.Length();
-  }
-
-  js_value *js_callback_info_get(const v8::FunctionCallbackInfo<v8::Value> &info, int index)
-  {
-    if (info.Length() <= index)
-    {
-      return nullptr;
-    }
-    js_runtime *rt = js_callback_info_runtime(info);
-    ISOLATE_SCOPE(rt->isolate);
-    v8::HandleScope handle_scope(rt->isolate);
-    js_value *v = new js_value;
-    v->value.Reset(rt->isolate, info[index]);
-    v->runtime = rt;
-    return v;
-  }
-
-  fly_string js_value_to_string(js_value *v)
-  {
-    ISOLATE_SCOPE(v->runtime->isolate);
-    v8::HandleScope hs(v->runtime->isolate);
-    return DupString(v->runtime->isolate, v->value.Get(v->runtime->isolate));
-  }
-
-  bool js_value_is_function(js_value *v)
-  {
-    ISOLATE_SCOPE(v->runtime->isolate);
-    v8::HandleScope hs(v->runtime->isolate);
-    return v->value.Get(v->runtime->isolate)->IsFunction();
-  }
-
-  bool js_value_is_object(js_value *v)
-  {
-    ISOLATE_SCOPE(v->runtime->isolate);
-    v8::HandleScope hs(v->runtime->isolate);
-    return v->value.Get(v->runtime->isolate)->IsObject();
-  }
-
-  int64_t js_value_to_i64(js_value *v)
-  {
-    ISOLATE_SCOPE(v->runtime->isolate);
-    v8::HandleScope hs(v->runtime->isolate);
-    return v->value.Get(v->runtime->isolate)->IntegerValue();
-    // if (val.IsNothing())
-    // {
-    //   return 0;
-    // }
-    // return val.ToChecked();
-  }
-
-  int js_value_string_utf8_len(js_value *v)
-  {
-    VALUE_SCOPE(v->runtime->isolate, v->runtime->context);
-    auto value = v->value.Get(v->runtime->isolate);
-    auto str = value->ToString();
-    return str->Utf8Length();
-  }
-
-  void js_value_string_write_utf8(js_value *v, char *buf, int len)
-  {
-    VALUE_SCOPE(v->runtime->isolate, v->runtime->context);
-    auto value = v->value.Get(v->runtime->isolate);
-    auto str = value->ToString();
-    str->WriteUtf8(v->runtime->isolate, buf, len);
-  }
-
-  js_value *js_value_call(js_runtime *rt, js_value *v)
-  {
-    VALUE_SCOPE(rt->isolate, rt->context);
-    // v8::HandleScope handle_scope(v->runtime->isolate);
-    // v8::Context::Scope context_scope(v->runtime->isolate->GetCurrentContext());
-    v8::TryCatch try_catch(v->runtime->isolate);
-    try_catch.SetVerbose(true);
-    v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(v->value.Get(v->runtime->isolate));
-    int argc = 0;
-    v8::Local<v8::Value> *argv = new v8::Local<v8::Value>[argc];
-
-    v8::MaybeLocal<v8::Value> result = func->Call(v8::Undefined(v->runtime->isolate), argc, argv);
-
-    delete[] argv;
-
-    if (result.IsEmpty())
-    {
-      printf("FAILED IN C\n");
-      return nullptr;
-    }
-
-    js_value *new_val = new js_value;
-    new_val->runtime = v->runtime;
-    new_val->value.Reset(v->runtime->isolate, result.ToLocalChecked());
-
-    return new_val;
-  }
-
-  void js_value_release(js_value *v)
-  {
-    v->value.Reset();
-    free(v);
-  }
-
-  void js_eval(js_runtime *rt, const char *code)
+  void js_eval(js_runtime *rt, const char *filename, const char *code)
   {
     VALUE_SCOPE(rt->isolate, rt->context);
     // v8::TryCatch try_catch(rt->isolate);
     // try_catch.SetVerbose(true);
 
-    v8::Local<v8::Script> script = v8::Script::Compile(
+    v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(rt->isolate, filename));
+    v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
+        ctx,
         v8_str(rt->isolate, code),
-        v8_str(rt->isolate, "(no file)"));
+        &origin);
 
     if (script.IsEmpty())
     {
@@ -238,7 +284,7 @@ extern "C"
       return;
     }
 
-    v8::Local<v8::Value> result = script->Run();
+    v8::MaybeLocal<v8::Value> result = script.ToLocalChecked()->Run(ctx);
     if (result.IsEmpty())
     {
       printf("errrrr evaluating!\n");
@@ -246,15 +292,15 @@ extern "C"
     }
   }
 
-  StartupData js_snapshot_create(const char *js)
-  {
-    v8::StartupData data = v8::V8::CreateSnapshotDataBlob(js);
-    return StartupData{data.data, data.raw_size};
-  }
+  // StartupData js_snapshot_create(const char *js)
+  // {
+  //   v8::StartupData data = v8::V8::CreateSnapshotDataBlob(js);
+  //   return StartupData{data.data, data.raw_size};
+  // }
 
-  HeapStats js_isolate_heap_statistics(v8::Isolate *iso)
+  HeapStats js_runtime_heap_statistics(const js_runtime *rt)
   {
-    v8::Isolate *isolate = static_cast<v8::Isolate *>(iso);
+    v8::Isolate *isolate = rt->isolate;
     v8::HeapStatistics hs;
     isolate->GetHeapStatistics(&hs);
     return HeapStats{
@@ -268,6 +314,7 @@ extern "C"
         hs.peak_malloced_memory(),
         hs.number_of_native_contexts(),
         hs.number_of_detached_contexts(),
-        hs.does_zap_garbage()};
+        hs.does_zap_garbage() == 1,
+    };
   }
 }

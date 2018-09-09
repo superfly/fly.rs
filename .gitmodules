@@ -1,6 +1,13 @@
-[submodule "third_party/depot_tools"]
+[submodule "depot_tools"]
 	path = third_party/depot_tools
 	url = https://chromium.googlesource.com/chromium/tools/depot_tools.git
-[submodule "third_party/v8"]
+[submodule "v8"]
 	path = third_party/v8
 	url = https://chromium.googlesource.com/v8/v8.git
+[submodule "flatbuffers"]
+	path = third_party/flatbuffers
+	url = https://github.com/google/flatbuffers.git
+[submodule "fly"]
+	path = fly
+	url = git@github.com:superfly/fly.git
+	branch = crazytrain-rust
