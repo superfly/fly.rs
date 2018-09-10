@@ -1,12 +1,11 @@
 extern crate libc;
-// extern crate tokio;
 
 use tokio;
 use tokio::prelude::*;
 
 use std::ffi::CString;
 use std::slice;
-use std::sync::{Mutex, Once};
+use std::sync::{Arc, Mutex, Once};
 
 use super::msg;
 use std::fs::File;
@@ -24,20 +23,65 @@ use flatbuffers::FlatBufferBuilder;
 
 use tokio::timer::{Delay, Interval};
 
+use futures::future;
+use futures::task;
 use std::time::{Duration, Instant};
 
-use futures::sync::mpsc;
+extern crate hyper;
+
+#[derive(Debug)]
+pub struct ResponseFuture {
+  response: Option<hyper::Response<hyper::Body>>,
+  task: Option<task::Task>,
+}
+
+impl ResponseFuture {
+  pub fn new() -> Self {
+    ResponseFuture {
+      response: None,
+      task: None,
+    }
+  }
+  pub fn with_response(res: hyper::Response<hyper::Body>) -> Self {
+    ResponseFuture {
+      response: Some(res),
+      task: None,
+    }
+  }
+  fn handle(&mut self, msg: msg::HttpResponse) {
+    self.response = Some(hyper::Response::new(hyper::Body::from(
+      msg.body().unwrap().to_string(),
+    )));
+    self.task.take().unwrap().notify();
+  }
+}
+
+impl Future for ResponseFuture {
+  type Item = hyper::Response<hyper::Body>;
+  type Error = hyper::Error;
+
+  fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+    match self.response.take() {
+      Some(res) => Ok(Async::Ready(res)),
+      None => {
+        self.task = Some(task::current());
+        Ok(Async::NotReady)
+      }
+    }
+  }
+}
 
 #[derive(Debug, Copy, Clone)]
-pub struct JSRuntime(pub *const js_runtime);
-unsafe impl Send for JSRuntime {}
-unsafe impl Sync for JSRuntime {}
+pub struct JsRuntime(pub *const js_runtime);
+unsafe impl Send for JsRuntime {}
+unsafe impl Sync for JsRuntime {}
 
 #[derive(Debug)]
 pub struct Runtime {
-  pub ptr: JSRuntime,
+  pub ptr: JsRuntime,
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
+  pub responses: Mutex<HashMap<u32, ResponseFuture>>,
 }
 
 static JSINIT: Once = Once::new();
@@ -82,9 +126,10 @@ impl Runtime {
     });
 
     let mut rt_box = Box::new(Runtime {
-      ptr: JSRuntime(0 as *const js_runtime),
+      ptr: JsRuntime(0 as *const js_runtime),
       rt: Mutex::new(p.wait().unwrap()),
       timers: Mutex::new(HashMap::new()),
+      responses: Mutex::new(HashMap::new()),
     });
 
     (*rt_box).ptr.0 = unsafe { js_runtime_new(rt_box.as_ref() as *const _ as *const libc::c_void) };
@@ -129,8 +174,20 @@ lazy_static! {
     include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
 }
 
-type HandlerResult = Result<fly_bytes, String>;
-type Handler = fn(rt: &Runtime, base: msg::Base, builder: &mut FlatBufferBuilder) -> HandlerResult;
+// Buf represents a byte array returned from a "Op".
+// The message might be empty (which will be translated into a null object on
+// the javascript side) or it is a heap allocated opaque sequence of bytes.
+// Usually a flatbuffer message.
+type Buf = Option<Box<[u8]>>;
+
+// JS promises in Deno map onto a specific Future
+// which yields either a DenoError or a byte array.
+type Op = Future<Item = Buf, Error = String> + Send;
+
+type OpResult = Result<Buf, String>;
+
+type HandlerResult = Box<Op>;
+type Handler = fn(rt: &Runtime, base: msg::Base) -> HandlerResult;
 
 #[no_mangle]
 pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_bytes) {
@@ -140,11 +197,13 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_bytes) {
   let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
   let base = msg::get_root_as_base(bytes);
   let msg_type = base.msg_type();
-  println!("{:?}", msg_type);
+  let cmd_id = base.cmd_id();
+  println!("{:?} w/ id: {}", msg_type, cmd_id);
 
   let handler: Handler = match msg_type {
     msg::Any::TimerStart => handle_timer_start,
     msg::Any::TimerClear => handle_timer_clear,
+    msg::Any::HttpResponse => handle_http_response,
     _ => panic!(format!(
       "Unhandled message {}",
       msg::enum_name_any(msg_type)
@@ -152,89 +211,162 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_bytes) {
   };
 
   let builder = &mut FlatBufferBuilder::new();
-  let result = handler(rt, base, builder);
+  let fut = handler(rt, base);
 
-  // No matter whether we got an Err or Ok, we want a serialized message to
-  // send back. So transform the DenoError into a deno_buf.
-  let buf = match result {
-    Err(ref err) => {
-      let errmsg_offset = builder.create_string(&format!("{}", err));
-      create_msg(
-        builder,
-        &msg::BaseArgs {
-          error: Some(errmsg_offset),
-          error_kind: msg::ErrorKind::Other, // err.kind(),
-          ..Default::default()
-        },
-      )
-    }
-    Ok(buf) => buf,
-  };
+  let fut = fut.or_else(move |err| {
+    // No matter whether we got an Err or Ok, we want a serialized message to
+    // send back. So transform the DenoError into a deno_buf.
+    let builder = &mut FlatBufferBuilder::new();
+    let errmsg_offset = builder.create_string(&format!("{}", err));
+    Ok(create_msg(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        error: Some(errmsg_offset),
+        error_kind: msg::ErrorKind::Other, // err.kind(),
+        ..Default::default()
+      },
+    ))
+  });
 
-  // Set the synchronous response, the value returned from deno.send().
-  // null_buf is a special case that indicates success.
-  if buf != null_buf() {
-    unsafe { js_set_response(rt.ptr.0, buf) }
+  if base.sync() {
+    // Execute future synchronously.
+    // println!("sync handler {}", msg::enum_name_any(msg_type));
+    let maybe_box_u8 = fut.wait().unwrap();
+    return match maybe_box_u8 {
+      None => {}
+      Some(box_u8) => {
+        let buf = fly_bytes_from(box_u8);
+        // Set the synchronous response, the value returned from deno.send().
+        unsafe { js_set_response(raw, buf) }
+      }
+    };
   }
+
+  let ptr = rt.ptr;
+  // Execute future asynchornously.
+  rt.rt.lock().unwrap().spawn(
+    fut
+      .map_err(|e: String| println!("ERROR SPAWNING SHIT: {}", e))
+      .and_then(move |maybe_box_u8| {
+        let buf = match maybe_box_u8 {
+          Some(box_u8) => fly_bytes_from(box_u8),
+          None => null_buf(),
+        };
+        // TODO(ry) make this thread safe.
+        unsafe { js_send(ptr.0, buf) };
+        Ok(())
+      }),
+  );
 }
 
 // TODO(ry) Use Deno instead of DenoC as first arg.
-fn remove_timer(ptr: JSRuntime, timer_id: u32) {
+fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   let rt = from_c(ptr.0);
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
+fn handle_http_response(rt: &Runtime, base: msg::Base) -> HandlerResult {
+  println!("handle_http_response");
+  let msg = base.msg_as_http_response().unwrap();
+  let response_id = msg.id();
+  let cmd_id = base.cmd_id();
+
+  let mut responses = rt.responses.lock().unwrap();
+  let res = responses.get_mut(&response_id).unwrap();
+
+  res.handle(msg);
+
+  // Ok(null_buf())
+  ok_future(None)
+}
+
+fn fly_bytes_from(x: Box<[u8]>) -> fly_bytes {
+  let len = x.len();
+  let ptr = Box::into_raw(x);
+  fly_bytes {
+    alloc_ptr: 0 as *mut u8,
+    alloc_len: 0,
+    data_ptr: ptr as *mut u8,
+    data_len: len,
+  }
+}
+
 // Prototype: https://github.com/ry/deno/blob/golang/timers.go#L25-L39
-fn handle_timer_start(
-  rt: &Runtime,
-  base: msg::Base,
-  _builder: &mut FlatBufferBuilder,
-) -> HandlerResult {
+fn handle_timer_start(rt: &Runtime, base: msg::Base) -> HandlerResult {
   println!("handle_timer_start");
   let msg = base.msg_as_timer_start().unwrap();
+  let cmd_id = base.cmd_id();
   let timer_id = msg.id();
-  let interval = msg.interval();
+  // let interval = msg.interval();
   let delay = msg.delay();
 
   let timers = &rt.timers;
   let el = &rt.rt;
   let ptr = rt.ptr;
 
-  if interval {
-    let (interval_task, cancel_interval) = set_interval(
-      move || {
-        send_timer_ready(ptr, timer_id, false);
-      },
-      delay,
-    );
+  // if interval {
+  //   let (interval_task, cancel_interval) = set_interval(
+  //     move || {
+  //       send_timer_ready(ptr, timer_id, false);
+  //     },
+  //     delay,
+  //   );
 
-    timers.lock().unwrap().insert(timer_id, cancel_interval);
-    el.lock().unwrap().spawn(interval_task);
-  } else {
+  //   timers.lock().unwrap().insert(timer_id, cancel_interval);
+  //   el.lock().unwrap().spawn(interval_task);
+  // } else {
+  let fut = {
     let (delay_task, cancel_delay) = set_timeout(
       move || {
         remove_timer(ptr, timer_id);
-        send_timer_ready(ptr, timer_id, true);
+        // send_timer_ready(ptr, timer_id, true);
       },
       delay,
     );
 
     timers.lock().unwrap().insert(timer_id, cancel_delay);
-    el.lock().unwrap().spawn(delay_task);
-  }
-  Ok(null_buf())
+    // el.lock().unwrap().spawn(delay_task);
+    delay_task
+  };
+  // }
+  Box::new(fut.then(move |result| {
+    let builder = &mut FlatBufferBuilder::new();
+    let msg = msg::TimerReady::create(
+      builder,
+      &msg::TimerReadyArgs {
+        id: timer_id,
+        canceled: result.is_err(),
+        ..Default::default()
+      },
+    );
+    Ok(create_msg(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        msg: Some(msg.as_union_value()),
+        msg_type: msg::Any::TimerReady,
+        ..Default::default()
+      },
+    ))
+  }))
 }
 
 // Prototype: https://github.com/ry/deno/blob/golang/timers.go#L40-L43
-fn handle_timer_clear(
-  rt: &Runtime,
-  base: msg::Base,
-  _builder: &mut FlatBufferBuilder,
-) -> HandlerResult {
+fn handle_timer_clear(rt: &Runtime, base: msg::Base) -> HandlerResult {
   let msg = base.msg_as_timer_clear().unwrap();
   println!("handle_timer_clear");
   remove_timer(rt.ptr, msg.id());
-  Ok(null_buf())
+  ok_future(None)
+}
+
+fn ok_future(buf: Buf) -> Box<Op> {
+  Box::new(future::ok(buf))
+}
+
+// Shout out to Earl Sweatshirt.
+fn odd_future(err: String) -> Box<Op> {
+  Box::new(future::err(err))
 }
 
 fn set_timeout<F>(cb: F, delay: u32) -> (impl Future<Item = (), Error = ()>, oneshot::Sender<()>)
@@ -277,28 +409,6 @@ where
   (interval_task, cancel_tx)
 }
 
-// TODO(ry) Use Deno instead of DenoC as first arg.
-fn send_timer_ready(ptr: JSRuntime, timer_id: u32, done: bool) {
-  let mut builder = FlatBufferBuilder::new();
-  let msg = msg::TimerReady::create(
-    &mut builder,
-    &msg::TimerReadyArgs {
-      id: timer_id,
-      done,
-      ..Default::default()
-    },
-  );
-  send_base(
-    ptr.0,
-    &mut builder,
-    &msg::BaseArgs {
-      msg: Some(msg.as_union_value()),
-      msg_type: msg::Any::TimerReady,
-      ..Default::default()
-    },
-  );
-}
-
 fn null_buf() -> fly_bytes {
   fly_bytes {
     alloc_ptr: 0 as *mut u8,
@@ -308,27 +418,21 @@ fn null_buf() -> fly_bytes {
   }
 }
 
-pub fn send_base(
-  ptr: *const js_runtime,
-  builder: &mut FlatBufferBuilder,
-  args: &msg::BaseArgs,
-) -> i32 {
-  let buf = create_msg(builder, args);
-  unsafe { js_send(ptr, buf) }
-}
-
-pub fn create_msg(builder: &mut FlatBufferBuilder, args: &msg::BaseArgs) -> fly_bytes {
+pub fn create_msg(cmd_id: u32, builder: &mut FlatBufferBuilder, mut args: msg::BaseArgs) -> Buf {
+  args.cmd_id = cmd_id;
   let base = msg::Base::create(builder, &args);
   msg::finish_base_buffer(builder, base);
   let data = builder.finished_data();
-  fly_bytes {
-    // TODO(ry)
-    // The deno_buf / ImportBuf / ExportBuf semantics should be such that we do not need to yield
-    // ownership. Temporarally there is a hack in ImportBuf that when alloc_ptr is null, it will
-    // memcpy the deno_buf into V8 instead of doing zero copy.
-    alloc_ptr: 0 as *mut u8,
-    alloc_len: 0,
-    data_ptr: data.as_ptr() as *mut u8,
-    data_len: data.len(),
-  }
+  // fly_bytes {
+  //   // TODO(ry)
+  //   // The deno_buf / ImportBuf / ExportBuf semantics should be such that we do not need to yield
+  //   // ownership. Temporarally there is a hack in ImportBuf that when alloc_ptr is null, it will
+  //   // memcpy the deno_buf into V8 instead of doing zero copy.
+  //   alloc_ptr: 0 as *mut u8,
+  //   alloc_len: 0,
+  //   data_ptr: data.as_ptr() as *mut u8,
+  //   data_len: data.len(),
+  // }
+  let vec = data.to_vec();
+  Some(vec.into_boxed_slice())
 }

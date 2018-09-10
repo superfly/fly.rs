@@ -35,7 +35,7 @@ use fly::runtime::*;
 use env_logger::Env;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 mod config;
 use config::*;
@@ -44,8 +44,11 @@ extern crate flatbuffers;
 use flatbuffers::FlatBufferBuilder;
 use fly::msg;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 lazy_static! {
-    static ref RUNTIMES: Mutex<HashMap<String, Box<Runtime>>> = Mutex::new(HashMap::new());
+    pub static ref RUNTIMES: Mutex<HashMap<String, Box<Runtime>>> = Mutex::new(HashMap::new());
+    static ref NEXT_REQ_ID: AtomicUsize = AtomicUsize::new(0);
 }
 
 pub struct FlyServer {
@@ -56,7 +59,7 @@ impl Service for FlyServer {
     type ReqBody = Body;
     type ResBody = Body;
     type Error = hyper::Error;
-    type Future = FutureResult<Response<Body>, Self::Error>;
+    type Future = FutureResult<Response<Body>, hyper::Error>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let h = match req.headers().get("host") {
@@ -103,37 +106,46 @@ impl Service for FlyServer {
                 )
             })
             .collect();
-        let url = builder.create_string(&format!("http://{}", h));
-        let headers_fbs = builder.create_vector(&headers);
-        let msg = msg::HttpRequest::create(
-            builder,
-            &msg::HttpRequestArgs {
-                id: 0,
-                url: Some(url),
-                method: match req.method() {
-                    &Method::GET => msg::HttpMethod::Get,
-                    &Method::HEAD => msg::HttpMethod::Head,
-                    // TODO: more.
-                    _ => panic!("unsupported http method"),
-                },
-                headers: Some(headers_fbs),
-                ..Default::default()
-            },
-        );
+        // let url = builder.create_string(&format!("http://{}", h));
+        // let headers_fbs = builder.create_vector(&headers);
+        // let id = NEXT_REQ_ID.fetch_add(1, Ordering::SeqCst) as u32;
+        // let msg = msg::HttpRequest::create(
+        //     builder,
+        //     &msg::HttpRequestArgs {
+        //         id: id,
+        //         url: Some(url),
+        //         method: match req.method() {
+        //             &Method::GET => msg::HttpMethod::Get,
+        //             &Method::HEAD => msg::HttpMethod::Head,
+        //             // TODO: more.
+        //             _ => panic!("unsupported http method"),
+        //         },
+        //         headers: Some(headers_fbs),
+        //         ..Default::default()
+        //     },
+        // );
 
-        let guard = RUNTIMES.lock().unwrap();
-        let rt = guard.values().next().unwrap();
+        // let guard = RUNTIMES.lock().unwrap();
+        // let rt = guard.values().next().unwrap();
 
-        send_base(
-            rt.ptr.0,
-            &mut builder,
-            &msg::BaseArgs {
-                msg: Some(msg.as_union_value()),
-                msg_type: msg::Any::HttpRequest,
-                ..Default::default()
-            },
-        );
+        // let resfut = ResponseFuture::new();
 
+        // {
+        //     let mut resguard = rt.responses.lock().unwrap();
+        //     resguard.insert(id, resfut);
+        // }
+
+        // send_base(
+        //     rt.ptr.0,
+        //     &mut builder,
+        //     &msg::BaseArgs {
+        //         msg: Some(msg.as_union_value()),
+        //         msg_type: msg::Any::HttpRequest,
+        //         ..Default::default()
+        //     },
+        // );
+
+        // Arc::new(rt.responses.lock().unwrap().get(&id).unwrap())
         future::ok(Response::new(Body::from("ok")))
     }
 }

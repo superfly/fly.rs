@@ -5,6 +5,7 @@ union Any {
   TimerReady,
   TimerClear,
   HttpRequest,
+  HttpResponse,
 }
 
 enum ErrorKind: byte {
@@ -55,19 +56,19 @@ enum ErrorKind: byte {
 
 table Base {
   cmd_id: uint32;
+  sync: bool = true;
   error_kind: ErrorKind = NoError;
   error: string;
   msg: Any;
 }
 table TimerStart {
   id: uint;
-  interval: bool;
   delay: uint;
 }
 
 table TimerReady {
   id: uint;
-  done: bool;
+  canceled: bool;
 }
 
 table TimerClear {
@@ -86,6 +87,11 @@ table HttpRequest {
   url: string;
   method: HttpMethod;
   headers: [HeaderPair];
+}
+
+table HttpResponse {
+  id: uint;
+  body: string;
 }
 
 root_type Base;
