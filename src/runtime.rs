@@ -4,7 +4,6 @@ use tokio;
 use tokio::prelude::*;
 
 use std::ffi::CString;
-use std::slice;
 use std::sync::{Mutex, Once};
 
 use std::fs::File;
@@ -20,7 +19,6 @@ use tokio::runtime::current_thread;
 
 use tokio::timer::{Delay, Interval};
 
-use futures::future;
 use std::time::{Duration, Instant};
 
 extern crate hyper;
@@ -59,8 +57,6 @@ pub struct Runtime {
 
 static JSINIT: Once = Once::new();
 
-use std::mem;
-
 impl Runtime {
   pub fn new() -> Box<Self> {
     JSINIT.call_once(|| unsafe {
@@ -75,12 +71,6 @@ impl Runtime {
         },
       )
     });
-
-    // let (tx_job, rx_job) = mpsc::channel::<()>(1);
-    // let fut = rx_job.for_each(|_f| {
-    //   println!("HELLO FROM JOB CHAN");
-    //   Ok(())
-    // });
 
     let (c, p) = oneshot::channel::<current_thread::Handle>();
     thread::spawn(move || {
@@ -173,8 +163,6 @@ pub struct Message {
   args: Vec<Value>,
 }
 
-type NewHandler = fn(&Runtime, i32, Vec<Value>) -> HandlerResult;
-
 fn handle_timer_start(rt: &Runtime, cmd_id: i32, args: Vec<Value>) -> HandlerResult {
   // println!("handle_timer_start");
   // let msg = base.msg_as_timer_start().unwrap();
@@ -192,7 +180,7 @@ fn handle_timer_start(rt: &Runtime, cmd_id: i32, args: Vec<Value>) -> HandlerRes
   // let delay = msg.delay();
 
   let timers = &rt.timers;
-  let el = &rt.rt;
+  let _el = &rt.rt;
   let ptr = rt.ptr;
 
   // if interval {
@@ -307,116 +295,16 @@ pub extern "C" fn msg_from_js(
           println!("handler future and_then");
           match maybe_msg {
             Some(m) => {
-              // let msg = Box::leak(m);
-              unsafe {
-                // let s = CString::new(m.name.as_str()).unwrap();
-                // let sp = s.as_ptr();
-                // mem::forget(s);
-                testy(
-                  ptr.0,
-                  m.cmd_id,
-                  m.name.as_ptr() as *const i8,
-                  // CString::new(m.name.as_str()).unwrap().as_ptr(),
-                  m.args.len() as i32,
-                  m.args.as_ptr(),
-                )
-              };
+              ptr.send(m.cmd_id, m.name, m.args);
             }
             None => println!("no message"),
           };
           println!("sent a message");
-          // let buf = match maybe_box_u8 {
-          //   Some(box_u8) => fly_bytes_from(box_u8),
-          //   None => null_buf(),
-          // };
-          // // TODO(ry) make this thread safe.
-          // unsafe { js_send(ptr.0, buf) };
           Ok(())
         }),
     ).unwrap(); // TODO: don't unwrap
-
-  // let rt = from_c(raw);
-  // // println!("rt: {:?}", rt);
-  // let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
-  // let base = msg::get_root_as_base(bytes);
-  // let msg_type = base.msg_type();
-  // let cmd_id = base.cmd_id();
-  // // println!("{:?} w/ id: {}", msg_type, cmd_id);
-
-  // if msg_type == msg::Any::HttpResponse {
-  //   // println!("got an http response!");
-  //   // let builder = &mut FlatBufferBuilder::new();
-  //   let mut responses = rt.responses.lock().unwrap();
-  //   let sender = responses
-  //     .remove(&base.msg_as_http_response().unwrap().id())
-  //     .unwrap();
-  //   sender.send(bytes).unwrap();
-  //   unsafe { js_set_response(rt.ptr.0, null_buf()) };
-  //   return;
-  // }
-
-  // let handler: Handler = match msg_type {
-  //   msg::Any::TimerStart => handle_timer_start,
-  //   msg::Any::TimerClear => handle_timer_clear,
-  //   msg::Any::HttpResponse => handle_http_response,
-  //   _ => panic!(format!(
-  //     "Unhandled message {}",
-  //     msg::enum_name_any(msg_type)
-  //   )),
-  // };
-
-  // let fut = handler(rt, base).or_else(move |err| {
-  //   // No matter whether we got an Err or Ok, we want a serialized message to
-  //   // send back. So transform the DenoError into a deno_buf.
-  //   let builder = &mut FlatBufferBuilder::new();
-  //   let errmsg_offset = builder.create_string(&format!("{}", err));
-  //   Ok(create_msg(
-  //     cmd_id,
-  //     builder,
-  //     msg::BaseArgs {
-  //       error: Some(errmsg_offset),
-  //       error_kind: msg::ErrorKind::Other, // err.kind(),
-  //       ..Default::default()
-  //     },
-  //   ))
-  // });
-
-  // if base.sync() {
-  //   // Execute future synchronously.
-  //   // println!("sync handler {}", msg::enum_name_any(msg_type));
-  //   let maybe_box_u8 = fut.wait().unwrap();
-  //   return match maybe_box_u8 {
-  //     None => {}
-  //     Some(box_u8) => {
-  //       let buf = fly_bytes_from(box_u8);
-  //       // Set the synchronous response
-  //       unsafe { js_set_response(raw, buf) }
-  //     }
-  //   };
-  // }
-
-  // let ptr = rt.ptr;
-  // // Execute future asynchornously.
-  // rt.rt
-  //   .lock()
-  //   .unwrap()
-  //   .spawn(
-  //     fut
-  //       .map_err(|e: String| println!("ERROR SPAWNING SHIT: {}", e))
-  //       .and_then(move |maybe_box_u8| {
-  //         let buf = match maybe_box_u8 {
-  //           Some(box_u8) => fly_bytes_from(box_u8),
-  //           None => null_buf(),
-  //         };
-  //         // TODO(ry) make this thread safe.
-  //         unsafe { js_send(ptr.0, buf) };
-  //         Ok(())
-  //       }),
-  //   )
-  //   .unwrap(); // TODO: don't unwrap
 }
 
-// TODO(ry) Use Deno instead of DenoC as first arg.
 fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   let rt = from_c(ptr.0);
   rt.timers.lock().unwrap().remove(&timer_id);
@@ -438,94 +326,6 @@ fn remove_timer(ptr: JsRuntime, timer_id: u32) {
 //   // Ok(null_buf())
 //   ok_future(None)
 // }
-
-fn fly_bytes_from(x: Box<[u8]>) -> fly_bytes {
-  let len = x.len();
-  let ptr = Box::into_raw(x);
-  fly_bytes {
-    alloc_ptr: 0 as *mut u8,
-    alloc_len: 0,
-    data_ptr: ptr as *mut u8,
-    data_len: len,
-  }
-}
-
-// Prototype: https://github.com/ry/deno/blob/golang/timers.go#L25-L39
-// fn handle_timer_start(rt: &Runtime, base: msg::Base) -> HandlerResult {
-//   // println!("handle_timer_start");
-//   let msg = base.msg_as_timer_start().unwrap();
-//   let cmd_id = base.cmd_id();
-//   let timer_id = msg.id();
-//   // let interval = msg.interval();
-//   let delay = msg.delay();
-
-//   let timers = &rt.timers;
-//   let el = &rt.rt;
-//   let ptr = rt.ptr;
-
-//   // if interval {
-//   //   let (interval_task, cancel_interval) = set_interval(
-//   //     move || {
-//   //       send_timer_ready(ptr, timer_id, false);
-//   //     },
-//   //     delay,
-//   //   );
-
-//   //   timers.lock().unwrap().insert(timer_id, cancel_interval);
-//   //   el.lock().unwrap().spawn(interval_task);
-//   // } else {
-//   let fut = {
-//     let (delay_task, cancel_delay) = set_timeout(
-//       move || {
-//         remove_timer(ptr, timer_id);
-//         // send_timer_ready(ptr, timer_id, true);
-//       },
-//       delay,
-//     );
-
-//     timers.lock().unwrap().insert(timer_id, cancel_delay);
-//     // el.lock().unwrap().spawn(delay_task);
-//     delay_task
-//   };
-//   // }
-//   Box::new(fut.then(move |result| {
-//     let builder = &mut FlatBufferBuilder::new();
-//     let msg = msg::TimerReady::create(
-//       builder,
-//       &msg::TimerReadyArgs {
-//         id: timer_id,
-//         canceled: result.is_err(),
-//         ..Default::default()
-//       },
-//     );
-//     Ok(create_msg(
-//       cmd_id,
-//       builder,
-//       msg::BaseArgs {
-//         msg: Some(msg.as_union_value()),
-//         msg_type: msg::Any::TimerReady,
-//         ..Default::default()
-//       },
-//     ))
-//   }))
-// }
-
-// Prototype: https://github.com/ry/deno/blob/golang/timers.go#L40-L43
-// fn handle_timer_clear(rt: &Runtime, base: msg::Base) -> HandlerResult {
-//   let msg = base.msg_as_timer_clear().unwrap();
-//   println!("handle_timer_clear");
-//   remove_timer(rt.ptr, msg.id());
-//   ok_future(None)
-// }
-
-fn ok_future(buf: Buf) -> Box<Op> {
-  Box::new(future::ok(buf))
-}
-
-// Shout out to Earl Sweatshirt.
-fn odd_future(err: String) -> Box<Op> {
-  Box::new(future::err(err))
-}
 
 fn set_timeout<F>(cb: F, delay: u32) -> (impl Future<Item = (), Error = ()>, oneshot::Sender<()>)
 where

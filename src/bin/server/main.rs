@@ -18,10 +18,9 @@ use fly::libfly;
 extern crate hyper;
 use hyper::rt::Future;
 use hyper::service::Service;
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::{Body, Request, Response, StatusCode};
 
 extern crate futures;
-use futures::future::FutureResult;
 use futures::sync::oneshot;
 
 use std::fs::File;
@@ -37,7 +36,7 @@ use fly::runtime::*;
 use env_logger::Env;
 
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 mod config;
 use config::*;
@@ -47,10 +46,8 @@ use std::alloc::System;
 #[global_allocator]
 static A: System = System;
 
-use std::cell::RefCell;
-
 lazy_static! {
-    pub static ref RUNTIMES: Mutex<HashMap<String, Box<Runtime>>> = Mutex::new(HashMap::new());
+    pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
 }
 
 pub struct FlyServer {
@@ -145,19 +142,20 @@ impl Service for FlyServer {
             },
         ];
 
-        let guard = RUNTIMES.lock().unwrap();
+        let guard = RUNTIMES.read().unwrap();
         let rt = guard.values().next().unwrap();
         let rtptr = rt.ptr;
 
         let (p, c) = oneshot::channel::<Vec<libfly::Value>>();
 
-        match rt.send(0, String::from("http_request"), args) {
+        let cmd_id = match rtptr.send(0, String::from("http_request"), args) {
             libfly::Value::Int32(i) => {
                 println!("got val: {:?}", i);
                 rt.responses.lock().unwrap().insert(i, p);
+                i
             }
-            _ => println!("unexpected return value"),
-        }
+            _ => panic!("unexpected return value"), // TODO: no panic
+        };
         // println!("sent message..");
 
         let body = req.into_body();
@@ -168,7 +166,7 @@ impl Service for FlyServer {
             .for_each(move |chunk| {
                 let bytes = chunk.into_bytes();
                 rtptr.send(
-                    0,
+                    cmd_id,
                     String::from("body_chunk"),
                     vec![libfly::Value::ArrayBuffer(libfly::fly_buf {
                         ptr: bytes.as_ptr(),
@@ -229,14 +227,14 @@ fn main() {
         rt.eval_file(filename);
 
         {
-            let mut rts = RUNTIMES.lock().unwrap();
+            let mut rts = RUNTIMES.write().unwrap();
             rts.insert(name.to_string(), rt);
         };
     }
 
     let task = Interval::new_interval(Duration::from_secs(5))
         .for_each(move |_| {
-            match RUNTIMES.lock() {
+            match RUNTIMES.read() {
                 Ok(rts) => {
                     for (key, rt) in rts.iter() {
                         info!(
@@ -269,37 +267,3 @@ fn main() {
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
 }
-
-// #[no_mangle]
-// pub extern "C" fn set_timeout(raw_info: *const js_callback_info) {
-//     info!("set timeout called!");
-//     let info = js::CallbackInfo::from_raw(raw_info);
-//     let rt = info.runtime();
-//     if let Some(fnv) = info.get(0) {
-//         info!("got a fn: {}", fnv.to_string());
-//         if let Some(msv) = info.get(1) {
-//             info!("got some ms! {}", msv.to_i64());
-//             let when = Instant::now() + Duration::from_millis(msv.to_i64() as u64);
-//             let task = Delay::new(when)
-//                 .and_then(move |_| {
-//                     info!("in delayed closure");
-//                     let res = fnv.call(rt);
-//                     info!("call got: {}", res.to_string());
-//                     Ok(())
-//                 })
-//                 .map_err(|e| panic!("delay errored; err={:?}", e));
-
-//             tokio::spawn(task);
-//         }
-//     }
-//     info!("set_timeout done");
-// }
-
-// extern "C" fn log(raw_info: *const js_callback_info) {
-//     let info = js::CallbackInfo::from_raw(raw_info);
-//     for i in 0..info.length() {
-//         if let Some(v) = info.get(i) {
-//             info!("log: {}", v.to_string());
-//         }
-//     }
-// }
