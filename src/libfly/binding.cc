@@ -13,15 +13,15 @@
 
 auto allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
 
-static inline v8::Local<v8::String> v8_str(v8::Isolate *iso, const char *s)
-{
-  return v8::String::NewFromUtf8(iso, s, v8::NewStringType::kNormal).ToLocalChecked();
-}
-
 // Extracts a C string from a v8::V8 Utf8Value.
-const char *ToCString(const v8::String::Utf8Value &value)
+// const char *ToCString(const v8::String::Utf8Value &value)
+// {
+//   return *value ? *value : "<string conversion failed>";
+// }
+
+char *str_to_char(const v8::String::Utf8Value &src)
 {
-  return *value ? *value : "<string conversion failed>";
+  return strdup(*src);
 }
 
 fly_buf str_to_buf(const v8::String::Utf8Value &src)
@@ -36,17 +36,18 @@ fly_buf str_to_buf(v8::Isolate *iso, const v8::Local<v8::Value> &val)
   return str_to_buf(v8::String::Utf8Value(iso, val));
 }
 
-extern "C" void msg_from_js(const js_runtime *, fly_bytes);
+extern "C" void msg_from_js(const js_runtime *, const int cmd_id, char *, const int argc, const Value *argv);
 
 // TODO: handle in rust
 void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
+  printf("got print\n");
   // CHECK_EQ(args.Length(), 1);
   auto *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
   v8::String::Utf8Value str(isolate, args[0]);
-  const char *cstr = ToCString(str);
-  printf("%s\n", cstr);
+  // const char *cstr = ToCString(str);
+  printf("%s\n", *str);
   fflush(stdout);
 }
 
@@ -101,27 +102,91 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   v8::Locker locker(rt->isolate);
   v8::EscapableHandleScope handle_scope(isolate);
 
+  auto context = rt->context.Get(rt->isolate);
+  v8::Context::Scope context_scope(context);
+
   // TODO: bring back checks
   // CHECK_EQ(args.Length(), 1);
-  v8::Local<v8::Value> ab_v = args[0];
+  // v8::Local<v8::Value> ab_v = args[0];
   // CHECK(ab_v->IsArrayBufferView());
 
-  auto buf = ExportBuf(isolate, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
+  // auto buf = ExportBuf(isolate, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
 
   // DCHECK_EQ(d->currentArgs, nullptr);
   rt->current_args = &args;
 
-  msg_from_js(rt, buf);
+  int argc = args.Length();
+  int rust_argc = argc > 0 ? argc - 3 : 0;
+  Value *argv = new Value[rust_argc];
+
+  for (int i = 0; i < rust_argc; i++)
+  {
+    auto arg_idx = i + 3;
+    auto arg = args[arg_idx];
+    ValueTag tag;
+    ValuePayload payload;
+    if (arg->IsInt32())
+    {
+      tag = ValueTag::Int32;
+      payload = ValuePayload{arg->Int32Value(context).FromJust()};
+      // argv[i] = Value{ValueTag::Int32, arg->Int32Value(context).FromJust()};
+    }
+    else if (arg->IsString())
+    {
+      tag = ValueTag::String;
+      // const char *str = ;
+      payload = ValuePayload{.String = strdup(*v8::String::Utf8Value(rt->isolate, arg))};
+    }
+    argv[i] = Value{tag, payload};
+  }
+
+  auto cmd_id = args[0]->Int32Value(context).FromJust();
+  auto name = str_to_char(v8::String::Utf8Value(rt->isolate, args[1]));
+  // auto sync =
+
+  msg_from_js(rt, cmd_id, name, rust_argc, argv);
 
   // Buffer is only valid until the end of the callback.
   // TODO(piscisaureus):
   //   It's possible that data in the buffer is needed after the callback
   //   returns, e.g. when the handler offloads work to a thread pool, therefore
   //   make the callback responsible for releasing the buffer.
-  FreeBuf(buf);
+  // FreeBuf(buf);
 
   rt->current_args = nullptr;
+  // delete[] argv;
 }
+
+// void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
+// {
+//   v8::Isolate *isolate = args.GetIsolate();
+//   js_runtime *rt = static_cast<js_runtime *>(isolate->GetData(0));
+//   // DCHECK_EQ(d->isolate, isolate);
+
+//   v8::Locker locker(rt->isolate);
+//   v8::EscapableHandleScope handle_scope(isolate);
+
+//   // TODO: bring back checks
+//   // CHECK_EQ(args.Length(), 1);
+//   v8::Local<v8::Value> ab_v = args[0];
+//   // CHECK(ab_v->IsArrayBufferView());
+
+//   auto buf = ExportBuf(isolate, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
+
+//   // DCHECK_EQ(d->currentArgs, nullptr);
+//   rt->current_args = &args;
+
+//   msg_from_js(rt, buf);
+
+//   // Buffer is only valid until the end of the callback.
+//   // TODO(piscisaureus):
+//   //   It's possible that data in the buffer is needed after the callback
+//   //   returns, e.g. when the handler offloads work to a thread pool, therefore
+//   //   make the callback responsible for releasing the buffer.
+//   FreeBuf(buf);
+
+//   rt->current_args = nullptr;
+// }
 
 // Sets the recv callback.
 void Recv(const v8::FunctionCallbackInfo<v8::Value> &args)
@@ -257,6 +322,19 @@ extern "C"
   {
     auto ab = ImportBuf(rt->isolate, buf);
     rt->current_args->GetReturnValue().Set(ab);
+  }
+
+  void js_set_return_value(const js_runtime *rt, const Value *vals)
+  {
+    auto v = vals[0];
+    printf("SET RETURN VALUE, tag: %i\n", v.tag);
+    switch (v.tag)
+    {
+    case ValueTag::Int32:
+      printf("got integer! %i\n", v.payload.Int32);
+      rt->current_args->GetReturnValue().Set(v8::Integer::New(rt->isolate, v.payload.Int32));
+      break;
+    }
   }
 
   void js_runtime_terminate(js_runtime *rt)

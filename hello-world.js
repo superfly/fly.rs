@@ -1,3 +1,4 @@
 console.log("ha");
 
-setTimeout(() => { console.log("in timeout!") }, 1000)
+// let now = Date.now();
+// setTimeout(() => { console.log("in timeout!", Date.now() - now); now = Date.now() }, 5)

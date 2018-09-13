@@ -9,10 +9,11 @@ extern crate lazy_static;
 
 extern crate env_logger;
 extern crate fly;
-extern crate js_sys;
 extern crate tokio;
 extern crate tokio_io_pool;
 extern crate toml;
+
+use fly::libfly;
 
 extern crate hyper;
 use hyper::rt::Future;
@@ -21,6 +22,7 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 
 extern crate futures;
 use futures::future::FutureResult;
+use futures::sync::oneshot;
 
 use std::fs::File;
 use std::io::Read;
@@ -35,31 +37,33 @@ use fly::runtime::*;
 use env_logger::Env;
 
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 mod config;
 use config::*;
 
-extern crate flatbuffers;
-use flatbuffers::FlatBufferBuilder;
-use fly::msg;
+use std::alloc::System;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+#[global_allocator]
+static A: System = System;
 
 lazy_static! {
     pub static ref RUNTIMES: Mutex<HashMap<String, Box<Runtime>>> = Mutex::new(HashMap::new());
-    static ref NEXT_REQ_ID: AtomicUsize = AtomicUsize::new(0);
 }
 
 pub struct FlyServer {
     // config: Config,
 }
 
+extern crate libc;
+
+use std::ffi::{CStr, CString};
+
 impl Service for FlyServer {
     type ReqBody = Body;
     type ResBody = Body;
-    type Error = hyper::Error;
-    type Future = FutureResult<Response<Body>, hyper::Error>;
+    type Error = futures::Canceled;
+    type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let h = match req.headers().get("host") {
@@ -67,93 +71,118 @@ impl Service for FlyServer {
                 Ok(s) => s,
                 Err(e) => {
                     error!("error stringifying host: {}", e);
-                    return future::ok(
+                    return Box::new(future::ok(
                         Response::builder()
                             .status(StatusCode::INTERNAL_SERVER_ERROR)
                             .body(Body::empty())
                             .unwrap(),
-                    );
+                    ));
                 }
             },
             None => {
-                return future::ok(
+                return Box::new(future::ok(
                     Response::builder()
                         .status(StatusCode::NOT_FOUND)
                         .body(Body::empty())
                         .unwrap(),
-                )
+                ))
             }
         };
 
         // info!("host: {}", h);
 
-        let mut builder = &mut FlatBufferBuilder::new();
-        let headers: Vec<_> = req
+        let headers: Vec<(CString, CString)> = req
             .headers()
             .iter()
             .map(|(key, value)| {
-                let key = builder.create_string(key.as_str());
-                // TODO: don't unwrap
-                let value = builder.create_string(value.to_str().unwrap());
+                // // TODO: don't unwrap
+                // let value = builder.create_string(value.to_str().unwrap());
 
-                msg::HeaderPair::create(
-                    builder,
-                    &msg::HeaderPairArgs {
-                        key: Some(key),
-                        value: Some(value),
-                        ..Default::default()
-                    },
+                // msg::HeaderPair::create(
+                //     builder,
+                //     &msg::HeaderPairArgs {
+                //         key: Some(key),
+                //         value: Some(value),
+                //         ..Default::default()
+                //     },
+                // )
+                (
+                    CString::new(key.as_str()).unwrap(),
+                    CString::new(value.to_str().unwrap()).unwrap(),
                 )
-            })
+                // libfly::KeyValue {
+                //     key: .as_ptr(),
+                //     val: &libfly::Value::String(value.to_str().unwrap().as_ptr()),
+                // }
+            }).collect();
+
+        let headers2: Vec<(*const libc::c_char, libfly::Value)> = headers
+            .iter()
+            .map(|(key, value)| (key.as_ptr(), libfly::Value::String(value.as_ptr())))
             .collect();
-        // let url = builder.create_string(&format!("http://{}", h));
-        // let headers_fbs = builder.create_vector(&headers);
-        // let id = NEXT_REQ_ID.fetch_add(1, Ordering::SeqCst) as u32;
-        // let msg = msg::HttpRequest::create(
-        //     builder,
-        //     &msg::HttpRequestArgs {
-        //         id: id,
-        //         url: Some(url),
-        //         method: match req.method() {
-        //             &Method::GET => msg::HttpMethod::Get,
-        //             &Method::HEAD => msg::HttpMethod::Head,
-        //             // TODO: more.
-        //             _ => panic!("unsupported http method"),
-        //         },
-        //         headers: Some(headers_fbs),
-        //         ..Default::default()
-        //     },
-        // );
 
-        // let guard = RUNTIMES.lock().unwrap();
-        // let rt = guard.values().next().unwrap();
+        let headers3: Vec<libfly::KeyValue> = headers2
+            .iter()
+            .map(|(key, value)| libfly::KeyValue {
+                key: *key,
+                val: value,
+            }).collect();
 
-        // let resfut = ResponseFuture::new();
+        let url = CString::new(format!("http://{}", h)).unwrap();
+        let args: Vec<libfly::Value> = vec![
+            libfly::Value::Int32(0),
+            libfly::Value::String(url.as_ptr()),
+            libfly::Value::KeyValues {
+                len: headers3.len() as i32,
+                pairs: headers3.as_ptr(),
+            },
+        ];
 
-        // {
-        //     let mut resguard = rt.responses.lock().unwrap();
-        //     resguard.insert(id, resfut);
-        // }
+        let guard = RUNTIMES.lock().unwrap();
+        let rt = guard.values().next().unwrap();
 
-        // send_base(
-        //     rt.ptr.0,
-        //     &mut builder,
-        //     &msg::BaseArgs {
-        //         msg: Some(msg.as_union_value()),
-        //         msg_type: msg::Any::HttpRequest,
-        //         ..Default::default()
-        //     },
-        // );
+        let (p, c) = oneshot::channel::<Vec<libfly::Value>>();
 
-        // Arc::new(rt.responses.lock().unwrap().get(&id).unwrap())
-        future::ok(Response::new(Body::from("ok")))
+        match rt.send(0, String::from("http_request"), args) {
+            libfly::Value::Int32(i) => {
+                println!("got val: {:?}", i);
+                rt.responses.lock().unwrap().insert(i, p);
+            }
+            _ => println!("unexpected return value"),
+        }
+        // println!("sent message..");
+
+        Box::new(c.and_then(|args: Vec<libfly::Value>| {
+            // let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
+            // let base = msg::get_root_as_base(bytes);
+
+            // let res = base.msg_as_http_response().unwrap();
+            // println!("GOT RESPONSE: {:?}", res);
+
+            let body = args[0];
+            // println!("body: {:?}", body);
+
+            match body {
+                libfly::Value::String(s) => {
+                    // println!("it a string! {}", unsafe {
+                    //     CStr::from_ptr(s).to_str().unwrap()
+                    // });
+                    future::ok(Response::new(Body::from(unsafe {
+                        CStr::from_ptr(s).to_str().unwrap()
+                    })))
+                }
+                _ => future::ok(Response::new(Body::from("got nothing"))),
+            }
+        }))
+
+        // Box::new(future::ok(Response::new(Body::from("ok"))))
     }
 }
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
 
-    info!("V8 version: {}", js_sys::version());
+    println!("V8 version: {}", libfly::version());
 
     env_logger::init_from_env(env);
 
@@ -192,8 +221,7 @@ fn main() {
                 Err(e) => error!("error locking runtimes: {}", e),
             };
             Ok(())
-        })
-        .map_err(|e| panic!("interval errored; err={:?}", e));
+        }).map_err(|e| panic!("interval errored; err={:?}", e));
 
     let mut main_el = tokio_io_pool::Runtime::new();
 
