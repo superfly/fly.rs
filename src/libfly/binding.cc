@@ -73,26 +73,6 @@ static v8::Local<v8::Uint8Array> ImportBuf(v8::Isolate *isolate, fly_bytes buf)
   }
 }
 
-static fly_bytes ExportBuf(v8::Isolate *isolate,
-                           v8::Local<v8::ArrayBufferView> view)
-{
-  auto ab = view->Buffer();
-  auto contents = ab->Externalize();
-
-  fly_bytes buf;
-  buf.alloc_ptr = reinterpret_cast<uint8_t *>(contents.Data());
-  buf.alloc_len = contents.ByteLength();
-  buf.data_ptr = buf.alloc_ptr + view->ByteOffset();
-  buf.data_len = view->ByteLength();
-
-  // Prevent JS from modifying buffer contents after exporting.
-  ab->Neuter();
-
-  return buf;
-}
-
-static void FreeBuf(fly_bytes buf) { free(buf.alloc_ptr); }
-
 void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
   v8::Isolate *isolate = args.GetIsolate();
@@ -123,21 +103,7 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   {
     auto arg_idx = i + 3;
     auto arg = args[arg_idx];
-    ValueTag tag;
-    ValuePayload payload;
-    if (arg->IsInt32())
-    {
-      tag = ValueTag::Int32;
-      payload = ValuePayload{arg->Int32Value(context).FromJust()};
-      // argv[i] = Value{ValueTag::Int32, arg->Int32Value(context).FromJust()};
-    }
-    else if (arg->IsString())
-    {
-      tag = ValueTag::String;
-      // const char *str = ;
-      payload = ValuePayload{.String = strdup(*v8::String::Utf8Value(rt->isolate, arg))};
-    }
-    argv[i] = Value{tag, payload};
+    argv[i] = v8_to_value(rt, context, arg);
   }
 
   auto cmd_id = args[0]->Int32Value(context).FromJust();
@@ -327,14 +293,7 @@ extern "C"
   void js_set_return_value(const js_runtime *rt, const Value *vals)
   {
     auto v = vals[0];
-    printf("SET RETURN VALUE, tag: %i\n", v.tag);
-    switch (v.tag)
-    {
-    case ValueTag::Int32:
-      printf("got integer! %i\n", v.payload.Int32);
-      rt->current_args->GetReturnValue().Set(v8::Integer::New(rt->isolate, v.payload.Int32));
-      break;
-    }
+    rt->current_args->GetReturnValue().Set(arg_to_value(rt, v.tag, v.payload));
   }
 
   void js_runtime_terminate(js_runtime *rt)
@@ -394,5 +353,54 @@ extern "C"
         hs.number_of_detached_contexts(),
         hs.does_zap_garbage() == 1,
     };
+  }
+
+  Value testy(const js_runtime *rt, const int32_t cmd_id, const char *name, int32_t argc, const Value *argv)
+  {
+    v8::Locker locker(rt->isolate);
+    v8::Isolate::Scope isolate_scope(rt->isolate);
+    v8::HandleScope handle_scope(rt->isolate);
+
+    v8::Local<v8::Context> context = rt->context.Get(rt->isolate);
+    v8::Context::Scope context_scope(context);
+
+    v8::TryCatch try_catch(rt->isolate);
+    try_catch.SetVerbose(true);
+
+    v8::Local<v8::Function> recv = rt->recv.Get(rt->isolate);
+    if (recv.IsEmpty())
+    {
+      // rt->last_exception = "libdeno.recv has not been called.";
+      return Value{ValueTag::Int32, ValuePayload{}};
+    }
+
+    int length = argc + 2;
+    v8::Local<v8::Value> args[length];
+
+    args[0] = v8::Integer::New(rt->isolate, cmd_id);
+    args[1] = v8_str(rt->isolate, strdup(name));
+
+    for (int i = 0; i < argc; i++)
+    {
+      auto args_idx = i + 2;
+      Value t = argv[i];
+      args[args_idx] = arg_to_value(rt, t.tag, t.payload);
+    }
+
+    v8::MaybeLocal<v8::Value> res = recv->Call(v8::Undefined(rt->isolate), length, args);
+    if (res.IsEmpty())
+    {
+      printf("Empty res :/\n");
+      return Value{ValueTag::Int32, ValuePayload{}};
+    }
+
+    if (try_catch.HasCaught())
+    {
+      //   HandleException(context, try_catch.Exception());
+      printf("CAUGHT AN EXCEPTION :/\n");
+      return Value{ValueTag::Int32, ValuePayload{}};
+    }
+    // delete[] args;
+    return v8_to_value(rt, context, res.ToLocalChecked());
   }
 }

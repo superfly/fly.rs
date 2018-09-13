@@ -30,6 +30,25 @@ pub struct JsRuntime(pub *const js_runtime);
 unsafe impl Send for JsRuntime {}
 unsafe impl Sync for JsRuntime {}
 
+impl JsRuntime {
+  pub fn send(&self, cmd_id: i32, name: String, args: Vec<Value>) -> Value {
+    // let ptr = args.as_ptr();
+    // let len = args.len() as i32;
+    unsafe {
+      // mem::forget(args);
+      // let n = name.to_string();
+      let namestr = CString::new(name.as_str()).unwrap();
+      testy(
+        self.0,
+        cmd_id,
+        namestr.as_ptr(),
+        args.len() as i32,
+        args.as_ptr(),
+      )
+    }
+  }
+}
+
 #[derive(Debug)]
 pub struct Runtime {
   pub ptr: JsRuntime,
@@ -115,20 +134,7 @@ impl Runtime {
   }
 
   pub fn send(&self, cmd_id: i32, name: String, args: Vec<Value>) -> Value {
-    // let ptr = args.as_ptr();
-    // let len = args.len() as i32;
-    unsafe {
-      // mem::forget(args);
-      // let n = name.to_string();
-      let namestr = CString::new(name.as_str()).unwrap();
-      testy(
-        self.ptr.0,
-        cmd_id,
-        namestr.as_ptr(),
-        args.len() as i32,
-        args.as_ptr(),
-      )
-    }
+    self.ptr.send(cmd_id, name, args)
   }
 }
 

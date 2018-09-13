@@ -4,6 +4,7 @@ use self::libc::{c_char, c_int, c_void, size_t};
 use std::ffi::CStr;
 
 #[repr(C)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct fly_buf {
   pub ptr: *const u8,
   pub len: usize,
@@ -76,9 +77,11 @@ pub struct KeyValue {
 #[repr(C, u8)]
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Value {
+  None,
   Int32(i32),
   String(*const c_char),
-  KeyValues { len: i32, pairs: *const KeyValue },
+  Object { len: i32, pairs: *const KeyValue },
+  ArrayBuffer(fly_buf),
 }
 
 unsafe impl Send for Value {}

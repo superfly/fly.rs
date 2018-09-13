@@ -47,6 +47,8 @@ use std::alloc::System;
 #[global_allocator]
 static A: System = System;
 
+use std::cell::RefCell;
+
 lazy_static! {
     pub static ref RUNTIMES: Mutex<HashMap<String, Box<Runtime>>> = Mutex::new(HashMap::new());
 }
@@ -66,27 +68,32 @@ impl Service for FlyServer {
     type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let h = match req.headers().get("host") {
-            Some(v) => match v.to_str() {
-                Ok(s) => s,
-                Err(e) => {
-                    error!("error stringifying host: {}", e);
-                    return Box::new(future::ok(
-                        Response::builder()
-                            .status(StatusCode::INTERNAL_SERVER_ERROR)
-                            .body(Body::empty())
-                            .unwrap(),
-                    ));
+        let url = {
+            format!(
+                "http://{}",
+                match req.headers().get("host") {
+                    Some(v) => match v.to_str() {
+                        Ok(s) => s,
+                        Err(e) => {
+                            error!("error stringifying host: {}", e);
+                            return Box::new(future::ok(
+                                Response::builder()
+                                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                                    .body(Body::empty())
+                                    .unwrap(),
+                            ));
+                        }
+                    },
+                    None => {
+                        return Box::new(future::ok(
+                            Response::builder()
+                                .status(StatusCode::NOT_FOUND)
+                                .body(Body::empty())
+                                .unwrap(),
+                        ))
+                    }
                 }
-            },
-            None => {
-                return Box::new(future::ok(
-                    Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Body::empty())
-                        .unwrap(),
-                ))
-            }
+            )
         };
 
         // info!("host: {}", h);
@@ -128,11 +135,11 @@ impl Service for FlyServer {
                 val: value,
             }).collect();
 
-        let url = CString::new(format!("http://{}", h)).unwrap();
+        let url = CString::new(url).unwrap();
         let args: Vec<libfly::Value> = vec![
             libfly::Value::Int32(0),
             libfly::Value::String(url.as_ptr()),
-            libfly::Value::KeyValues {
+            libfly::Value::Object {
                 len: headers3.len() as i32,
                 pairs: headers3.as_ptr(),
             },
@@ -140,6 +147,7 @@ impl Service for FlyServer {
 
         let guard = RUNTIMES.lock().unwrap();
         let rt = guard.values().next().unwrap();
+        let rtptr = rt.ptr;
 
         let (p, c) = oneshot::channel::<Vec<libfly::Value>>();
 
@@ -151,6 +159,26 @@ impl Service for FlyServer {
             _ => println!("unexpected return value"),
         }
         // println!("sent message..");
+
+        let body = req.into_body();
+
+        let el = rt.rt.lock().unwrap();
+
+        let chunk_fut = body
+            .for_each(move |chunk| {
+                let bytes = chunk.into_bytes();
+                rtptr.send(
+                    0,
+                    String::from("body_chunk"),
+                    vec![libfly::Value::ArrayBuffer(libfly::fly_buf {
+                        ptr: bytes.as_ptr(),
+                        len: bytes.len(),
+                    })],
+                );
+                Ok(())
+            }).map_err(|_| ());
+
+        el.spawn(chunk_fut).unwrap();
 
         Box::new(c.and_then(|args: Vec<libfly::Value>| {
             // let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
