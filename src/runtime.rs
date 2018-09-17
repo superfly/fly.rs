@@ -63,12 +63,12 @@ impl Runtime {
     JSINIT.call_once(|| unsafe {
       js_init(
         fly_simple_buf {
-          ptr: NATIVES_DATA.as_ptr(),
-          len: NATIVES_DATA.len(),
+          ptr: NATIVES_DATA.as_ptr() as *const i8,
+          len: NATIVES_DATA.len() as i32,
         },
         fly_simple_buf {
-          ptr: SNAPSHOT_DATA.as_ptr(),
-          len: SNAPSHOT_DATA.len(),
+          ptr: SNAPSHOT_DATA.as_ptr() as *const i8,
+          len: SNAPSHOT_DATA.len() as i32,
         },
       )
     });
@@ -228,7 +228,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf) {
       Some(box_u8) => {
         let buf = fly_buf_from(box_u8);
         // Set the synchronous response, the value returned from deno.send().
-        // unsafe { deno_set_response(d, buf) }
+        unsafe { js_set_response(ptr.0, buf) }
       }
     }
   } else {
@@ -251,7 +251,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf) {
         }
       };
       // TODO(ry) make this thread safe.
-      // unsafe { libdeno::deno_send(d, buf) };
+      unsafe { js_send(ptr.0, buf) };
       Ok(())
     });
     rt.rt.lock().unwrap().spawn(fut);

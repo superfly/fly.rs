@@ -37,7 +37,7 @@ fn main() {
     .generate()
     // .generate_with_config(&crate_dir, config)
     .expect("Unable to generate bindings")
-    .write_to_file("bindings2.h");
+    .write_to_file("binding.h");
 
   cc::Build::new()
     .file("binding.cc")

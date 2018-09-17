@@ -1,5 +1,5 @@
 #include <v8.h>
-#include "bindings2.h"
+#include "binding.h"
 #include <libplatform/libplatform.h>
 
 #define ISOLATE_SCOPE(iso)                                                    \
@@ -11,6 +11,43 @@
   v8::HandleScope handle_scope(iso); /* Create a scope for handles.    */ \
   v8::Local<v8::Context> ctx(ctxptr.Get(iso));                            \
   v8::Context::Scope context_scope(ctx); /* Scope to this context.         */
+
+struct InternalFieldData
+{
+  uint32_t data;
+};
+
+std::vector<InternalFieldData *> deserialized_data;
+
+void DeserializeInternalFields(v8::Local<v8::Object> holder, int index,
+                               v8::StartupData payload, void *data)
+{
+  // DCHECK_EQ(data, nullptr);
+  if (payload.raw_size == 0)
+  {
+    holder->SetAlignedPointerInInternalField(index, nullptr);
+    return;
+  }
+  InternalFieldData *embedder_field = new InternalFieldData{0};
+  memcpy(embedder_field, payload.data, payload.raw_size);
+  holder->SetAlignedPointerInInternalField(index, embedder_field);
+  deserialized_data.push_back(embedder_field);
+}
+
+v8::StartupData SerializeInternalFields(v8::Local<v8::Object> holder, int index,
+                                        void *data)
+{
+  // DCHECK_EQ(data, nullptr);
+  InternalFieldData *embedder_field = static_cast<InternalFieldData *>(
+      holder->GetAlignedPointerFromInternalField(index));
+  if (embedder_field == nullptr)
+    return {nullptr, 0};
+  int size = sizeof(*embedder_field);
+  char *payload = new char[size];
+  // We simply use memcpy to serialize the content.
+  memcpy(payload, embedder_field, size);
+  return {payload, size};
+}
 
 auto allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
 
@@ -161,7 +198,7 @@ void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context, const cha
 
   auto print_tmpl = v8::FunctionTemplate::New(isolate, Print);
   auto print_val = print_tmpl->GetFunction(context).ToLocalChecked();
-  fly->Set(context, v8_str(isolate, "log"), print_val).FromJust();
+  fly->Set(context, v8_str(isolate, "print"), print_val).FromJust();
 
   auto send_tmpl = v8::FunctionTemplate::New(isolate, Send);
   auto send_val = send_tmpl->GetFunction(context).ToLocalChecked();
@@ -226,7 +263,7 @@ extern "C"
     v8::Isolate::Scope isolate_scope(isolate);
     {
       v8::HandleScope handle_scope(isolate);
-      auto context = v8::Context::New(isolate, nullptr, v8::MaybeLocal<v8::ObjectTemplate>());
+      auto context = v8::Context::New(isolate, nullptr, v8::MaybeLocal<v8::ObjectTemplate>(), v8::MaybeLocal<v8::Value>(), v8::DeserializeInternalFieldsCallback(DeserializeInternalFields, nullptr));
 
       InitContext(isolate, context, nullptr, nullptr);
 
@@ -292,8 +329,8 @@ extern "C"
   void js_eval(const js_runtime *rt, const char *filename, const char *code)
   {
     VALUE_SCOPE(rt->isolate, rt->context);
-    // v8::TryCatch try_catch(rt->isolate);
-    // try_catch.SetVerbose(true);
+    v8::TryCatch try_catch(rt->isolate);
+    try_catch.SetVerbose(true);
 
     v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(rt->isolate, filename));
     v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
@@ -361,7 +398,7 @@ extern "C"
 
         auto print_tmpl = v8::FunctionTemplate::New(isolate, Print);
         auto print_val = print_tmpl->GetFunction(context).ToLocalChecked();
-        fly->Set(context, v8_str(isolate, "log"), print_val);
+        fly->Set(context, v8_str(isolate, "print"), print_val);
 
         auto send_tmpl = v8::FunctionTemplate::New(isolate, Send);
         auto send_val = send_tmpl->GetFunction(context).ToLocalChecked();
@@ -392,7 +429,8 @@ extern "C"
           exit(1);
         }
 
-        creator.SetDefaultContext(context);
+        creator.SetDefaultContext(context, v8::SerializeInternalFieldsCallback(
+                                               SerializeInternalFields, nullptr));
         // rt->context.Reset();
         // rt->recv.Reset();
       }
