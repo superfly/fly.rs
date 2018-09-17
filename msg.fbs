@@ -1,0 +1,31 @@
+union Any {
+  TimerStart,
+  TimerReady,
+  TimerClear,
+}
+
+enum ErrorKind: byte {
+  NoError = 0,
+}
+
+table Base {
+  cmd_id: uint32;
+  sync: bool = true; // TODO(ry) Change default to false.
+  error_kind: ErrorKind = NoError;
+  error: string;
+  msg: Any;
+}
+
+table TimerStart {
+  id: uint;
+  delay: uint;
+}
+
+table TimerReady {
+  id: uint;
+  canceled: bool;
+}
+
+table TimerClear {
+  id: uint;
+}

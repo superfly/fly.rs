@@ -21,6 +21,13 @@ use tokio::timer::{Delay, Interval};
 
 use std::time::{Duration, Instant};
 
+use futures::future;
+
+use messages::JsValue;
+use messages::{Command, Message, TimerReady};
+
+extern crate libfly;
+
 extern crate hyper;
 
 #[derive(Debug, Copy, Clone)]
@@ -29,20 +36,14 @@ unsafe impl Send for JsRuntime {}
 unsafe impl Sync for JsRuntime {}
 
 impl JsRuntime {
-  pub fn send(&self, cmd_id: i32, name: String, args: Vec<Value>) -> Value {
+  pub fn send(&self, kind: MessageKind, cmd: Value) -> Value {
     // let ptr = args.as_ptr();
     // let len = args.len() as i32;
     unsafe {
       // mem::forget(args);
       // let n = name.to_string();
-      let namestr = CString::new(name.as_str()).unwrap();
-      testy(
-        self.0,
-        cmd_id,
-        namestr.as_ptr(),
-        args.len() as i32,
-        args.as_ptr(),
-      )
+      // let namestr = CString::new(name.as_str()).unwrap();
+      js_send(self.0, kind, cmd)
     }
   }
 }
@@ -62,11 +63,11 @@ impl Runtime {
     JSINIT.call_once(|| unsafe {
       js_init(
         fly_buf {
-          ptr: NATIVES_DATA.as_ptr(),
+          ptr: NATIVES_DATA.as_ptr() as *const i8,
           len: NATIVES_DATA.len(),
         },
         fly_buf {
-          ptr: SNAPSHOT_DATA.as_ptr(),
+          ptr: SNAPSHOT_DATA.as_ptr() as *const i8,
           len: SNAPSHOT_DATA.len(),
         },
       )
@@ -96,7 +97,18 @@ impl Runtime {
       responses: Mutex::new(HashMap::new()),
     });
 
-    (*rt_box).ptr.0 = unsafe { js_runtime_new(rt_box.as_ref() as *const _ as *const libc::c_void) };
+    (*rt_box).ptr.0 = unsafe {
+      let ptr = js_runtime_new(
+        *FLY_SNAPSHOT,
+        rt_box.as_ref() as *const _ as *mut libc::c_void,
+      );
+      js_eval(
+        ptr,
+        CString::new("fly_main.js").unwrap().as_ptr(),
+        CString::new("flyMain()").unwrap().as_ptr(),
+      );
+      ptr
+    };
 
     rt_box
   }
@@ -123,8 +135,9 @@ impl Runtime {
     unsafe { js_runtime_heap_statistics(self.ptr.0) }.used_heap_size as usize
   }
 
-  pub fn send(&self, cmd_id: i32, name: String, args: Vec<Value>) -> Value {
-    self.ptr.send(cmd_id, name, args)
+  pub fn send(&self, kind: MessageKind, cmd: Command) -> Value {
+    // let tmp = TempValue::Object{}
+    self.ptr.send(kind, cmd.prepare_js().to_js())
   }
 }
 
@@ -135,18 +148,29 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
   Box::leak(rt_box)
 }
 
+const NATIVES_DATA: &'static [u8] =
+  include_bytes!("../libfly/third_party/v8/out.gn/x64.debug/natives_blob.bin");
+const SNAPSHOT_DATA: &'static [u8] =
+  include_bytes!("../libfly/third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
+
 lazy_static! {
-  static ref NATIVES_DATA: &'static [u8] =
-    include_bytes!("../third_party/v8/out.gn/x64.debug/natives_blob.bin");
-  static ref SNAPSHOT_DATA: &'static [u8] =
-    include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
+  static ref FLY_SNAPSHOT: fly_buf = unsafe {
+    let filename = "fly/packages/v8env/dist/bundle.js";
+    let mut file = File::open(filename).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    js_create_snapshot(
+      CString::new(filename).unwrap().as_ptr(),
+      CString::new(contents).unwrap().as_ptr(),
+    )
+  };
 }
 
 // Buf represents a byte array returned from a "Op".
 // The message might be empty (which will be translated into a null object on
 // the javascript side) or it is a heap allocated opaque sequence of bytes.
 // Usually a flatbuffer message.
-type Buf = Option<Message>;
+type Buf = Option<Command>;
 
 // JS promises in Deno map onto a specific Future
 // which yields either a DenoError or a byte array.
@@ -157,43 +181,153 @@ type OpResult = Result<Buf, String>;
 type HandlerResult = Box<Op>;
 // type Handler = fn(rt: &Runtime, base: msg::Base) -> HandlerResult;
 
-pub struct Message {
-  cmd_id: i32,
-  name: String,
-  args: Vec<Value>,
+// pub struct Message {
+//   cmd_id: i32,
+//   name: String,
+//   args: Vec<Value>,
+// }
+
+#[no_mangle]
+pub extern "C" fn msg_from_js(
+  raw: *const js_runtime,
+  msg: libfly::Message,
+  // cmd_id: libc::c_int,
+  // name: *mut libc::c_char,
+  // sync: bool,
+  // argc: libc::c_int,
+  // argv: *mut Value,
+) {
+  println!("got msg from js! {:?} payload: {:?}", msg, msg.payload());
+
+  let sync = msg.sync;
+  let payload = msg.payload().unwrap(); // TODO: this might panic
+
+  // let name = unsafe {
+  //   // let n = CString::new(slice::from_raw_parts(name.ptr, name.len)).unwrap();
+  //   let n = CString::from_raw(name);
+  //   n.into_string().unwrap()
+  // };
+
+  // println!("name: {}", name);
+
+  // let args = unsafe { Vec::from_raw_parts(argv, argc as usize, argc as usize) };
+
+  // // let val = unsafe { js_current_arg_value(raw, 0) };
+
+  // // println!("arr: {:?}", args);
+  // // let v = Value::Int32(10);
+
+  // // unsafe { js_set_return_value(raw, &v) };
+
+  let rt = from_c(raw);
+
+  // if name.as_str() == "http_response" {
+  //   // println!("got an http response!");
+  //   // let builder = &mut FlatBufferBuilder::new();
+  //   let mut responses = rt.responses.lock().unwrap();
+  //   let sender = responses.remove(&cmd_id).unwrap();
+  //   sender.send(args).unwrap();
+  //   // unsafe { js_set_response(rt.ptr.0, null_buf()) };
+  //   return;
+  // }
+
+  let handler = match msg.kind {
+    MessageKind::TimerStart => handle_timer_start,
+    _ => unimplemented!(),
+  };
+  //   "timer_start" => handle_timer_start,
+  //   "timer_clear" => handle_timer_clear,
+  //   // "decode" => handle_decode,
+  //   _ => panic!("ahhh, unhandled event"),
+  // };
+
+  let fut = handler(rt, msg.id, payload);
+
+  // if sync {
+  //   match fut.wait().unwrap() {
+  //     None => {}
+  //     Some(box_cmd) => {
+  //       let cmd = Box::into_raw(box_cmd);
+  //       // let cmd = *ptr;
+  //       unsafe { js_set_return_value(rt.ptr.0, (*cmd).prepare_js().to_js()) };
+  //     }
+  //   }
+  // } else {
+  let ptr = rt.ptr;
+  // Execute future asynchornously.
+  rt.rt
+    .lock()
+    .unwrap()
+    .spawn(
+      fut
+        .map_err(|e: String| println!("ERROR SPAWNING SHIT: {}", e))
+        .and_then(move |maybe_cmd| {
+          println!("handler future and_then");
+          match maybe_cmd {
+            Some(cmd) => {
+              // let cmd = Box::leak(box_cmd);
+              unsafe {
+                let tmp = cmd.prepare_js();
+                println!("tmp: {:?}", tmp);
+                js_send(ptr.0, MessageKind::TimerReady, tmp.to_js());
+                // Box::from_raw(cmd);
+              };
+            }
+            None => println!("no message"),
+          };
+          println!("sent a message");
+          Ok(())
+        }),
+    ).unwrap(); // TODO: don't unwrap
+                // }
 }
 
-fn handle_timer_start(rt: &Runtime, cmd_id: i32, args: Vec<Value>) -> HandlerResult {
-  // println!("handle_timer_start");
-  // let msg = base.msg_as_timer_start().unwrap();
-  // let cmd_id = base.cmd_id();
-  let timer_id = match args[0] {
-    Value::Int32(i) => i as u32,
-    _ => panic!("ahhh"),
-  };
+use std::mem;
 
-  let delay = match args[1] {
-    Value::Int32(i) => i as u32,
-    _ => panic!("ahhh"),
+// fn handle_decode(_rt: &Runtime, cmd_id: i32, args: Vec<Value>) -> HandlerResult {
+//   let arr = match args[0] {
+//     Value::Uint8Array(a) => a,
+//     _ => panic!("don't panic later."),
+//   };
+
+//   match String::from_utf8(unsafe {
+//     Vec::from_raw_parts(arr.data_ptr, arr.data_len as usize, arr.data_len)
+//   }) {
+//     Err(e) => panic!(e),
+//     Ok(s) => {
+//       let cstr = CString::new(s).unwrap();
+//       let strptr = cstr.as_ptr();
+//       mem::forget(cstr);
+//       Box::new(future::ok(Some(Box::new(Command::new(cmd_id as u32, )) {
+//         cmd_id: cmd_id,
+//         name: String::from("decode"),
+//         args: vec![Value::String(strptr)],
+//       })))
+//     }
+//   }
+// }
+
+fn handle_timer_start(rt: &Runtime, id: u32, msg: MessagePayload) -> HandlerResult {
+  let ts = match msg {
+    MessagePayload::TimerStart(ts) => ts,
+    _ => unimplemented!(),
   };
-  // let interval = msg.interval();
-  // let delay = msg.delay();
+  let timer_id = ts.id;
+  let delay = ts.delay;
+  // let timer_id = match args[0] {
+  //   Value::Int32(i) => i as u32,
+  //   _ => panic!("ahhh"),
+  // };
+
+  // let delay = match args[1] {
+  //   Value::Int32(i) => i as u32,
+  //   _ => panic!("ahhh"),
+  // };
 
   let timers = &rt.timers;
   let _el = &rt.rt;
   let ptr = rt.ptr;
 
-  // if interval {
-  //   let (interval_task, cancel_interval) = set_interval(
-  //     move || {
-  //       send_timer_ready(ptr, timer_id, false);
-  //     },
-  //     delay,
-  //   );
-
-  //   timers.lock().unwrap().insert(timer_id, cancel_interval);
-  //   el.lock().unwrap().spawn(interval_task);
-  // } else {
   let fut = {
     let (delay_task, cancel_delay) = set_timeout(
       move || {
@@ -204,110 +338,32 @@ fn handle_timer_start(rt: &Runtime, cmd_id: i32, args: Vec<Value>) -> HandlerRes
     );
 
     timers.lock().unwrap().insert(timer_id, cancel_delay);
-    // el.lock().unwrap().spawn(delay_task);
     delay_task
   };
   // }
   Box::new(fut.then(move |_result| -> OpResult {
     println!("we're ready to notify");
-    Ok(Some(Message {
-      cmd_id: cmd_id,
-      name: String::from("timer_ready"),
-      args: vec![Value::Int32(timer_id as i32)],
-    }))
-    // let builder = &mut FlatBufferBuilder::new();
-    // let msg = msg::TimerReady::create(
-    //   builder,
-    //   &msg::TimerReadyArgs {
-    //     id: timer_id,
-    //     canceled: result.is_err(),
-    //     ..Default::default()
-    //   },
-    // );
-    // Ok(create_msg(
-    //   cmd_id,
-    //   builder,
-    //   msg::BaseArgs {
-    //     msg: Some(msg.as_union_value()),
-    //     msg_type: msg::Any::TimerReady,
-    //     ..Default::default()
-    //   },
-    // ))
+    Ok(Some(Command::new(
+      id,
+      Message::TimerReady(TimerReady::new(timer_id)),
+    )))
   }))
-}
-
-#[no_mangle]
-pub extern "C" fn msg_from_js(
-  raw: *const js_runtime,
-  cmd_id: libc::c_int,
-  name: *mut libc::c_char,
-  argc: libc::c_int,
-  argv: *mut Value,
-) {
-  println!("got msg from js!");
-
-  let name = unsafe {
-    // let n = CString::new(slice::from_raw_parts(name.ptr, name.len)).unwrap();
-    let n = CString::from_raw(name);
-    n.into_string().unwrap()
-  };
-
-  println!("name: {}", name);
-
-  let args = unsafe { Vec::from_raw_parts(argv, argc as usize, argc as usize) };
-
-  // let val = unsafe { js_current_arg_value(raw, 0) };
-
-  // println!("arr: {:?}", args);
-  // let v = Value::Int32(10);
-
-  // unsafe { js_set_return_value(raw, &v) };
-
-  let rt = from_c(raw);
-
-  if name.as_str() == "http_response" {
-    // println!("got an http response!");
-    // let builder = &mut FlatBufferBuilder::new();
-    let mut responses = rt.responses.lock().unwrap();
-    let sender = responses.remove(&cmd_id).unwrap();
-    sender.send(args).unwrap();
-    unsafe { js_set_response(rt.ptr.0, null_buf()) };
-    return;
-  }
-
-  let handler = match name.as_str() {
-    "timer_start" => handle_timer_start,
-    _ => panic!("ahhh, unhandled event"),
-  };
-
-  let fut = handler(rt, cmd_id, args);
-
-  println!("called handler fn.");
-  let ptr = rt.ptr;
-  // Execute future asynchornously.
-  rt.rt
-    .lock()
-    .unwrap()
-    .spawn(
-      fut
-        .map_err(|e: String| println!("ERROR SPAWNING SHIT: {}", e))
-        .and_then(move |maybe_msg| {
-          println!("handler future and_then");
-          match maybe_msg {
-            Some(m) => {
-              ptr.send(m.cmd_id, m.name, m.args);
-            }
-            None => println!("no message"),
-          };
-          println!("sent a message");
-          Ok(())
-        }),
-    ).unwrap(); // TODO: don't unwrap
 }
 
 fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   let rt = from_c(ptr.0);
   rt.timers.lock().unwrap().remove(&timer_id);
+}
+
+fn handle_timer_clear(rt: &Runtime, _cmd_id: u32, args: Vec<Value>) -> HandlerResult {
+  let timer_id = match args[0] {
+    Value::Int32(i) => i as u32,
+    _ => panic!("ahhh"),
+  };
+
+  remove_timer(rt.ptr, timer_id);
+
+  Box::new(future::ok(None))
 }
 
 // fn handle_http_response(rt: &Runtime, base: msg::Base) -> HandlerResult {
@@ -343,15 +399,6 @@ where
     .map_err(|_| ());
 
   (delay_task, cancel_tx)
-}
-
-fn null_buf() -> fly_bytes {
-  fly_bytes {
-    alloc_ptr: 0 as *mut u8,
-    alloc_len: 0,
-    data_ptr: 0 as *mut u8,
-    data_len: 0,
-  }
 }
 
 // pub fn create_msg(cmd_id: u32, builder: &mut FlatBufferBuilder, mut args: msg::BaseArgs) -> Buf {

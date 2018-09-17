@@ -13,7 +13,8 @@ extern crate tokio;
 extern crate tokio_io_pool;
 extern crate toml;
 
-use fly::libfly;
+extern crate libfly;
+// use libfly;
 
 extern crate hyper;
 use hyper::rt::Future;
@@ -95,113 +96,113 @@ impl Service for FlyServer {
 
         // info!("host: {}", h);
 
-        let headers: Vec<(CString, CString)> = req
-            .headers()
-            .iter()
-            .map(|(key, value)| {
-                // // TODO: don't unwrap
-                // let value = builder.create_string(value.to_str().unwrap());
+        // let headers: Vec<(CString, CString)> = req
+        //     .headers()
+        //     .iter()
+        //     .map(|(key, value)| {
+        //         // // TODO: don't unwrap
+        //         // let value = builder.create_string(value.to_str().unwrap());
 
-                // msg::HeaderPair::create(
-                //     builder,
-                //     &msg::HeaderPairArgs {
-                //         key: Some(key),
-                //         value: Some(value),
-                //         ..Default::default()
-                //     },
-                // )
-                (
-                    CString::new(key.as_str()).unwrap(),
-                    CString::new(value.to_str().unwrap()).unwrap(),
-                )
-                // libfly::KeyValue {
-                //     key: .as_ptr(),
-                //     val: &libfly::Value::String(value.to_str().unwrap().as_ptr()),
-                // }
-            }).collect();
+        //         // msg::HeaderPair::create(
+        //         //     builder,
+        //         //     &msg::HeaderPairArgs {
+        //         //         key: Some(key),
+        //         //         value: Some(value),
+        //         //         ..Default::default()
+        //         //     },
+        //         // )
+        //         (
+        //             CString::new(key.as_str()).unwrap(),
+        //             CString::new(value.to_str().unwrap()).unwrap(),
+        //         )
+        //         // libfly::KeyValue {
+        //         //     key: .as_ptr(),
+        //         //     val: &libfly::Value::String(value.to_str().unwrap().as_ptr()),
+        //         // }
+        //     }).collect();
 
-        let headers2: Vec<(*const libc::c_char, libfly::Value)> = headers
-            .iter()
-            .map(|(key, value)| (key.as_ptr(), libfly::Value::String(value.as_ptr())))
-            .collect();
+        // let headers2: Vec<(*const libc::c_char, libfly::Value)> = headers
+        //     .iter()
+        //     .map(|(key, value)| (key.as_ptr(), libfly::Value::String(value.as_ptr())))
+        //     .collect();
 
-        let headers3: Vec<libfly::KeyValue> = headers2
-            .iter()
-            .map(|(key, value)| libfly::KeyValue {
-                key: *key,
-                val: value,
-            }).collect();
+        // let headers3: Vec<libfly::KeyValue> = headers2
+        //     .iter()
+        //     .map(|(key, value)| libfly::KeyValue {
+        //         key: *key,
+        //         val: value,
+        //     }).collect();
 
-        let url = CString::new(url).unwrap();
-        let args: Vec<libfly::Value> = vec![
-            libfly::Value::Int32(0),
-            libfly::Value::String(url.as_ptr()),
-            libfly::Value::Object {
-                len: headers3.len() as i32,
-                pairs: headers3.as_ptr(),
-            },
-        ];
+        // let url = CString::new(url).unwrap();
+        // let args: Vec<libfly::Value> = vec![
+        //     libfly::Value::Int32(0),
+        //     libfly::Value::String(url.as_ptr()),
+        //     libfly::Value::Object {
+        //         len: headers3.len() as i32,
+        //         pairs: headers3.as_ptr(),
+        //     },
+        // ];
 
-        let guard = RUNTIMES.read().unwrap();
-        let rt = guard.values().next().unwrap();
-        let rtptr = rt.ptr;
+        // let guard = RUNTIMES.read().unwrap();
+        // let rt = guard.values().next().unwrap();
+        // let rtptr = rt.ptr;
 
-        let (p, c) = oneshot::channel::<Vec<libfly::Value>>();
+        // let (p, c) = oneshot::channel::<Vec<libfly::Value>>();
 
-        let cmd_id = match rtptr.send(0, String::from("http_request"), args) {
-            libfly::Value::Int32(i) => {
-                println!("got val: {:?}", i);
-                rt.responses.lock().unwrap().insert(i, p);
-                i
-            }
-            _ => panic!("unexpected return value"), // TODO: no panic
-        };
-        // println!("sent message..");
+        // let cmd_id = match rtptr.send(0, String::from("http_request"), args) {
+        //     libfly::Value::Int32(i) => {
+        //         println!("got val: {:?}", i);
+        //         rt.responses.lock().unwrap().insert(i, p);
+        //         i
+        //     }
+        //     _ => panic!("unexpected return value"), // TODO: no panic
+        // };
+        // // println!("sent message..");
 
-        let body = req.into_body();
+        // let body = req.into_body();
 
-        let el = rt.rt.lock().unwrap();
+        // let el = rt.rt.lock().unwrap();
 
-        let chunk_fut = body
-            .for_each(move |chunk| {
-                let bytes = chunk.into_bytes();
-                rtptr.send(
-                    cmd_id,
-                    String::from("body_chunk"),
-                    vec![libfly::Value::ArrayBuffer(libfly::fly_buf {
-                        ptr: bytes.as_ptr(),
-                        len: bytes.len(),
-                    })],
-                );
-                Ok(())
-            }).map_err(|_| ());
+        // let chunk_fut = body
+        //     .for_each(move |chunk| {
+        //         let bytes = chunk.into_bytes();
+        //         rtptr.send(
+        //             cmd_id,
+        //             String::from("body_chunk"),
+        //             vec![libfly::Value::ArrayBuffer(libfly::fly_buf {
+        //                 ptr: bytes.as_ptr(),
+        //                 len: bytes.len(),
+        //             })],
+        //         );
+        //         Ok(())
+        //     }).map_err(|_| ());
 
-        el.spawn(chunk_fut).unwrap();
+        // el.spawn(chunk_fut).unwrap();
 
-        Box::new(c.and_then(|args: Vec<libfly::Value>| {
-            // let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
-            // let base = msg::get_root_as_base(bytes);
+        // Box::new(c.and_then(|args: Vec<libfly::Value>| {
+        //     // let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
+        //     // let base = msg::get_root_as_base(bytes);
 
-            // let res = base.msg_as_http_response().unwrap();
-            // println!("GOT RESPONSE: {:?}", res);
+        //     // let res = base.msg_as_http_response().unwrap();
+        //     // println!("GOT RESPONSE: {:?}", res);
 
-            let body = args[0];
-            // println!("body: {:?}", body);
+        //     let body = args[0];
+        //     // println!("body: {:?}", body);
 
-            match body {
-                libfly::Value::String(s) => {
-                    // println!("it a string! {}", unsafe {
-                    //     CStr::from_ptr(s).to_str().unwrap()
-                    // });
-                    future::ok(Response::new(Body::from(unsafe {
-                        CStr::from_ptr(s).to_str().unwrap()
-                    })))
-                }
-                _ => future::ok(Response::new(Body::from("got nothing"))),
-            }
-        }))
+        //     match body {
+        //         libfly::Value::String(s) => {
+        //             // println!("it a string! {}", unsafe {
+        //             //     CStr::from_ptr(s).to_str().unwrap()
+        //             // });
+        //             future::ok(Response::new(Body::from(unsafe {
+        //                 CStr::from_ptr(s).to_str().unwrap()
+        //             })))
+        //         }
+        //         _ => future::ok(Response::new(Body::from("got nothing"))),
+        //     }
+        // }))
 
-        // Box::new(future::ok(Response::new(Body::from("ok"))))
+        Box::new(future::ok(Response::new(Body::from("ok"))))
     }
 }
 
@@ -222,7 +223,7 @@ fn main() {
     for (name, app) in conf.apps.unwrap().iter() {
         let rt = Runtime::new();
         info!("inited rt");
-        rt.eval_file("fly/packages/v8env/dist/bundle.js");
+        // rt.eval_file("fly/packages/v8env/dist/bundle.js");
         let filename = app.filename.as_str();
         rt.eval_file(filename);
 

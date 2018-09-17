@@ -3,12 +3,17 @@ use self::libc::{c_char, c_int, c_void, size_t};
 
 use std::ffi::CStr;
 
+pub mod msg;
+pub use msg::*;
+
 #[repr(C)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct fly_buf {
-  pub ptr: *const u8,
-  pub len: usize,
+  pub ptr: *const c_char,
+  pub len: size_t,
 }
+unsafe impl Send for fly_buf {}
+unsafe impl Sync for fly_buf {}
 
 #[repr(C)]
 pub struct js_runtime {
@@ -26,7 +31,7 @@ pub struct js_callback_info {
 }
 
 #[repr(C)]
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Copy, Clone)]
 pub struct fly_bytes {
   pub alloc_ptr: *mut u8,
   pub alloc_len: usize,
@@ -57,22 +62,29 @@ pub fn version() -> String {
 extern "C" {
   pub fn js_init(natives: fly_buf, snapshot: fly_buf);
   pub fn js_version() -> *const c_char;
-  pub fn js_runtime_new(data: *const c_void) -> *const js_runtime;
+  pub fn js_runtime_new(snapshot: fly_buf, data: *mut c_void) -> *const js_runtime;
   pub fn js_get_data(rt: *const js_runtime) -> *const c_void;
-  pub fn js_set_response(rt: *const js_runtime, buf: fly_bytes);
-  pub fn js_set_return_value(rt: *const js_runtime, v: *const Value);
-  pub fn js_send(rt: *const js_runtime, buf: fly_bytes) -> c_int;
-  pub fn js_snapshot_create(s: *const c_char) -> fly_buf;
+  pub fn js_set_response(rt: *const js_runtime, cmd_id: c_int, argc: c_int, argv: *const Value);
+  pub fn js_set_return_value(rt: *const js_runtime, v: Value);
+  pub fn js_send(rt: *const js_runtime, kind: MessageKind, cmd: Value) -> Value;
   pub fn js_runtime_heap_statistics(rt: *const js_runtime) -> js_heap_stats;
+  pub fn js_create_snapshot(filename: *const c_char, code: *const c_char) -> fly_buf;
 
   pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char);
 }
 
+extern "C" {
+  pub fn testy(rt: *const js_runtime, msg: Message) -> Value;
+}
+
 #[repr(C)]
+#[derive(Debug)]
 pub struct KeyValue {
   pub key: *const c_char,
   pub val: *const Value,
 }
+unsafe impl Send for KeyValue {}
+unsafe impl Sync for KeyValue {}
 
 #[repr(C, u8)]
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -81,18 +93,10 @@ pub enum Value {
   Int32(i32),
   String(*const c_char),
   Object { len: i32, pairs: *const KeyValue },
+  Array { len: size_t, values: *const Value },
   ArrayBuffer(fly_buf),
+  Uint8Array(fly_bytes),
 }
 
 unsafe impl Send for Value {}
 unsafe impl Sync for Value {}
-
-extern "C" {
-  pub fn testy(
-    rt: *const js_runtime,
-    id: c_int,
-    name: *const c_char,
-    argc: c_int,
-    argv: *const Value,
-  ) -> Value;
-}

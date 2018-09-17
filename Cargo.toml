@@ -9,15 +9,17 @@ futures = "0.1"
 tokio-io-pool = "*"
 log = "*"
 env_logger = "*"
-# js-sys = {path = "js-sys"}
 lazy_static = "*"
 toml = "0.4"
 libc = "*"
-# flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
+flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 # msg = { path = "msg" }
 serde = "*"
 serde_derive = "1.0"
 hyper = "0.12"
+libfly = { path = "libfly" }
 
-[build-dependencies]
-cc = "*"
+[workspace]
+members = [
+    "libfly",
+]
