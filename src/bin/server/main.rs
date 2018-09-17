@@ -66,7 +66,7 @@ impl Service for FlyServer {
     type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let url = {
+        let _url = {
             format!(
                 "http://{}",
                 match req.headers().get("host") {
