@@ -29,3 +29,5 @@ table TimerReady {
 table TimerClear {
   id: uint;
 }
+
+root_type Base;

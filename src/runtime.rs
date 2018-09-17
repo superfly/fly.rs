@@ -23,37 +23,37 @@ use std::time::{Duration, Instant};
 
 use futures::future;
 
-use messages::JsValue;
-use messages::{Command, Message, TimerReady};
-
 extern crate libfly;
 
 extern crate hyper;
+
+use flatbuffers::FlatBufferBuilder;
+use msg;
 
 #[derive(Debug, Copy, Clone)]
 pub struct JsRuntime(pub *const js_runtime);
 unsafe impl Send for JsRuntime {}
 unsafe impl Sync for JsRuntime {}
 
-impl JsRuntime {
-  pub fn send(&self, kind: MessageKind, cmd: Value) -> Value {
-    // let ptr = args.as_ptr();
-    // let len = args.len() as i32;
-    unsafe {
-      // mem::forget(args);
-      // let n = name.to_string();
-      // let namestr = CString::new(name.as_str()).unwrap();
-      js_send(self.0, kind, cmd)
-    }
-  }
-}
+// impl JsRuntime {
+//   pub fn send(&self, kind: MessageKind, cmd: Value) -> Value {
+//     // let ptr = args.as_ptr();
+//     // let len = args.len() as i32;
+//     unsafe {
+//       // mem::forget(args);
+//       // let n = name.to_string();
+//       // let namestr = CString::new(name.as_str()).unwrap();
+//       js_send(self.0, kind, cmd)
+//     }
+//   }
+// }
 
 #[derive(Debug)]
 pub struct Runtime {
   pub ptr: JsRuntime,
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
-  pub responses: Mutex<HashMap<i32, oneshot::Sender<Vec<Value>>>>,
+  pub responses: Mutex<HashMap<i32, oneshot::Sender<Vec<u8>>>>,
 }
 
 static JSINIT: Once = Once::new();
@@ -62,12 +62,12 @@ impl Runtime {
   pub fn new() -> Box<Self> {
     JSINIT.call_once(|| unsafe {
       js_init(
-        fly_buf {
-          ptr: NATIVES_DATA.as_ptr() as *const i8,
+        fly_simple_buf {
+          ptr: NATIVES_DATA.as_ptr(),
           len: NATIVES_DATA.len(),
         },
-        fly_buf {
-          ptr: SNAPSHOT_DATA.as_ptr() as *const i8,
+        fly_simple_buf {
+          ptr: SNAPSHOT_DATA.as_ptr(),
           len: SNAPSHOT_DATA.len(),
         },
       )
@@ -135,10 +135,10 @@ impl Runtime {
     unsafe { js_runtime_heap_statistics(self.ptr.0) }.used_heap_size as usize
   }
 
-  pub fn send(&self, kind: MessageKind, cmd: Command) -> Value {
-    // let tmp = TempValue::Object{}
-    self.ptr.send(kind, cmd.prepare_js().to_js())
-  }
+  // pub fn send(&self, kind: MessageKind, cmd: Command) -> Value {
+  //   // let tmp = TempValue::Object{}
+  //   self.ptr.send(kind, cmd.prepare_js().to_js())
+  // }
 }
 
 pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
@@ -154,7 +154,7 @@ const SNAPSHOT_DATA: &'static [u8] =
   include_bytes!("../libfly/third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
 
 lazy_static! {
-  static ref FLY_SNAPSHOT: fly_buf = unsafe {
+  static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
     let filename = "fly/packages/v8env/dist/bundle.js";
     let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
@@ -170,7 +170,7 @@ lazy_static! {
 // The message might be empty (which will be translated into a null object on
 // the javascript side) or it is a heap allocated opaque sequence of bytes.
 // Usually a flatbuffer message.
-type Buf = Option<Command>;
+type Buf = Option<Box<[u8]>>;
 
 // JS promises in Deno map onto a specific Future
 // which yields either a DenoError or a byte array.
@@ -178,8 +178,7 @@ type Op = Future<Item = Buf, Error = String> + Send;
 
 type OpResult = Result<Buf, String>;
 
-type HandlerResult = Box<Op>;
-// type Handler = fn(rt: &Runtime, base: msg::Base) -> HandlerResult;
+type Handler = fn(rt: &Runtime, base: &msg::Base) -> Box<Op>;
 
 // pub struct Message {
 //   cmd_id: i32,
@@ -187,99 +186,122 @@ type HandlerResult = Box<Op>;
 //   args: Vec<Value>,
 // }
 
+use std::slice;
+
 #[no_mangle]
-pub extern "C" fn msg_from_js(
-  raw: *const js_runtime,
-  msg: libfly::Message,
-  // cmd_id: libc::c_int,
-  // name: *mut libc::c_char,
-  // sync: bool,
-  // argc: libc::c_int,
-  // argv: *mut Value,
-) {
-  println!("got msg from js! {:?} payload: {:?}", msg, msg.payload());
-
-  let sync = msg.sync;
-  let payload = msg.payload().unwrap(); // TODO: this might panic
-
-  // let name = unsafe {
-  //   // let n = CString::new(slice::from_raw_parts(name.ptr, name.len)).unwrap();
-  //   let n = CString::from_raw(name);
-  //   n.into_string().unwrap()
-  // };
-
-  // println!("name: {}", name);
-
-  // let args = unsafe { Vec::from_raw_parts(argv, argc as usize, argc as usize) };
-
-  // // let val = unsafe { js_current_arg_value(raw, 0) };
-
-  // // println!("arr: {:?}", args);
-  // // let v = Value::Int32(10);
-
-  // // unsafe { js_set_return_value(raw, &v) };
-
-  let rt = from_c(raw);
-
-  // if name.as_str() == "http_response" {
-  //   // println!("got an http response!");
-  //   // let builder = &mut FlatBufferBuilder::new();
-  //   let mut responses = rt.responses.lock().unwrap();
-  //   let sender = responses.remove(&cmd_id).unwrap();
-  //   sender.send(args).unwrap();
-  //   // unsafe { js_set_response(rt.ptr.0, null_buf()) };
-  //   return;
-  // }
-
-  let handler = match msg.kind {
-    MessageKind::TimerStart => handle_timer_start,
+pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf) {
+  let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
+  let base = msg::get_root_as_base(bytes);
+  let msg_type = base.msg_type();
+  let cmd_id = base.cmd_id();
+  let handler: Handler = match msg_type {
+    msg::Any::TimerStart => handle_timer_start,
     _ => unimplemented!(),
   };
-  //   "timer_start" => handle_timer_start,
-  //   "timer_clear" => handle_timer_clear,
-  //   // "decode" => handle_decode,
-  //   _ => panic!("ahhh, unhandled event"),
-  // };
 
-  let fut = handler(rt, msg.id, payload);
-
-  // if sync {
-  //   match fut.wait().unwrap() {
-  //     None => {}
-  //     Some(box_cmd) => {
-  //       let cmd = Box::into_raw(box_cmd);
-  //       // let cmd = *ptr;
-  //       unsafe { js_set_return_value(rt.ptr.0, (*cmd).prepare_js().to_js()) };
-  //     }
-  //   }
-  // } else {
+  let rt = from_c(raw);
   let ptr = rt.ptr;
+
+  let fut = handler(rt, &base);
+  let fut = fut.or_else(move |err| {
+    // No matter whether we got an Err or Ok, we want a serialized message to
+    // send back. So transform the DenoError into a deno_buf.
+    let builder = &mut FlatBufferBuilder::new();
+    let errmsg_offset = builder.create_string(&format!("{}", err));
+    Ok(serialize_response(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        error: Some(errmsg_offset),
+        error_kind: msg::ErrorKind::NoError, // err.kind
+        ..Default::default()
+      },
+    ))
+  });
+
+  if base.sync() {
+    // Execute future synchronously.
+    // println!("sync handler {}", msg::enum_name_any(msg_type));
+    let maybe_box_u8 = fut.wait().unwrap();
+    match maybe_box_u8 {
+      None => {}
+      Some(box_u8) => {
+        let buf = fly_buf_from(box_u8);
+        // Set the synchronous response, the value returned from deno.send().
+        // unsafe { deno_set_response(d, buf) }
+      }
+    }
+  } else {
+    let fut = fut.and_then(move |maybe_box_u8| {
+      let buf = match maybe_box_u8 {
+        Some(box_u8) => fly_buf_from(box_u8),
+        None => {
+          // async RPCs that return None still need to
+          // send a message back to signal completion.
+          let builder = &mut FlatBufferBuilder::new();
+          fly_buf_from(
+            serialize_response(
+              cmd_id,
+              builder,
+              msg::BaseArgs {
+                ..Default::default()
+              },
+            ).unwrap(),
+          )
+        }
+      };
+      // TODO(ry) make this thread safe.
+      // unsafe { libdeno::deno_send(d, buf) };
+      Ok(())
+    });
+    rt.rt.lock().unwrap().spawn(fut);
+  }
   // Execute future asynchornously.
-  rt.rt
-    .lock()
-    .unwrap()
-    .spawn(
-      fut
-        .map_err(|e: String| println!("ERROR SPAWNING SHIT: {}", e))
-        .and_then(move |maybe_cmd| {
-          println!("handler future and_then");
-          match maybe_cmd {
-            Some(cmd) => {
-              // let cmd = Box::leak(box_cmd);
-              unsafe {
-                let tmp = cmd.prepare_js();
-                println!("tmp: {:?}", tmp);
-                js_send(ptr.0, MessageKind::TimerReady, tmp.to_js());
-                // Box::from_raw(cmd);
-              };
-            }
-            None => println!("no message"),
-          };
-          println!("sent a message");
-          Ok(())
-        }),
-    ).unwrap(); // TODO: don't unwrap
-                // }
+  // rt.rt
+  //   .lock()
+  //   .unwrap()
+  //   .spawn(
+  //     fut
+  //       .map_err(|e: String| println!("ERROR SPAWNING SHIT: {}", e))
+  //       .and_then(move |maybe_cmd| {
+  //         println!("handler future and_then");
+  //         match maybe_cmd {
+  //           Some(cmd) => {
+  //             // let cmd = Box::leak(box_cmd);
+  //             unsafe {
+  //               let tmp = cmd.prepare_js();
+  //               println!("tmp: {:?}", tmp);
+  //               js_send(ptr.0, MessageKind::TimerReady, tmp.to_js());
+  //               // Box::from_raw(cmd);
+  //             };
+  //           }
+  //           None => println!("no message"),
+  //         };
+  //         println!("sent a message");
+  //         Ok(())
+  //       }),
+  //   ).unwrap(); // TODO: don't unwrap
+  //               // }
+}
+
+fn ok_future(buf: Buf) -> Box<Op> {
+  Box::new(future::ok(buf))
+}
+
+// Shout out to Earl Sweatshirt.
+fn odd_future(err: String) -> Box<Op> {
+  Box::new(future::err(err))
+}
+
+fn fly_buf_from(x: Box<[u8]>) -> fly_buf {
+  let len = x.len();
+  let ptr = Box::into_raw(x);
+  fly_buf {
+    alloc_ptr: 0 as *mut u8,
+    alloc_len: 0,
+    data_ptr: ptr as *mut u8,
+    data_len: len,
+  }
 }
 
 use std::mem;
@@ -307,25 +329,14 @@ use std::mem;
 //   }
 // }
 
-fn handle_timer_start(rt: &Runtime, id: u32, msg: MessagePayload) -> HandlerResult {
-  let ts = match msg {
-    MessagePayload::TimerStart(ts) => ts,
-    _ => unimplemented!(),
-  };
-  let timer_id = ts.id;
-  let delay = ts.delay;
-  // let timer_id = match args[0] {
-  //   Value::Int32(i) => i as u32,
-  //   _ => panic!("ahhh"),
-  // };
-
-  // let delay = match args[1] {
-  //   Value::Int32(i) => i as u32,
-  //   _ => panic!("ahhh"),
-  // };
+fn handle_timer_start(rt: &Runtime, base: &msg::Base) -> Box<Op> {
+  println!("handle_timer_start");
+  let msg = base.msg_as_timer_start().unwrap();
+  let cmd_id = base.cmd_id();
+  let timer_id = msg.id();
+  let delay = msg.delay();
 
   let timers = &rt.timers;
-  let _el = &rt.rt;
   let ptr = rt.ptr;
 
   let fut = {
@@ -341,13 +352,41 @@ fn handle_timer_start(rt: &Runtime, id: u32, msg: MessagePayload) -> HandlerResu
     delay_task
   };
   // }
-  Box::new(fut.then(move |_result| -> OpResult {
+  Box::new(fut.then(move |result| -> OpResult {
     println!("we're ready to notify");
-    Ok(Some(Command::new(
-      id,
-      Message::TimerReady(TimerReady::new(timer_id)),
-    )))
+    let builder = &mut FlatBufferBuilder::new();
+    let msg = msg::TimerReady::create(
+      builder,
+      &msg::TimerReadyArgs {
+        id: timer_id,
+        canceled: result.is_err(),
+        ..Default::default()
+      },
+    );
+    Ok(serialize_response(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        msg: Some(msg.as_union_value()),
+        msg_type: msg::Any::TimerReady,
+        ..Default::default()
+      },
+    ))
   }))
+}
+
+fn serialize_response(
+  cmd_id: u32,
+  builder: &mut FlatBufferBuilder,
+  mut args: msg::BaseArgs,
+) -> Buf {
+  args.cmd_id = cmd_id;
+  let base = msg::Base::create(builder, &args);
+  msg::finish_base_buffer(builder, base);
+  let data = builder.finished_data();
+  // println!("serialize_response {:x?}", data);
+  let vec = data.to_vec();
+  Some(vec.into_boxed_slice())
 }
 
 fn remove_timer(ptr: JsRuntime, timer_id: u32) {
@@ -355,15 +394,11 @@ fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
-fn handle_timer_clear(rt: &Runtime, _cmd_id: u32, args: Vec<Value>) -> HandlerResult {
-  let timer_id = match args[0] {
-    Value::Int32(i) => i as u32,
-    _ => panic!("ahhh"),
-  };
-
-  remove_timer(rt.ptr, timer_id);
-
-  Box::new(future::ok(None))
+fn handle_timer_clear(rt: &Runtime, base: &msg::Base) -> Box<Op> {
+  let msg = base.msg_as_timer_clear().unwrap();
+  println!("handle_timer_clear");
+  remove_timer(rt.ptr, msg.id());
+  ok_future(None)
 }
 
 // fn handle_http_response(rt: &Runtime, base: msg::Base) -> HandlerResult {

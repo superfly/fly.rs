@@ -18,14 +18,14 @@ fn main() {
       ..Default::default()
     },
     language: cbindgen::Language::Cxx,
-    enumeration: cbindgen::EnumConfig {
-      derive_helper_methods: true,
-      ..Default::default()
-    },
-    structure: cbindgen::StructConfig {
-      derive_eq: true,
-      ..Default::default()
-    },
+    // enumeration: cbindgen::EnumConfig {
+    //   derive_helper_methods: true,
+    //   ..Default::default()
+    // },
+    // structure: cbindgen::StructConfig {
+    //   derive_eq: true,
+    //   ..Default::default()
+    // },
     ..Default::default()
   };
 
