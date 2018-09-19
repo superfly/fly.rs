@@ -17,10 +17,12 @@ extern crate libfly;
 // use libfly;
 
 extern crate hyper;
-use hyper::rt::Future;
+use hyper::body::Payload;
+use hyper::rt::{poll_fn, Future};
 use hyper::service::Service;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Body, Method, Request, Response, StatusCode};
 
+#[macro_use]
 extern crate futures;
 use futures::sync::oneshot;
 
@@ -44,8 +46,15 @@ use config::*;
 
 use std::alloc::System;
 
+extern crate flatbuffers;
+use flatbuffers::FlatBufferBuilder;
+
 #[global_allocator]
 static A: System = System;
+
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+
+static NEXT_REQ_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 lazy_static! {
     pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
@@ -57,6 +66,8 @@ pub struct FlyServer {
 
 extern crate libc;
 
+use fly::msg;
+
 use std::ffi::{CStr, CString};
 
 impl Service for FlyServer {
@@ -66,7 +77,7 @@ impl Service for FlyServer {
     type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let _url = {
+        let url = {
             format!(
                 "http://{}",
                 match req.headers().get("host") {
@@ -96,113 +107,123 @@ impl Service for FlyServer {
 
         // info!("host: {}", h);
 
-        // let headers: Vec<(CString, CString)> = req
-        //     .headers()
-        //     .iter()
-        //     .map(|(key, value)| {
-        //         // // TODO: don't unwrap
-        //         // let value = builder.create_string(value.to_str().unwrap());
+        let builder = &mut FlatBufferBuilder::new();
 
-        //         // msg::HeaderPair::create(
-        //         //     builder,
-        //         //     &msg::HeaderPairArgs {
-        //         //         key: Some(key),
-        //         //         value: Some(value),
-        //         //         ..Default::default()
-        //         //     },
-        //         // )
-        //         (
-        //             CString::new(key.as_str()).unwrap(),
-        //             CString::new(value.to_str().unwrap()).unwrap(),
-        //         )
-        //         // libfly::KeyValue {
-        //         //     key: .as_ptr(),
-        //         //     val: &libfly::Value::String(value.to_str().unwrap().as_ptr()),
-        //         // }
-        //     }).collect();
+        let req_id = NEXT_REQ_ID.fetch_add(1, Ordering::SeqCst);
 
-        // let headers2: Vec<(*const libc::c_char, libfly::Value)> = headers
-        //     .iter()
-        //     .map(|(key, value)| (key.as_ptr(), libfly::Value::String(value.as_ptr())))
-        //     .collect();
+        let req_url = builder.create_string(url.as_str());
 
-        // let headers3: Vec<libfly::KeyValue> = headers2
-        //     .iter()
-        //     .map(|(key, value)| libfly::KeyValue {
-        //         key: *key,
-        //         val: value,
-        //     }).collect();
+        let req_method = match *req.method() {
+            Method::GET => msg::HttpMethod::Get,
+            Method::POST => msg::HttpMethod::Post,
+            _ => unimplemented!(),
+        };
 
-        // let url = CString::new(url).unwrap();
-        // let args: Vec<libfly::Value> = vec![
-        //     libfly::Value::Int32(0),
-        //     libfly::Value::String(url.as_ptr()),
-        //     libfly::Value::Object {
-        //         len: headers3.len() as i32,
-        //         pairs: headers3.as_ptr(),
-        //     },
-        // ];
+        let headers: Vec<_> = req
+            .headers()
+            .iter()
+            .map(|(key, value)| {
+                let key = builder.create_string(key.as_str());
+                let value = builder.create_string(value.to_str().unwrap());
+                msg::HttpHeader::create(
+                    builder,
+                    &msg::HttpHeaderArgs {
+                        key: Some(key),
+                        value: Some(value),
+                        ..Default::default()
+                    },
+                )
+            }).collect();
 
-        // let guard = RUNTIMES.read().unwrap();
-        // let rt = guard.values().next().unwrap();
-        // let rtptr = rt.ptr;
+        let req_headers = builder.create_vector(&headers);
 
-        // let (p, c) = oneshot::channel::<Vec<libfly::Value>>();
+        let req_msg = msg::HttpRequest::create(
+            builder,
+            &msg::HttpRequestArgs {
+                id: req_id as u32,
+                method: req_method,
+                url: Some(req_url),
+                headers: Some(req_headers),
+                ..Default::default()
+            },
+        );
 
-        // let cmd_id = match rtptr.send(0, String::from("http_request"), args) {
-        //     libfly::Value::Int32(i) => {
-        //         println!("got val: {:?}", i);
-        //         rt.responses.lock().unwrap().insert(i, p);
-        //         i
-        //     }
-        //     _ => panic!("unexpected return value"), // TODO: no panic
-        // };
-        // // println!("sent message..");
+        let guard = RUNTIMES.read().unwrap();
+        let rt = guard.values().next().unwrap();
+        let rtptr = rt.ptr;
 
-        // let body = req.into_body();
+        let to_send = fly_buf_from(
+            serialize_response(
+                0,
+                builder,
+                msg::BaseArgs {
+                    msg: Some(req_msg.as_union_value()),
+                    msg_type: msg::Any::HttpRequest,
+                    ..Default::default()
+                },
+            ).unwrap(),
+        );
 
-        // let el = rt.rt.lock().unwrap();
+        let (p, c) = oneshot::channel::<JsHttpResponse>();
+        {
+            rt.responses.lock().unwrap().insert(req_id as u32, p);
+        }
 
-        // let chunk_fut = body
-        //     .for_each(move |chunk| {
-        //         let bytes = chunk.into_bytes();
-        //         rtptr.send(
-        //             cmd_id,
-        //             String::from("body_chunk"),
-        //             vec![libfly::Value::ArrayBuffer(libfly::fly_buf {
-        //                 ptr: bytes.as_ptr(),
-        //                 len: bytes.len(),
-        //             })],
-        //         );
-        //         Ok(())
-        //     }).map_err(|_| ());
+        {
+            let rtptr = rtptr.clone();
+            rt.rt.lock().unwrap().spawn(future::lazy(move || {
+                unsafe { libfly::js_send(rtptr.0, to_send) };
+                Ok(())
+            }));
+        }
 
-        // el.spawn(chunk_fut).unwrap();
+        {
+            let mut body = req.into_body();
+            rt.rt.lock().unwrap().spawn(
+                poll_fn(move || {
+                    while let Some(chunk) = try_ready!(body.poll_data()) {
+                        let bytes = chunk.into_bytes();
+                        let builder = &mut FlatBufferBuilder::new();
+                        let fb_bytes = builder.create_vector(&bytes);
+                        let chunk_msg = msg::StreamChunk::create(
+                            builder,
+                            &msg::StreamChunkArgs {
+                                id: req_id as u32,
+                                bytes: Some(fb_bytes),
+                                done: body.is_end_stream(),
+                            },
+                        );
+                        let to_send = fly_buf_from(
+                            serialize_response(
+                                0,
+                                builder,
+                                msg::BaseArgs {
+                                    msg: Some(chunk_msg.as_union_value()),
+                                    msg_type: msg::Any::StreamChunk,
+                                    ..Default::default()
+                                },
+                            ).unwrap(),
+                        );
+                        unsafe { libfly::js_send(rtptr.0, to_send) };
+                    }
+                    Ok(Async::Ready(()))
+                }).map_err(|e: hyper::Error| ()),
+            );
+        }
 
-        // Box::new(c.and_then(|args: Vec<libfly::Value>| {
-        //     // let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
-        //     // let base = msg::get_root_as_base(bytes);
+        Box::new(c.and_then(|res: JsHttpResponse| {
+            let mut http_res = Response::builder();
 
-        //     // let res = base.msg_as_http_response().unwrap();
-        //     // println!("GOT RESPONSE: {:?}", res);
+            res.headers.lock().unwrap().iter().for_each(|(k, v)| {
+                http_res.header(
+                    k.as_str(),
+                    hyper::header::HeaderValue::from_str(v.as_str()).unwrap(),
+                );
+            });
+            future::ok(http_res.body(Body::from("ok")).unwrap())
+        }))
 
-        //     let body = args[0];
-        //     // println!("body: {:?}", body);
-
-        //     match body {
-        //         libfly::Value::String(s) => {
-        //             // println!("it a string! {}", unsafe {
-        //             //     CStr::from_ptr(s).to_str().unwrap()
-        //             // });
-        //             future::ok(Response::new(Body::from(unsafe {
-        //                 CStr::from_ptr(s).to_str().unwrap()
-        //             })))
-        //         }
-        //         _ => future::ok(Response::new(Body::from("got nothing"))),
-        //     }
-        // }))
-
-        Box::new(future::ok(Response::new(Body::from("ok"))))
+        // Box::new(future::ok(Response::new(Body::from("ok"))))
     }
 }
 

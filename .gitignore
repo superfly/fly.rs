@@ -1,6 +1,5 @@
 /target
 **/*.rs.bk
-js/target
-js-sys/target
 node_modules
 third_party/.gclient*
+rls*.log

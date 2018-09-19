@@ -2,6 +2,9 @@ union Any {
   TimerStart,
   TimerReady,
   TimerClear,
+  HttpRequest,
+  HttpResponse,
+  StreamChunk,
 }
 
 enum ErrorKind: byte {
@@ -10,7 +13,7 @@ enum ErrorKind: byte {
 
 table Base {
   cmd_id: uint32;
-  sync: bool = true; // TODO(ry) Change default to false.
+  sync: bool = false;
   error_kind: ErrorKind = NoError;
   error: string;
   msg: Any;
@@ -28,6 +31,42 @@ table TimerReady {
 
 table TimerClear {
   id: uint;
+}
+
+enum HttpMethod: byte {
+  Get = 0,
+  Head,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Connect,
+  Options,
+  Trace,
+}
+
+table HttpHeader {
+  key: string;
+  value: string;
+}
+
+table StreamChunk {
+  id: uint;
+  done: bool = false;
+  bytes: [ubyte];
+}
+
+table HttpRequest {
+  id: uint;
+  method: HttpMethod;
+  url: string;
+  headers: [HttpHeader];
+}
+
+table HttpResponse {
+  id: uint;
+  headers: [HttpHeader];
+  body: string;
 }
 
 root_type Base;

@@ -290,6 +290,7 @@ extern "C"
     v8::Context::Scope context_scope(context);
 
     v8::TryCatch try_catch(rt->isolate);
+    try_catch.SetVerbose(true);
 
     auto recv = rt->recv.Get(rt->isolate);
     if (recv.IsEmpty())
@@ -306,7 +307,7 @@ extern "C"
     if (try_catch.HasCaught())
     {
       // deno::HandleException(context, try_catch.Exception());
-      printf("ex!\n");
+      printf("ex! %s\n", *v8::String::Utf8Value(rt->isolate, try_catch.Exception()));
       return 0;
     }
 
