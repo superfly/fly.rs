@@ -116,8 +116,6 @@ void *LimitedAllocator::AllocateUninitialized(size_t length)
 
 void LimitedAllocator::Free(void *data, size_t length)
 {
-  // if (length > 48)
-  // printf("freeing memory %i bytes\n", length);
   allocated -= length;
   next_check -= length;
   std::free(data);

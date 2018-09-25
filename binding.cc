@@ -124,13 +124,12 @@ static v8::Local<v8::Value> ImportBuf(const js_runtime *rt, fly_buf buf)
   }
 }
 
-static fly_buf ExportBuf(const js_runtime *rt,
-                         v8::Local<v8::ArrayBufferView> view)
+static fly_buf GetContents(const js_runtime *rt,
+                           v8::Local<v8::ArrayBufferView> view)
 {
 
   auto ab = view->Buffer();
-  auto was_external = ab->IsExternal();
-  auto contents = was_external ? ab->GetContents() : ab->Externalize();
+  auto contents = ab->GetContents();
 
   auto length = view->ByteLength();
 
@@ -140,22 +139,8 @@ static fly_buf ExportBuf(const js_runtime *rt,
   buf.data_ptr = buf.alloc_ptr + view->ByteOffset();
   buf.data_len = length;
 
-  // printf("export\n");
-  // for (size_t i = 0; i < 30; i++)
-  //   printf("%02X ", buf.data_ptr[i]);
-  // printf("\n");
-
-  // Prevent JS from modifying buffer contents after exporting.
-  if (ab->IsNeuterable())
-    ab->Neuter();
-
-  if (!was_external)
-    rt->allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
-
   return buf;
 }
-
-static void FreeBuf(fly_buf buf) { free(buf.alloc_ptr); }
 
 // Sets the recv callback.
 void Recv(const v8::FunctionCallbackInfo<v8::Value> &args)
@@ -191,30 +176,19 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   // CHECK_EQ(args.Length(), 1);
   v8::Local<v8::Value> ab_v = args[0];
   // CHECK(ab_v->IsArrayBufferView());
-  auto buf = ExportBuf(rt, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
+  auto buf = GetContents(rt, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
 
   // DCHECK_EQ(d->current_args, nullptr);
 
   fly_buf raw = fly_buf{0, 0, 0, 0};
   if (args[1]->IsArrayBufferView())
   {
-    raw = ExportBuf(rt, v8::Local<v8::ArrayBufferView>::Cast(args[1]));
+    raw = GetContents(rt, v8::Local<v8::ArrayBufferView>::Cast(args[1]));
   }
 
   rt->current_args = &args;
-  // rt->cb(rt, buf);
-  msg_from_js(rt, buf, raw);
 
-  // Buffer is only valid until the end of the callback.
-  // TODO(piscisaureus):
-  //   It's possible that data in the buffer is needed after the callback
-  //   returns, e.g. when the handler offloads work to a thread pool, therefore
-  //   make the callback responsible for releasing the buffer.
-  FreeBuf(buf);
-  if (raw.data_len > 0)
-  {
-    FreeBuf(raw);
-  }
+  msg_from_js(rt, buf, raw);
 
   rt->current_args = nullptr;
 }
