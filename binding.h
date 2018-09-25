@@ -38,11 +38,16 @@ struct fly_buf {
 
 extern "C" {
 
-extern fly_simple_buf js_create_snapshot(const char *filename, const char *code);
+extern fly_simple_buf js_create_snapshot(const char *filename,
+                                         const char *code,
+                                         const char *sourcemap);
 
 extern bool js_dump_heap_snapshot(const js_runtime *rt, const char *filename);
 
-extern void js_eval(const js_runtime *rt, const char *filename, const char *code);
+extern bool js_eval(const js_runtime *rt,
+                    const char *filename,
+                    const char *code,
+                    const char *sourcemap);
 
 extern const void *js_get_data(const js_runtime *rt);
 

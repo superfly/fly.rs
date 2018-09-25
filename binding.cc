@@ -77,6 +77,103 @@ char *str_to_char(const v8::String::Utf8Value &src)
 
 extern "C" void msg_from_js(const js_runtime *, fly_buf, fly_buf);
 
+js_runtime *FromIsolate(v8::Isolate *isolate)
+{
+  return static_cast<js_runtime *>(isolate->GetData(0));
+}
+
+void HandleExceptionStr(v8::Local<v8::Context> context,
+                        v8::Local<v8::Value> exception,
+                        std::string *exception_str)
+{
+  auto *isolate = context->GetIsolate();
+  js_runtime *rt = FromIsolate(isolate);
+
+  v8::HandleScope handle_scope(isolate);
+  v8::Context::Scope context_scope(context);
+
+  auto message = v8::Exception::CreateMessage(isolate, exception);
+  auto stack_trace = message->GetStackTrace();
+  auto line =
+      v8::Integer::New(isolate, message->GetLineNumber(context).FromJust());
+  auto column =
+      v8::Integer::New(isolate, message->GetStartColumn(context).FromJust());
+
+  if (rt != nullptr)
+  {
+    auto global_error_handler = rt->global_error_handler.Get(isolate);
+
+    if (!global_error_handler.IsEmpty())
+    {
+      // global_error_handler is set so we try to handle the exception in
+      // javascript.
+      v8::Local<v8::Value> args[5];
+      args[0] = exception->ToString(context).ToLocalChecked();
+      args[1] = message->GetScriptResourceName();
+      args[2] = line;
+      args[3] = column;
+      args[4] = exception;
+      global_error_handler->Call(context->Global(), 5, args);
+      /* message, source, lineno, colno, error */
+
+      return;
+    }
+  }
+
+  char buf[12 * 1024];
+  if (!stack_trace.IsEmpty())
+  {
+    // No javascript error handler, but we do have a stack trace. Format it
+    // into a string and add to last_exception.
+    std::string msg;
+    v8::String::Utf8Value exceptionStr(isolate, exception);
+    msg += *exceptionStr;
+    msg += "\n";
+
+    for (int i = 0; i < stack_trace->GetFrameCount(); ++i)
+    {
+      auto frame = stack_trace->GetFrame(isolate, i);
+      v8::String::Utf8Value script_name(isolate, frame->GetScriptName());
+      int l = frame->GetLineNumber();
+      int c = frame->GetColumn();
+      snprintf(buf, sizeof(buf), "%s %d:%d\n", *script_name, l, c);
+      msg += buf;
+    }
+    *exception_str += msg;
+  }
+  else
+  {
+    // No javascript error handler, no stack trace. Format the little info we
+    // have into a string and add to last_exception.
+    v8::String::Utf8Value exceptionStr(isolate, exception);
+    v8::String::Utf8Value script_name(isolate,
+                                      message->GetScriptResourceName());
+    v8::String::Utf8Value line_str(isolate, line);
+    v8::String::Utf8Value col_str(isolate, column);
+    snprintf(buf, sizeof(buf), "%s\n%s %s:%s\n", *exceptionStr,
+             *script_name, *line_str, *col_str);
+    *exception_str += buf;
+  }
+}
+
+void HandleException(v8::Local<v8::Context> context,
+                     v8::Local<v8::Value> exception)
+{
+  v8::Isolate *isolate = context->GetIsolate();
+  js_runtime *rt = FromIsolate(isolate);
+  std::string exception_str;
+  HandleExceptionStr(context, exception, &exception_str);
+  if (rt != nullptr)
+  {
+    rt->last_exception = exception_str;
+  }
+  else
+  {
+    printf("Pre-Fly Exception %s\n", exception_str.c_str());
+    exit(1);
+  }
+}
+
 // TODO: handle in rust
 void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
@@ -142,6 +239,76 @@ static fly_buf GetContents(const js_runtime *rt,
   return buf;
 }
 
+bool ExecuteV8StringSource(v8::Local<v8::Context> context,
+                           const char *filename,
+                           const char *code, const char *sourcemap)
+{
+  printf("evaluating: %s\n", filename);
+  auto *isolate = context->GetIsolate();
+  v8::Isolate::Scope isolate_scope(isolate);
+  v8::HandleScope handle_scope(isolate);
+
+  v8::Context::Scope context_scope(context);
+
+  v8::TryCatch try_catch(isolate);
+
+  auto name = v8_str(filename);
+
+  v8::ScriptOrigin origin(name);
+
+  auto script = v8::Script::Compile(context, v8_str(code), &origin);
+
+  if (script.IsEmpty())
+  {
+    // DCHECK(try_catch.HasCaught());
+    HandleException(context, try_catch.Exception());
+    return false;
+  }
+
+  {
+    if (sourcemap != nullptr)
+    {
+      // CHECK_GT(source_map->length(), 1u);
+      v8::ScriptOrigin origin(v8_str("set_source_map.js"));
+
+      // printf("sourcemap: %s\n", sourcemap);
+
+      std::string source_map_parens = "(" + std::string(sourcemap) + ")";
+      auto source_map_v8_str = v8_str(source_map_parens.c_str());
+      auto script = v8::Script::Compile(context, source_map_v8_str, &origin);
+      if (script.IsEmpty())
+      {
+        // DCHECK(try_catch.HasCaught());
+        HandleException(context, try_catch.Exception());
+        return false;
+      }
+      auto source_map_obj = script.ToLocalChecked()->Run(context);
+      if (source_map_obj.IsEmpty())
+      {
+        // DCHECK(try_catch.HasCaught());
+        HandleException(context, try_catch.Exception());
+        return false;
+      }
+
+      auto fly = v8::Local<v8::Object>::Cast(context->Global()->Get(v8_str("libfly")));
+      auto sourcemaps = v8::Local<v8::Object>::Cast(fly->Get(context, v8_str("sourceMaps")).ToLocalChecked());
+      sourcemaps->Set(context, name, source_map_obj.ToLocalChecked())
+          .FromJust();
+    }
+  }
+
+  auto result = script.ToLocalChecked()->Run(context);
+
+  if (result.IsEmpty())
+  {
+    // DCHECK(try_catch.HasCaught());
+    HandleException(context, try_catch.Exception());
+    return false;
+  }
+
+  return true;
+}
+
 // Sets the recv callback.
 void Recv(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
@@ -193,13 +360,36 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   rt->current_args = nullptr;
 }
 
+void SetGlobalErrorHandler(const v8::FunctionCallbackInfo<v8::Value> &args)
+{
+  v8::Isolate *isolate = args.GetIsolate();
+  js_runtime *rt = FromIsolate(args.GetIsolate());
+  // DCHECK_EQ(d->isolate, isolate);
+
+  v8::HandleScope handle_scope(isolate);
+
+  if (!rt->global_error_handler.IsEmpty())
+  {
+    isolate->ThrowException(
+        v8_str("libfly.setGlobalErrorHandler already called."));
+    return;
+  }
+
+  v8::Local<v8::Value> v = args[0];
+  // CHECK(v->IsFunction());
+  v8::Local<v8::Function> func = v8::Local<v8::Function>::Cast(v);
+
+  rt->global_error_handler.Reset(isolate, func);
+}
+
 intptr_t ext_refs[] = {
     reinterpret_cast<intptr_t>(Print),
     reinterpret_cast<intptr_t>(Send),
     reinterpret_cast<intptr_t>(Recv),
+    reinterpret_cast<intptr_t>(SetGlobalErrorHandler),
     0};
 
-void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context, const char *filename, const char *code)
+void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context)
 {
   v8::HandleScope handle_scope(isolate);
   v8::Context::Scope context_scope(context);
@@ -218,6 +408,13 @@ void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context, const cha
   auto recv_tmpl = v8::FunctionTemplate::New(isolate, Recv);
   auto recv_val = recv_tmpl->GetFunction(context).ToLocalChecked();
   fly->Set(context, v8_str(isolate, "recv"), recv_val).FromJust();
+
+  auto ge_tmpl = v8::FunctionTemplate::New(isolate, SetGlobalErrorHandler);
+  auto ge_val = ge_tmpl->GetFunction(context).ToLocalChecked();
+  fly->Set(context, v8_str(isolate, "setGlobalErrorHandler"), ge_val).FromJust();
+
+  auto sourcemaps = v8::Object::New(isolate);
+  fly->Set(context, v8_str("sourceMaps"), sourcemaps).FromJust();
 }
 
 extern "C"
@@ -288,7 +485,7 @@ extern "C"
       v8::HandleScope handle_scope(isolate);
       auto context = v8::Context::New(isolate, nullptr, v8::MaybeLocal<v8::ObjectTemplate>(), v8::MaybeLocal<v8::Value>(), v8::DeserializeInternalFieldsCallback(DeserializeInternalFields, nullptr));
 
-      InitContext(isolate, context, nullptr, nullptr);
+      InitContext(isolate, context);
 
       rt->context.Reset(rt->isolate, context);
     }
@@ -357,30 +554,31 @@ extern "C"
     free(rt);
   }
 
-  void js_eval(const js_runtime *rt, const char *filename, const char *code)
+  bool js_eval(const js_runtime *rt, const char *filename, const char *code, const char *sourcemap)
   {
     VALUE_SCOPE(rt->isolate, rt->context);
-    v8::TryCatch try_catch(rt->isolate);
-    try_catch.SetVerbose(true);
+    return ExecuteV8StringSource(ctx, filename, code, sourcemap);
+    // v8::TryCatch try_catch(rt->isolate);
+    // try_catch.SetVerbose(true);
 
-    v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(rt->isolate, filename));
-    v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
-        ctx,
-        v8_str(rt->isolate, code),
-        &origin);
+    // v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(rt->isolate, filename));
+    // v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
+    //     ctx,
+    //     v8_str(rt->isolate, code),
+    //     &origin);
 
-    if (script.IsEmpty())
-    {
-      printf("errrrr compiling!\n");
-      return;
-    }
+    // if (script.IsEmpty())
+    // {
+    //   printf("errrrr compiling!\n");
+    //   return;
+    // }
 
-    v8::MaybeLocal<v8::Value> result = script.ToLocalChecked()->Run(ctx);
-    if (result.IsEmpty())
-    {
-      printf("errrrr evaluating!\n");
-      return;
-    }
+    // v8::MaybeLocal<v8::Value> result = script.ToLocalChecked()->Run(ctx);
+    // if (result.IsEmpty())
+    // {
+    //   printf("errrrr evaluating!\n");
+    //   return;
+    // }
   }
 
   // StartupData js_snapshot_create(const char *js)
@@ -430,7 +628,7 @@ extern "C"
     const_cast<HeapSnapshot *>(snap)->Delete();
   }
 
-  fly_simple_buf js_create_snapshot(const char *filename, const char *code)
+  fly_simple_buf js_create_snapshot(const char *filename, const char *code, const char *sourcemap)
   {
     v8::StartupData blob;
     {
@@ -445,41 +643,44 @@ extern "C"
 
         v8::Context::Scope context_scope(context);
 
-        auto fly = v8::Object::New(isolate);
-        context->Global()->Set(context, v8_str(isolate, "libfly"), fly).FromJust();
+        InitContext(isolate, context);
+        ExecuteV8StringSource(context, filename, code, sourcemap);
 
-        auto print_tmpl = v8::FunctionTemplate::New(isolate, Print);
-        auto print_val = print_tmpl->GetFunction(context).ToLocalChecked();
-        fly->Set(context, v8_str(isolate, "print"), print_val);
+        // auto fly = v8::Object::New(isolate);
+        // context->Global()->Set(context, v8_str(isolate, "libfly"), fly).FromJust();
 
-        auto send_tmpl = v8::FunctionTemplate::New(isolate, Send);
-        auto send_val = send_tmpl->GetFunction(context).ToLocalChecked();
-        fly->Set(context, v8_str(isolate, "send"), send_val);
+        // auto print_tmpl = v8::FunctionTemplate::New(isolate, Print);
+        // auto print_val = print_tmpl->GetFunction(context).ToLocalChecked();
+        // fly->Set(context, v8_str(isolate, "print"), print_val);
 
-        auto recv_tmpl = v8::FunctionTemplate::New(isolate, Recv);
-        auto recv_val = recv_tmpl->GetFunction(context).ToLocalChecked();
-        fly->Set(context, v8_str(isolate, "recv"), recv_val);
+        // auto send_tmpl = v8::FunctionTemplate::New(isolate, Send);
+        // auto send_val = send_tmpl->GetFunction(context).ToLocalChecked();
+        // fly->Set(context, v8_str(isolate, "send"), send_val);
+
+        // auto recv_tmpl = v8::FunctionTemplate::New(isolate, Recv);
+        // auto recv_val = recv_tmpl->GetFunction(context).ToLocalChecked();
+        // fly->Set(context, v8_str(isolate, "recv"), recv_val);
 
         // rt->context.Reset(isolate, context);
 
-        v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(isolate, filename));
-        v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
-            context,
-            v8_str(isolate, code),
-            &origin);
+        // v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(isolate, filename));
+        // v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
+        //     context,
+        //     v8_str(isolate, code),
+        //     &origin);
 
-        if (script.IsEmpty())
-        {
-          printf("errrrr compiling!\n");
-          exit(1);
-        }
+        // if (script.IsEmpty())
+        // {
+        //   printf("errrrr compiling!\n");
+        //   exit(1);
+        // }
 
-        v8::MaybeLocal<v8::Value> result = script.ToLocalChecked()->Run(context);
-        if (result.IsEmpty())
-        {
-          printf("errrrr evaluating!\n");
-          exit(1);
-        }
+        // v8::MaybeLocal<v8::Value> result = script.ToLocalChecked()->Run(context);
+        // if (result.IsEmpty())
+        // {
+        //   printf("errrrr evaluating!\n");
+        //   exit(1);
+        // }
 
         creator.SetDefaultContext(context, v8::SerializeInternalFieldsCallback(
                                                SerializeInternalFields, nullptr));

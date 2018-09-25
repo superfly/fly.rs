@@ -3,6 +3,8 @@ extern crate libc;
 use tokio;
 use tokio::prelude::*;
 
+use std::io;
+
 use std::ffi::CString;
 use std::sync::{Arc, Mutex, Once, RwLock};
 
@@ -40,6 +42,8 @@ use self::hyper::{Body, Client, Method, Request, Response, StatusCode};
 use flatbuffers::FlatBufferBuilder;
 use msg;
 
+use errors::{FlyError, FlyResult};
+
 use redis_stream;
 
 #[derive(Debug)]
@@ -73,6 +77,8 @@ pub struct Runtime {
 }
 
 static JSINIT: Once = Once::new();
+
+use std::ptr as stdptr;
 
 impl Runtime {
   pub fn new() -> Box<Self> {
@@ -124,6 +130,7 @@ impl Runtime {
         ptr,
         CString::new("fly_main.js").unwrap().as_ptr(),
         CString::new("flyMain()").unwrap().as_ptr(),
+        stdptr::null() as *const i8,
       );
       ptr
     };
@@ -137,6 +144,7 @@ impl Runtime {
         self.ptr.0,
         CString::new(filename).unwrap().as_ptr(),
         CString::new(code).unwrap().as_ptr(),
+        stdptr::null() as *const i8,
       )
     };
   }
@@ -172,13 +180,22 @@ extern crate tokio_io_pool;
 
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
+
     let filename = "fly/packages/v8env/dist/bundle.js";
     let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
+
+    let sourcemapfilename = "fly/packages/v8env/dist/bundle.js.map";
+    let mut sourcemapfile = File::open(sourcemapfilename).unwrap();
+
+    let mut sourcemap = String::new();
+    println!("sm read: {} bytes", sourcemapfile.read_to_string(&mut sourcemap).unwrap());
+
     js_create_snapshot(
       CString::new(filename).unwrap().as_ptr(),
       CString::new(contents).unwrap().as_ptr(),
+      CString::new(sourcemap).unwrap().as_ptr(),
     )
   };
   // pub static ref EVENT_LOOP: Arc<tokio_io_pool::Runtime> = Arc::new(tokio_io_pool::Runtime::new());
@@ -195,9 +212,9 @@ pub type Buf = Option<Box<[u8]>>;
 
 // JS promises in Deno map onto a specific Future
 // which yields either a DenoError or a byte array.
-type Op = Future<Item = Buf, Error = String> + Send;
+type Op = Future<Item = Buf, Error = FlyError> + Send;
 
-type OpResult = Result<Buf, String>;
+type OpResult = FlyResult<Buf>;
 
 type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 
@@ -228,6 +245,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
 
   let fut = handler(rt, &base, raw_buf);
   let fut = fut.or_else(move |err| {
+    println!("OR ELSE, we got an error man... {:?}", err);
     // No matter whether we got an Err or Ok, we want a serialized message to
     // send back. So transform the DenoError into a deno_buf.
     let builder = &mut FlatBufferBuilder::new();
@@ -237,7 +255,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
       builder,
       msg::BaseArgs {
         error: Some(errmsg_offset),
-        error_kind: msg::ErrorKind::NoError, // err.kind
+        error_kind: err.kind(), // err.kind
         ..Default::default()
       },
     ))
@@ -294,7 +312,7 @@ fn ok_future(buf: Buf) -> Box<Op> {
 }
 
 // Shout out to Earl Sweatshirt.
-fn odd_future(err: String) -> Box<Op> {
+fn odd_future(err: FlyError) -> Box<Op> {
   Box::new(future::err(err))
 }
 
@@ -334,7 +352,7 @@ fn handle_timer_start(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     delay_task
   };
   // }
-  Box::new(fut.then(move |result| -> OpResult {
+  Box::new(fut.then(move |result| {
     // println!("we're ready to notify");
     let builder = &mut FlatBufferBuilder::new();
     let msg = msg::TimerReady::create(
@@ -397,7 +415,7 @@ fn handle_crypto_digest(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op>
   let algo = msg.algo().unwrap().to_uppercase();
   let buffer = unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec();
 
-  Box::new(future::lazy(move || -> OpResult {
+  Box::new(future::lazy(move || {
     let builder = &mut FlatBufferBuilder::new();
     let bytes_vec = match algo.as_str() {
       "SHA-256" => {
@@ -439,7 +457,6 @@ fn handle_crypto_digest(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op>
 }
 
 use super::NEXT_STREAM_ID;
-use std::io;
 use std::str;
 
 use std::ops::Deref;
@@ -692,13 +709,22 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
 
   let rtptr2 = rtptr.clone();
 
-  let (p, c) = oneshot::channel::<JsHttpResponse>();
+  let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
 
   let fut = rt
     .http_client
     .request(req)
-    .map_err(|e| println!("hyper client error: {}", e))
-    .and_then(move |res| {
+    // .map_err(move |e| {
+    //   perr.send(Err(e.into()));
+    // })
+    .then(move |reserr| {
+      if let Err(err) = reserr {
+        p.send(Err(err.into()));
+        return Ok(())
+      }
+
+      let res = reserr.unwrap(); // should be safe.
+
       let (parts, mut body) = res.into_parts();
 
       let mut bytes_rx: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
@@ -709,10 +735,10 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
         bytes.insert(req_id, tx);
       }
 
-      p.send(JsHttpResponse {
+      p.send(Ok(JsHttpResponse {
         headers: parts.headers,
         bytes: bytes_rx,
-      });
+      }));
 
       if !body.is_end_stream() {
         let rt = from_c(rtptr.0); // like a clone
@@ -759,8 +785,18 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
     });
 
   let fut2 = c
-    .map_err(|e| format!("err getting response from oneshot: {}", e))
-    .and_then(move |res: JsHttpResponse| -> OpResult {
+    .map_err(|e| {
+      FlyError::from(io::Error::new(
+        io::ErrorKind::Other,
+        format!("err getting response from oneshot: {}", e).as_str(),
+      ))
+    }).and_then(move |reserr: FlyResult<JsHttpResponse>| {
+      if let Err(err) = reserr {
+        return Err(err);
+      }
+
+      let res = reserr.unwrap();
+
       let builder = &mut FlatBufferBuilder::new();
       let headers: Vec<_> = res
         .headers
@@ -831,15 +867,16 @@ fn handle_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op>
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
 
-  let msg_headers = msg.headers().unwrap();
-
   let mut headers = HeaderMap::new();
-  for i in 0..msg_headers.len() {
-    let h = msg_headers.get(i);
-    headers.insert(
-      HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
-      h.value().unwrap().parse().unwrap(),
-    );
+
+  if let Some(msg_headers) = msg.headers() {
+    for i in 0..msg_headers.len() {
+      let h = msg_headers.get(i);
+      headers.insert(
+        HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
+        h.value().unwrap().parse().unwrap(),
+      );
+    }
   }
 
   let mut chunk_recver: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
