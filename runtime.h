@@ -1,3 +1,4 @@
+#include "allocator.h"
 #include <v8.h>
 
 // forward declaration
@@ -12,5 +13,6 @@ extern "C"
     void *data;
     v8::Persistent<v8::Function> recv;
     const v8::FunctionCallbackInfo<v8::Value> *current_args;
+    LimitedAllocator *allocator;
   } js_runtime;
 }

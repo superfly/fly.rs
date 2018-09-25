@@ -5,6 +5,14 @@ union Any {
   HttpRequest,
   HttpResponse,
   StreamChunk,
+  HttpRequestStart,
+  FetchHttpResponse,
+  CacheGet,
+  CacheGetReady,
+  CacheSet,
+  CacheSetReady,
+  CryptoDigest,
+  CryptoDigestReady,
 }
 
 enum ErrorKind: byte {
@@ -53,7 +61,6 @@ table HttpHeader {
 table StreamChunk {
   id: uint;
   done: bool = false;
-  bytes: [ubyte];
 }
 
 table HttpRequest {
@@ -61,12 +68,48 @@ table HttpRequest {
   method: HttpMethod;
   url: string;
   headers: [HttpHeader];
+  body: bool;
 }
 
 table HttpResponse {
   id: uint;
   headers: [HttpHeader];
-  body: string;
+  body: bool;
+}
+
+table HttpRequestStart {
+  id: uint;
+}
+
+table FetchHttpResponse {
+  id: uint;
+  headers: [HttpHeader];
+  body: bool;
+}
+
+table CacheGet {
+  key: string;
+}
+
+table CacheGetReady {
+  id: uint;
+  stream: bool;
+}
+
+table CacheSet {
+  key: string;
+}
+
+table CacheSetReady {
+  id: uint;
+}
+
+table CryptoDigest {
+  algo: string;
+}
+
+table CryptoDigestReady {
+  buffer: [ubyte];
 }
 
 root_type Base;

@@ -52,6 +52,7 @@ pub struct js_heap_stats {
   pub number_of_native_contexts: size_t,
   pub number_of_detached_contexts: size_t,
   pub does_zap_garbage: bool,
+  pub externally_allocated: size_t,
 }
 
 pub fn version() -> String {
@@ -64,9 +65,10 @@ extern "C" {
   pub fn js_runtime_new(snapshot: fly_simple_buf, data: *mut c_void) -> *const js_runtime;
   pub fn js_get_data(rt: *const js_runtime) -> *const c_void;
   pub fn js_set_response(rt: *const js_runtime, buf: fly_buf);
-  pub fn js_send(rt: *const js_runtime, buf: fly_buf) -> c_int;
+  pub fn js_send(rt: *const js_runtime, buf: fly_buf, raw: fly_buf) -> c_int;
   pub fn js_runtime_heap_statistics(rt: *const js_runtime) -> js_heap_stats;
   pub fn js_create_snapshot(filename: *const c_char, code: *const c_char) -> fly_simple_buf;
+  pub fn js_dump_heap_snapshot(rt: *const js_runtime, filename: *const c_char) -> bool;
 
   pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char);
 }

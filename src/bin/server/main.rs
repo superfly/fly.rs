@@ -13,18 +13,20 @@ extern crate tokio;
 extern crate tokio_io_pool;
 extern crate toml;
 
-extern crate libfly;
-// use libfly;
+use fly::libfly;
 
 extern crate hyper;
 use hyper::body::Payload;
-use hyper::rt::{poll_fn, Future};
-use hyper::service::Service;
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::header;
+use hyper::rt::{poll_fn, Future, Stream};
+use hyper::service::{service_fn, service_fn_ok, Service};
+use hyper::{Body, Chunk, Method, Request, Response, Server, StatusCode};
 
 #[macro_use]
 extern crate futures;
-use futures::sync::oneshot;
+use futures::stream;
+use futures::sync::{mpsc, oneshot};
+use std::sync::mpsc::RecvError;
 
 use std::fs::File;
 use std::io::Read;
@@ -39,12 +41,15 @@ use fly::runtime::*;
 use env_logger::Env;
 
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex, RwLock};
 
 mod config;
 use config::*;
 
 use std::alloc::System;
+
+extern crate http;
+use http::{request, response};
 
 extern crate flatbuffers;
 use flatbuffers::FlatBufferBuilder;
@@ -53,8 +58,6 @@ use flatbuffers::FlatBufferBuilder;
 static A: System = System;
 
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-
-static NEXT_REQ_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 lazy_static! {
     pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
@@ -77,10 +80,11 @@ impl Service for FlyServer {
     type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
+        let (parts, mut body) = req.into_parts();
         let url = {
             format!(
-                "http://{}",
-                match req.headers().get("host") {
+                "http://{}{}",
+                match parts.headers.get(header::HOST) {
                     Some(v) => match v.to_str() {
                         Ok(s) => s,
                         Err(e) => {
@@ -101,26 +105,25 @@ impl Service for FlyServer {
                                 .unwrap(),
                         ))
                     }
-                }
+                },
+                parts.uri.path_and_query().unwrap()
             )
         };
 
-        // info!("host: {}", h);
-
         let builder = &mut FlatBufferBuilder::new();
 
-        let req_id = NEXT_REQ_ID.fetch_add(1, Ordering::SeqCst);
+        let req_id = fly::NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst);
 
         let req_url = builder.create_string(url.as_str());
 
-        let req_method = match *req.method() {
+        let req_method = match parts.method {
             Method::GET => msg::HttpMethod::Get,
             Method::POST => msg::HttpMethod::Post,
             _ => unimplemented!(),
         };
 
-        let headers: Vec<_> = req
-            .headers()
+        let headers: Vec<_> = parts
+            .headers
             .iter()
             .map(|(key, value)| {
                 let key = builder.create_string(key.as_str());
@@ -144,6 +147,7 @@ impl Service for FlyServer {
                 method: req_method,
                 url: Some(req_url),
                 headers: Some(req_headers),
+                body: !body.is_end_stream(),
                 ..Default::default()
             },
         );
@@ -172,24 +176,23 @@ impl Service for FlyServer {
         {
             let rtptr = rtptr.clone();
             rt.rt.lock().unwrap().spawn(future::lazy(move || {
-                unsafe { libfly::js_send(rtptr.0, to_send) };
+                unsafe { libfly::js_send(rtptr.0, to_send, null_buf()) };
                 Ok(())
             }));
         }
 
-        {
-            let mut body = req.into_body();
+        if !body.is_end_stream() {
             rt.rt.lock().unwrap().spawn(
                 poll_fn(move || {
                     while let Some(chunk) = try_ready!(body.poll_data()) {
-                        let bytes = chunk.into_bytes();
+                        let mut bytes = chunk.into_bytes();
                         let builder = &mut FlatBufferBuilder::new();
-                        let fb_bytes = builder.create_vector(&bytes);
+                        // let fb_bytes = builder.create_vector(&bytes);
                         let chunk_msg = msg::StreamChunk::create(
                             builder,
                             &msg::StreamChunkArgs {
                                 id: req_id as u32,
-                                bytes: Some(fb_bytes),
+                                // bytes: Some(fb_bytes),
                                 done: body.is_end_stream(),
                             },
                         );
@@ -204,7 +207,18 @@ impl Service for FlyServer {
                                 },
                             ).unwrap(),
                         );
-                        unsafe { libfly::js_send(rtptr.0, to_send) };
+                        unsafe {
+                            libfly::js_send(
+                                rtptr.0,
+                                to_send,
+                                libfly::fly_buf {
+                                    alloc_ptr: 0 as *mut u8,
+                                    alloc_len: 0,
+                                    data_ptr: (*bytes).as_ptr() as *mut u8,
+                                    data_len: bytes.len(),
+                                },
+                            )
+                        };
                     }
                     Ok(Async::Ready(()))
                 }).map_err(|e: hyper::Error| ()),
@@ -212,20 +226,19 @@ impl Service for FlyServer {
         }
 
         Box::new(c.and_then(|res: JsHttpResponse| {
-            let mut http_res = Response::builder();
+            let (mut parts, mut body) = Response::<Body>::default().into_parts();
+            parts.headers = res.headers;
 
-            res.headers.lock().unwrap().iter().for_each(|(k, v)| {
-                http_res.header(
-                    k.as_str(),
-                    hyper::header::HeaderValue::from_str(v.as_str()).unwrap(),
-                );
-            });
-            future::ok(http_res.body(Body::from("ok")).unwrap())
+            if let Some(bytes) = res.bytes {
+                body = Body::wrap_stream(bytes.map_err(|_| RecvError {}));
+            }
+
+            future::ok(Response::from_parts(parts, body))
         }))
-
-        // Box::new(future::ok(Response::new(Body::from("ok"))))
     }
 }
+
+use std::net;
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
@@ -259,10 +272,15 @@ fn main() {
             match RUNTIMES.read() {
                 Ok(rts) => {
                     for (key, rt) in rts.iter() {
+                        let stats = rt.heap_statistics();
                         info!(
-                            "memory usage for {0}: {1:.2}MB",
+                            "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
                             key,
-                            rt.used_heap_size() as f64 / (1024_f64 * 1024_f64)
+                            stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
+                            stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
+                            stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
+                            stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
+                            stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
                         );
                     }
                 }
@@ -277,15 +295,32 @@ fn main() {
 
     let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
 
-    let ln = tokio::net::TcpListener::bind(&addr).expect("unable to bind TCP listener");
+    // FAST, one at a time:
 
-    let server = ln
-        .incoming()
-        .map_err(|_| unreachable!())
-        .for_each(move |sock| {
-            hyper::server::conn::Http::new().serve_connection(sock, FlyServer {})
-        });
+    // let ln = tokio::net::TcpListener::bind(&addr).expect("unable to bind TCP listener");
+    // let server = ln
+    //     .incoming()
+    //     .map_err(|_| unreachable!())
+    //     .for_each(move |sock| {
+    //         println!("got sock");
+    //         hyper::server::conn::Http::new()
+    //             .serve_connection(sock, FlyServer {})
+    //             .map_err(|e| {
+    //                 eprintln!("error serving conn: {}", e);
+    //                 // sock.shutdown(net::Shutdown::Both);
+    //             })
+    //     });
 
+    // SLOW, TOO MUCH CONCURRENCY but simpler...
+    let server = Server::bind(&addr)
+        .serve(move || service_fn(move |req| FlyServer {}.call(req)))
+        .map_err(|e| eprintln!("server error: {}", e));
+
+    unsafe {
+        EVENT_LOOP_HANDLE = Some(Arc::new(Mutex::new(main_el.handle().clone())));
+    };
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
+
+    // let el = EVENT_LOOP.read().unwrap();
 }

@@ -1,6 +1,8 @@
 #include <v8.h>
 #include "binding.h"
 #include <libplatform/libplatform.h>
+#include "allocator.h"
+#include "file_output_stream.h"
 
 #define ISOLATE_SCOPE(iso)                                                    \
   v8::Locker locker(iso);                /* Lock to current thread.        */ \
@@ -49,7 +51,7 @@ v8::StartupData SerializeInternalFields(v8::Local<v8::Object> holder, int index,
   return {payload, size};
 }
 
-auto allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+// auto allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
 
 static inline v8::Local<v8::String> v8_str(v8::Isolate *iso, const char *s)
 {
@@ -73,12 +75,11 @@ char *str_to_char(const v8::String::Utf8Value &src)
   return strdup(*src);
 }
 
-extern "C" void msg_from_js(const js_runtime *, fly_buf);
+extern "C" void msg_from_js(const js_runtime *, fly_buf, fly_buf);
 
 // TODO: handle in rust
 void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
-  printf("got print\n");
   // CHECK_EQ(args.Length(), 1);
   auto *isolate = args.GetIsolate();
   v8::HandleScope handle_scope(isolate);
@@ -88,13 +89,26 @@ void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
   fflush(stdout);
 }
 
-static v8::Local<v8::Uint8Array> ImportBuf(v8::Isolate *isolate, fly_buf buf)
+static v8::Local<v8::Value> ImportBuf(const js_runtime *rt, fly_buf buf)
 {
+  // char buffer[17];
+  // for (int j = 0; j < 30; j++)
+  //   sprintf(&buffer[2 * j], "%02X", buf.data_ptr[j]);
+  // printf("import\n");
+  // for (size_t i = 0; i < 30; i++)
+  //   printf("%02X ", buf.data_ptr[i]);
+  // printf("\n");
+
   if (buf.alloc_ptr == nullptr)
   {
     // If alloc_ptr isn't set, we memcpy.
     // This is currently used for flatbuffers created in Rust.
-    auto ab = v8::ArrayBuffer::New(isolate, buf.data_len);
+
+    if (!rt->allocator->Check(buf.data_len))
+    {
+      return rt->isolate->ThrowException(v8::Exception::RangeError(v8_str("ArrayBuffer allocation failed.")));
+    }
+    auto ab = v8::ArrayBuffer::New(rt->isolate, buf.data_len);
     memcpy(ab->GetContents().Data(), buf.data_ptr, buf.data_len);
     auto view = v8::Uint8Array::New(ab, 0, buf.data_len);
     return view;
@@ -102,7 +116,7 @@ static v8::Local<v8::Uint8Array> ImportBuf(v8::Isolate *isolate, fly_buf buf)
   else
   {
     auto ab = v8::ArrayBuffer::New(
-        isolate, reinterpret_cast<void *>(buf.alloc_ptr), buf.alloc_len,
+        rt->isolate, reinterpret_cast<void *>(buf.alloc_ptr), buf.alloc_len,
         v8::ArrayBufferCreationMode::kInternalized);
     auto view =
         v8::Uint8Array::New(ab, buf.data_ptr - buf.alloc_ptr, buf.data_len);
@@ -110,20 +124,33 @@ static v8::Local<v8::Uint8Array> ImportBuf(v8::Isolate *isolate, fly_buf buf)
   }
 }
 
-static fly_buf ExportBuf(v8::Isolate *isolate,
+static fly_buf ExportBuf(const js_runtime *rt,
                          v8::Local<v8::ArrayBufferView> view)
 {
+
   auto ab = view->Buffer();
-  auto contents = ab->Externalize();
+  auto was_external = ab->IsExternal();
+  auto contents = was_external ? ab->GetContents() : ab->Externalize();
+
+  auto length = view->ByteLength();
 
   fly_buf buf;
   buf.alloc_ptr = reinterpret_cast<uint8_t *>(contents.Data());
   buf.alloc_len = contents.ByteLength();
   buf.data_ptr = buf.alloc_ptr + view->ByteOffset();
-  buf.data_len = view->ByteLength();
+  buf.data_len = length;
+
+  // printf("export\n");
+  // for (size_t i = 0; i < 30; i++)
+  //   printf("%02X ", buf.data_ptr[i]);
+  // printf("\n");
 
   // Prevent JS from modifying buffer contents after exporting.
-  ab->Neuter();
+  if (ab->IsNeuterable())
+    ab->Neuter();
+
+  if (!was_external)
+    rt->allocator->AdjustAllocatedSize(-static_cast<ptrdiff_t>(length));
 
   return buf;
 }
@@ -164,13 +191,19 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   // CHECK_EQ(args.Length(), 1);
   v8::Local<v8::Value> ab_v = args[0];
   // CHECK(ab_v->IsArrayBufferView());
-  auto buf = ExportBuf(isolate, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
+  auto buf = ExportBuf(rt, v8::Local<v8::ArrayBufferView>::Cast(ab_v));
 
   // DCHECK_EQ(d->current_args, nullptr);
-  rt->current_args = &args;
 
+  fly_buf raw = fly_buf{0, 0, 0, 0};
+  if (args[1]->IsArrayBufferView())
+  {
+    raw = ExportBuf(rt, v8::Local<v8::ArrayBufferView>::Cast(args[1]));
+  }
+
+  rt->current_args = &args;
   // rt->cb(rt, buf);
-  msg_from_js(rt, buf);
+  msg_from_js(rt, buf, raw);
 
   // Buffer is only valid until the end of the callback.
   // TODO(piscisaureus):
@@ -178,6 +211,10 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   //   returns, e.g. when the handler offloads work to a thread pool, therefore
   //   make the callback responsible for releasing the buffer.
   FreeBuf(buf);
+  if (raw.data_len > 0)
+  {
+    FreeBuf(raw);
+  }
 
   rt->current_args = nullptr;
 }
@@ -233,6 +270,12 @@ extern "C"
     auto p = v8::platform::CreateDefaultPlatform();
     v8::V8::InitializePlatform(p);
     v8::V8::Initialize();
+
+    // int argc = 4;
+    // const char *flags[] = {
+    //     "--max-semi-space-size", "0",
+    //     "--max-old-space-size", "0"};
+    // V8::SetFlagsFromCommandLine(&argc, const_cast<char **>(flags), false);
     return;
   }
 
@@ -241,6 +284,8 @@ extern "C"
     js_runtime *rt = new js_runtime;
 
     v8::Isolate::CreateParams create_params;
+
+    rt->allocator = new LimitedAllocator(10240 * 1024 * 1024);
 
     if (snapshot.len > 0)
     {
@@ -253,7 +298,11 @@ extern "C"
     }
 
     // TODO: create custom, better, allocator
-    create_params.array_buffer_allocator = allocator;
+    create_params.array_buffer_allocator = rt->allocator;
+
+    v8::ResourceConstraints rc;
+    rc.set_max_old_space_size(128);
+    // rc.set_max_semi_space_size()
 
     v8::Isolate *isolate = v8::Isolate::New(create_params);
     isolate->SetData(0, rt);
@@ -280,7 +329,7 @@ extern "C"
     return rt->data;
   }
 
-  int js_send(const js_runtime *rt, fly_buf buf)
+  int js_send(const js_runtime *rt, fly_buf buf, fly_buf raw)
   {
     v8::Locker locker(rt->isolate);
     v8::Isolate::Scope isolate_scope(rt->isolate);
@@ -300,9 +349,16 @@ extern "C"
       return 0;
     }
 
-    v8::Local<v8::Value> args[1];
-    args[0] = ImportBuf(rt->isolate, buf);
-    recv->Call(context->Global(), 1, args);
+    auto args_len = raw.data_len > 0 ? 2 : 1;
+    v8::Local<v8::Value> args[args_len];
+
+    args[0] = ImportBuf(rt, buf);
+    if (raw.data_len > 0)
+    {
+      args[1] = ImportBuf(rt, raw);
+    }
+
+    recv->Call(context->Global(), args_len, args);
 
     if (try_catch.HasCaught())
     {
@@ -316,7 +372,7 @@ extern "C"
 
   void js_set_response(const js_runtime *rt, fly_buf buf)
   {
-    auto ab = ImportBuf(rt->isolate, buf);
+    auto ab = ImportBuf(rt, buf);
     rt->current_args->GetReturnValue().Set(ab);
   }
 
@@ -363,6 +419,10 @@ extern "C"
   {
     v8::Isolate *isolate = rt->isolate;
     v8::HeapStatistics hs;
+    {
+      v8::Locker locker(isolate);
+      isolate->LowMemoryNotification();
+    }
     isolate->GetHeapStatistics(&hs);
     return js_heap_stats{
         hs.total_heap_size(),
@@ -376,7 +436,24 @@ extern "C"
         hs.number_of_native_contexts(),
         hs.number_of_detached_contexts(),
         hs.does_zap_garbage() == 1,
+        rt->allocator->allocated,
     };
+  }
+
+  bool js_dump_heap_snapshot(const js_runtime *rt, const char *filename)
+  {
+    FILE *fp = fopen(filename, "w");
+    if (fp == NULL)
+      return false;
+    auto hp = rt->isolate->GetHeapProfiler();
+    const v8::HeapSnapshot *const snap = hp->TakeHeapSnapshot();
+    FileOutputStream stream(fp);
+    snap->Serialize(&stream, HeapSnapshot::kJSON);
+    fclose(fp);
+    // Work around a deficiency in the API.  The HeapSnapshot object is const
+    // but we cannot call HeapProfiler::DeleteAllHeapSnapshots() because that
+    // invalidates _all_ snapshots, including those created by other tools.
+    const_cast<HeapSnapshot *>(snap)->Delete();
   }
 
   fly_simple_buf js_create_snapshot(const char *filename, const char *code)

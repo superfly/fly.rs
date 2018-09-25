@@ -3,8 +3,12 @@ name = "fly"
 version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 
+[profile.release]
+debug = true
+
 [dependencies]
 tokio = "0.1"
+tokio-signal = "0.2"
 futures = "0.1"
 tokio-io-pool = "*"
 log = "*"
@@ -13,13 +17,15 @@ lazy_static = "*"
 toml = "0.4"
 libc = "*"
 flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
-# msg = { path = "msg" }
 serde = "*"
 serde_derive = "1.0"
 hyper = "0.12"
-libfly = { path = "libfly" }
+http = "0.1"
+rusqlite = "0.14"
+r2d2_redis = "0.8"
+sha2 = "0.7"
+sha-1 = "0.7"
 
-[workspace]
-members = [
-    "libfly",
-]
+[build-dependencies]
+cc = "*"
+cbindgen = "*"

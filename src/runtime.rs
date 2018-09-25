@@ -4,14 +4,14 @@ use tokio;
 use tokio::prelude::*;
 
 use std::ffi::CString;
-use std::sync::{Mutex, Once};
+use std::sync::{Arc, Mutex, Once, RwLock};
 
 use std::fs::File;
 use std::io::Read;
 
 use libfly::*;
 
-use futures::sync::oneshot;
+use futures::sync::{mpsc, oneshot};
 use std::collections::HashMap;
 
 use std::thread;
@@ -21,19 +21,40 @@ use tokio::timer::{Delay, Interval};
 
 use std::time::{Duration, Instant};
 
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+
 use futures::future;
 
-extern crate libfly;
-
 extern crate hyper;
+extern crate r2d2_redis;
+use self::r2d2_redis::{r2d2, redis, RedisConnectionManager};
+use self::redis::Commands;
+
+use self::hyper::body::Payload;
+use self::hyper::client::HttpConnector;
+use self::hyper::header::HeaderName;
+use self::hyper::rt::{poll_fn, Future, Stream};
+use self::hyper::HeaderMap;
+use self::hyper::{Body, Client, Method, Request, Response, StatusCode};
 
 use flatbuffers::FlatBufferBuilder;
 use msg;
 
+use redis_stream;
+
 #[derive(Debug)]
 pub struct JsHttpResponse {
-  pub headers: Mutex<HashMap<String, String>>,
+  pub headers: HeaderMap,
+  pub bytes: Option<mpsc::UnboundedReceiver<Vec<u8>>>,
 }
+
+// #[derive(Debug)]
+// pub struct JsHttpRequest {
+//   pub headers: HeaderMap,
+//   pub method: Method,
+//   pub url: String,
+//   pub bytes: Option<mpsc::Receiver<Chunk>>,
+// }
 
 #[derive(Debug, Copy, Clone)]
 pub struct JsRuntime(pub *const js_runtime);
@@ -46,6 +67,9 @@ pub struct Runtime {
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
+  // pub bytes_recv: Mutex<HashMap<u32, mpsc::UnboundedReceiver<Vec<u8>>>>,
+  pub bytes: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
+  pub http_client: Client<HttpConnector, Body>,
 }
 
 static JSINIT: Once = Once::new();
@@ -87,6 +111,8 @@ impl Runtime {
       rt: Mutex::new(p.wait().unwrap()),
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
+      bytes: Mutex::new(HashMap::new()),
+      http_client: Client::new(), //Client::builder().set_host(false).build_http(),
     });
 
     (*rt_box).ptr.0 = unsafe {
@@ -123,8 +149,8 @@ impl Runtime {
     self.eval(filename, contents.as_str());
   }
 
-  pub fn used_heap_size(&self) -> usize {
-    unsafe { js_runtime_heap_statistics(self.ptr.0) }.used_heap_size as usize
+  pub fn heap_statistics(&self) -> js_heap_stats {
+    unsafe { js_runtime_heap_statistics(self.ptr.0) }
   }
 }
 
@@ -136,9 +162,13 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
 }
 
 const NATIVES_DATA: &'static [u8] =
-  include_bytes!("../libfly/third_party/v8/out.gn/x64.debug/natives_blob.bin");
+  include_bytes!("../third_party/v8/out.gn/x64.debug/natives_blob.bin");
 const SNAPSHOT_DATA: &'static [u8] =
-  include_bytes!("../libfly/third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
+  include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
+
+extern crate tokio_io_pool;
+
+// pub static mut EVENT_LOOP: Option<tokio_io_pool::Runtime> = None;
 
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
@@ -151,7 +181,11 @@ lazy_static! {
       CString::new(contents).unwrap().as_ptr(),
     )
   };
+  // pub static ref EVENT_LOOP: Arc<tokio_io_pool::Runtime> = Arc::new(tokio_io_pool::Runtime::new());
 }
+
+// pub static mut EVENT_LOOP: Option<Mutex<tokio_io_pool::Runtime>> = None;
+pub static mut EVENT_LOOP_HANDLE: Option<Arc<Mutex<tokio_io_pool::Handle>>> = None;
 
 // Buf represents a byte array returned from a "Op".
 // The message might be empty (which will be translated into a null object on
@@ -165,28 +199,34 @@ type Op = Future<Item = Buf, Error = String> + Send;
 
 type OpResult = Result<Buf, String>;
 
-type Handler = fn(rt: &Runtime, base: &msg::Base) -> Box<Op>;
+type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 
 use std::slice;
 
 #[no_mangle]
-pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf) {
+pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly_buf) {
   let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
   let base = msg::get_root_as_base(bytes);
   let msg_type = base.msg_type();
+  // println!("MSG TYPE: {:?}", msg_type);
   let cmd_id = base.cmd_id();
   // println!("msg id {}", cmd_id);
   let handler: Handler = match msg_type {
     msg::Any::TimerStart => handle_timer_start,
     msg::Any::TimerClear => handle_timer_clear,
+    msg::Any::HttpRequest => handle_http_request,
     msg::Any::HttpResponse => handle_http_response,
+    msg::Any::StreamChunk => handle_stream_chunk,
+    msg::Any::CacheGet => handle_cache_get,
+    msg::Any::CacheSet => handle_cache_set,
+    msg::Any::CryptoDigest => handle_crypto_digest,
     _ => unimplemented!(),
   };
 
   let rt = from_c(raw);
   let ptr = rt.ptr;
 
-  let fut = handler(rt, &base);
+  let fut = handler(rt, &base, raw_buf);
   let fut = fut.or_else(move |err| {
     // No matter whether we got an Err or Ok, we want a serialized message to
     // send back. So transform the DenoError into a deno_buf.
@@ -233,10 +273,19 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf) {
           )
         }
       };
-      unsafe { js_send(ptr.0, buf) };
+      unsafe { js_send(ptr.0, buf, null_buf()) };
       Ok(())
     });
     rt.rt.lock().unwrap().spawn(fut);
+  }
+}
+
+pub fn null_buf() -> fly_buf {
+  fly_buf {
+    alloc_ptr: 0 as *mut u8,
+    alloc_len: 0,
+    data_ptr: 0 as *mut u8,
+    data_len: 0,
   }
 }
 
@@ -262,7 +311,7 @@ pub fn fly_buf_from(x: Box<[u8]>) -> fly_buf {
 
 use std::mem;
 
-fn handle_timer_start(rt: &Runtime, base: &msg::Base) -> Box<Op> {
+fn handle_timer_start(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   println!("handle_timer_start");
   let msg = base.msg_as_timer_start().unwrap();
   let cmd_id = base.cmd_id();
@@ -327,35 +376,516 @@ fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
-fn handle_timer_clear(rt: &Runtime, base: &msg::Base) -> Box<Op> {
+fn handle_timer_clear(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_timer_clear().unwrap();
   println!("handle_timer_clear");
   remove_timer(rt.ptr, msg.id());
   ok_future(None)
 }
 
-fn handle_http_response(rt: &Runtime, base: &msg::Base) -> Box<Op> {
+extern crate sha1;
+extern crate sha2; // SHA-1 // SHA-256, etc.
+use self::sha1::Digest as Sha1Digest;
+use self::sha1::Sha1;
+use self::sha2::Digest;
+use self::sha2::Sha256;
+
+fn handle_crypto_digest(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_crypto_digest().unwrap();
+
+  let algo = msg.algo().unwrap().to_uppercase();
+  let buffer = unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec();
+
+  Box::new(future::lazy(move || -> OpResult {
+    let builder = &mut FlatBufferBuilder::new();
+    let bytes_vec = match algo.as_str() {
+      "SHA-256" => {
+        let mut h = Sha256::default();
+        h.input(buffer.as_slice());
+        let res = h.result();
+        builder.create_vector(res.as_slice())
+      }
+      "SHA-1" => {
+        let mut h = Sha1::default();
+        h.input(buffer.as_slice());
+        let res = h.result();
+        builder.create_vector(res.as_slice())
+      }
+      _ => unimplemented!(),
+    };
+    // hasher.input(buffer.as_slice());
+    // let res = hasher.result();
+
+    // let bytes_vec = builder.create_vector(res.as_slice());
+    let crypto_ready = msg::CryptoDigestReady::create(
+      builder,
+      &msg::CryptoDigestReadyArgs {
+          buffer: Some(bytes_vec),
+          ..Default::default()
+          // done: body.is_end_stream(),
+        },
+    );
+    Ok(serialize_response(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        msg: Some(crypto_ready.as_union_value()),
+        msg_type: msg::Any::CryptoDigestReady,
+        ..Default::default()
+      },
+    ))
+  }))
+}
+
+use super::NEXT_STREAM_ID;
+use std::io;
+use std::str;
+
+use std::ops::Deref;
+fn handle_cache_set(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  println!("CACHE SET");
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_cache_set().unwrap();
+  let key = msg.key().unwrap().to_string();
+
+  let stream_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+
+  let rtptr = rt.ptr;
+
+  let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
+  // {
+  //   rt.bytes_recv.lock().unwrap().insert(stream_id, recver);
+  // }
+  {
+    rt.bytes.lock().unwrap().insert(stream_id, sender);
+  }
+
+  {
+    let pool = Arc::clone(&redis_stream::REDIS_CACHE_POOL);
+    let con = pool.get().unwrap(); // TODO: no unwrap
+    let offset: AtomicUsize = ATOMIC_USIZE_INIT;
+    rt.rt.lock().unwrap().spawn(
+      recver
+        // .into_future()
+        .map_err(|_| println!("error cache set stream!"))
+        .for_each(move |b| {
+          let start = offset.fetch_add(b.len(), Ordering::SeqCst);
+          match redis::cmd("SETRANGE").arg(key.clone()).arg(start).arg(b).query::<usize>(con.deref())
+          {
+            Ok(r) => {}
+            Err(e) => println!("error in redis.. {}", e),
+          }
+          Ok(())
+        }),
+    );
+  }
+
+  let builder = &mut FlatBufferBuilder::new();
+  let msg = msg::CacheSetReady::create(
+    builder,
+    &msg::CacheSetReadyArgs {
+      id: stream_id,
+      ..Default::default()
+    },
+  );
+  ok_future(serialize_response(
+    cmd_id,
+    builder,
+    msg::BaseArgs {
+      msg: Some(msg.as_union_value()),
+      msg_type: msg::Any::CacheSetReady,
+      ..Default::default()
+    },
+  ))
+}
+
+fn handle_cache_get(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  println!("CACHE GET");
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_cache_get().unwrap();
+
+  let stream_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+
+  let rtptr = rt.ptr;
+
+  let key = msg.key().unwrap().to_string();
+
+  let got = {
+    let pool = Arc::clone(&redis_stream::REDIS_CACHE_POOL);
+    let con = pool.get().unwrap(); // TODO: no unwrap
+    match redis::cmd("EXISTS")
+      .arg(key.clone())
+      .query::<bool>(con.deref())
+    {
+      Ok(b) => b,
+      Err(e) => {
+        println!("redis exists err: {}", e);
+        false
+      }
+    }
+  };
+
+  {
+    // need to hijack the order here.
+    rt.rt.lock().unwrap().spawn(future::lazy(move || {
+      let builder = &mut FlatBufferBuilder::new();
+      let msg = msg::CacheGetReady::create(
+        builder,
+        &msg::CacheGetReadyArgs {
+          id: stream_id,
+          stream: got,
+          ..Default::default()
+        },
+      );
+      unsafe {
+        js_send(
+          rtptr.0,
+          fly_buf_from(
+            serialize_response(
+              cmd_id,
+              builder,
+              msg::BaseArgs {
+                msg: Some(msg.as_union_value()),
+                msg_type: msg::Any::CacheGetReady,
+                ..Default::default()
+              },
+            ).unwrap(),
+          ),
+          null_buf(),
+        )
+      };
+      Ok(())
+    }));
+  }
+
+  if got {
+    let stream = redis_stream::redis_stream(key.clone());
+
+    rt.rt.lock().unwrap().spawn(
+      stream
+      // .into_future()
+      .map_err(|e| println!("error redis stream: {}", e))
+      .for_each(move |bytes| {
+        let builder = &mut FlatBufferBuilder::new();
+        let chunk_msg = msg::StreamChunk::create(
+          builder,
+          &msg::StreamChunkArgs {
+            id: stream_id,
+            done: false,
+            ..Default::default()
+          },
+        );
+        unsafe {
+          js_send(
+            rtptr.0,
+            fly_buf_from(
+              serialize_response(
+                0,
+                builder,
+                msg::BaseArgs {
+                  msg: Some(chunk_msg.as_union_value()),
+                  msg_type: msg::Any::StreamChunk,
+                  ..Default::default()
+                },
+              ).unwrap(),
+            ),
+            fly_buf {
+              alloc_ptr: 0 as *mut u8,
+              alloc_len: 0,
+              data_ptr: (*bytes).as_ptr() as *mut u8,
+              data_len: bytes.len(),
+            },
+          )
+        };
+        Ok(())
+      }).and_then(move |_| {
+        println!("done getting bytes");
+        let builder = &mut FlatBufferBuilder::new();
+        let chunk_msg = msg::StreamChunk::create(
+          builder,
+          &msg::StreamChunkArgs {
+            id: stream_id,
+            done: true,
+            ..Default::default()
+          },
+        );
+        unsafe {
+          js_send(
+            rtptr.0,
+            fly_buf_from(
+              serialize_response(
+                0,
+                builder,
+                msg::BaseArgs {
+                  msg: Some(chunk_msg.as_union_value()),
+                  msg_type: msg::Any::StreamChunk,
+                  ..Default::default()
+                },
+              ).unwrap(),
+            ),
+            null_buf(),
+          )
+        };
+        Ok(())
+      }),
+    );
+  }
+
+  ok_future(None)
+
+  // let builder = &mut FlatBufferBuilder::new();
+  // let msg = msg::CacheGetReady::create(
+  //   builder,
+  //   &msg::CacheGetReadyArgs {
+  //     id: stream_id,
+  //     stream: got,
+  //     ..Default::default()
+  //   },
+  // );
+  // ok_future(serialize_response(
+  //   cmd_id,
+  //   builder,
+  //   msg::BaseArgs {
+  //     msg: Some(msg.as_union_value()),
+  //     msg_type: msg::Any::CacheGetReady,
+  //     ..Default::default()
+  //   },
+  // ))
+}
+
+fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_http_request().unwrap();
+  let req_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let rtptr = rt.ptr;
+
+  let mut req_body: Body;
+  if msg.body() {
+    unimplemented!();
+  } else {
+    req_body = Body::empty();
+  }
+
+  let mut req = Request::new(req_body);
+  {
+    let uri: hyper::Uri = msg.url().unwrap().parse().unwrap();
+    // println!("url: {:?}", uri);
+    *req.uri_mut() = uri;
+    *req.method_mut() = match msg.method() {
+      msg::HttpMethod::Get => Method::GET,
+      msg::HttpMethod::Post => Method::POST,
+      _ => unimplemented!(),
+    };
+
+    let msg_headers = msg.headers().unwrap();
+    let mut headers = req.headers_mut();
+    for i in 0..msg_headers.len() {
+      let h = msg_headers.get(i);
+      // println!("header: {} => {}", h.key().unwrap(), h.value().unwrap());
+      headers.insert(
+        HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
+        h.value().unwrap().parse().unwrap(),
+      );
+    }
+  }
+
+  let rtptr2 = rtptr.clone();
+
+  let (p, c) = oneshot::channel::<JsHttpResponse>();
+
+  let fut = rt
+    .http_client
+    .request(req)
+    .map_err(|e| println!("hyper client error: {}", e))
+    .and_then(move |res| {
+      let (parts, mut body) = res.into_parts();
+
+      let mut bytes_rx: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
+      if !body.is_end_stream() {
+        let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
+        bytes_rx = Some(rx);
+        let mut bytes = from_c(rtptr2.0).bytes.lock().unwrap();
+        bytes.insert(req_id, tx);
+      }
+
+      p.send(JsHttpResponse {
+        headers: parts.headers,
+        bytes: bytes_rx,
+      });
+
+      if !body.is_end_stream() {
+        let rt = from_c(rtptr.0); // like a clone
+        rt.rt.lock().unwrap().spawn(
+          poll_fn(move || {
+            while let Some(chunk) = try_ready!(body.poll_data()) {
+              let mut bytes = chunk.into_bytes();
+              let builder = &mut FlatBufferBuilder::new();
+              let chunk_msg = msg::StreamChunk::create(
+                builder,
+                &msg::StreamChunkArgs {
+                  id: req_id,
+                  done: body.is_end_stream(),
+                },
+              );
+              unsafe {
+                js_send(
+                  rtptr.0,
+                  fly_buf_from(
+                    serialize_response(
+                      0,
+                      builder,
+                      msg::BaseArgs {
+                        msg: Some(chunk_msg.as_union_value()),
+                        msg_type: msg::Any::StreamChunk,
+                        ..Default::default()
+                      },
+                    ).unwrap(),
+                  ),
+                  fly_buf {
+                    alloc_ptr: 0 as *mut u8,
+                    alloc_len: 0,
+                    data_ptr: (*bytes).as_ptr() as *mut u8,
+                    data_len: bytes.len(),
+                  },
+                )
+              };
+            }
+            Ok(Async::Ready(()))
+          }).map_err(|e: hyper::Error| ()),
+        );
+      }
+      Ok(())
+    });
+
+  let fut2 = c
+    .map_err(|e| format!("err getting response from oneshot: {}", e))
+    .and_then(move |res: JsHttpResponse| -> OpResult {
+      let builder = &mut FlatBufferBuilder::new();
+      let headers: Vec<_> = res
+        .headers
+        .iter()
+        .map(|(key, value)| {
+          let key = builder.create_string(key.as_str());
+          let value = builder.create_string(value.to_str().unwrap());
+          msg::HttpHeader::create(
+            builder,
+            &msg::HttpHeaderArgs {
+              key: Some(key),
+              value: Some(value),
+              ..Default::default()
+            },
+          )
+        }).collect();
+
+      let res_headers = builder.create_vector(&headers);
+
+      let msg = msg::FetchHttpResponse::create(
+        builder,
+        &msg::FetchHttpResponseArgs {
+          id: req_id,
+          headers: Some(res_headers),
+          body: res.bytes.is_some(),
+          ..Default::default()
+        },
+      );
+      Ok(serialize_response(
+        cmd_id,
+        builder,
+        msg::BaseArgs {
+          msg: Some(msg.as_union_value()),
+          msg_type: msg::Any::FetchHttpResponse,
+          ..Default::default()
+        },
+      ))
+    });
+
+  unsafe {
+    match EVENT_LOOP_HANDLE {
+      Some(ref elh) => {
+        elh.lock().unwrap().spawn(fut);
+      }
+      _ => panic!("event loop handle is NONE"),
+    }
+  };
+
+  Box::new(fut2)
+  // }
+
+  // let builder = &mut FlatBufferBuilder::new();
+  // let req_start_msg =
+  //   msg::HttpRequestStart::create(builder, &msg::HttpRequestStartArgs { id: req_id });
+  // ok_future(serialize_response(
+  //   cmd_id,
+  //   builder,
+  //   msg::BaseArgs {
+  //     msg: Some(req_start_msg.as_union_value()),
+  //     msg_type: msg::Any::HttpRequestStart,
+  //     ..Default::default()
+  //   },
+  // ))
+}
+
+fn handle_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   // println!("handle_http_response");
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
 
   let msg_headers = msg.headers().unwrap();
 
-  let mut headers: HashMap<String, String> = HashMap::new();
+  let mut headers = HeaderMap::new();
   for i in 0..msg_headers.len() {
     let h = msg_headers.get(i);
-    headers.insert(h.key().unwrap().to_string(), h.value().unwrap().to_string());
+    headers.insert(
+      HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
+      h.value().unwrap().parse().unwrap(),
+    );
+  }
+
+  let mut chunk_recver: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
+  if msg.body() {
+    let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
+    {
+      let mut bytes = rt.bytes.lock().unwrap();
+      bytes.insert(req_id, sender);
+    }
+    chunk_recver = Some(recver);
   }
 
   let mut responses = rt.responses.lock().unwrap();
   match responses.remove(&req_id) {
     Some(mut sender) => {
       sender.send(JsHttpResponse {
-        headers: Mutex::new(headers),
+        headers: headers,
+        bytes: chunk_recver,
       });
     }
     _ => unimplemented!(),
   };
+
+  ok_future(None)
+}
+
+fn handle_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_stream_chunk().unwrap();
+  let stream_id = msg.id();
+
+  let mut bytes = rt.bytes.lock().unwrap();
+  if (raw.data_len > 0) {
+    match bytes.get_mut(&stream_id) {
+      Some(mut sender) => {
+        let bytes = unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec();
+        match sender.unbounded_send(bytes.to_vec()) {
+          Err(e) => println!("error sending chunk: {}", e),
+          _ => {}
+        }
+      }
+      _ => unimplemented!(),
+    };
+  }
+  if (msg.done()) {
+    bytes.remove(&stream_id);
+  }
 
   ok_future(None)
 }
