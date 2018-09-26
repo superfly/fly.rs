@@ -241,7 +241,7 @@ static fly_buf GetContents(const js_runtime *rt,
 
 bool ExecuteV8StringSource(v8::Local<v8::Context> context,
                            const char *filename,
-                           const char *code, const char *sourcemap)
+                           const char *code)
 {
   printf("evaluating: %s\n", filename);
   auto *isolate = context->GetIsolate();
@@ -263,38 +263,6 @@ bool ExecuteV8StringSource(v8::Local<v8::Context> context,
     // DCHECK(try_catch.HasCaught());
     HandleException(context, try_catch.Exception());
     return false;
-  }
-
-  {
-    if (sourcemap != nullptr)
-    {
-      // CHECK_GT(source_map->length(), 1u);
-      v8::ScriptOrigin origin(v8_str("set_source_map.js"));
-
-      // printf("sourcemap: %s\n", sourcemap);
-
-      std::string source_map_parens = "(" + std::string(sourcemap) + ")";
-      auto source_map_v8_str = v8_str(source_map_parens.c_str());
-      auto script = v8::Script::Compile(context, source_map_v8_str, &origin);
-      if (script.IsEmpty())
-      {
-        // DCHECK(try_catch.HasCaught());
-        HandleException(context, try_catch.Exception());
-        return false;
-      }
-      auto source_map_obj = script.ToLocalChecked()->Run(context);
-      if (source_map_obj.IsEmpty())
-      {
-        // DCHECK(try_catch.HasCaught());
-        HandleException(context, try_catch.Exception());
-        return false;
-      }
-
-      auto fly = v8::Local<v8::Object>::Cast(context->Global()->Get(v8_str("libfly")));
-      auto sourcemaps = v8::Local<v8::Object>::Cast(fly->Get(context, v8_str("sourceMaps")).ToLocalChecked());
-      sourcemaps->Set(context, name, source_map_obj.ToLocalChecked())
-          .FromJust();
-    }
   }
 
   auto result = script.ToLocalChecked()->Run(context);
@@ -412,9 +380,6 @@ void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context)
   auto ge_tmpl = v8::FunctionTemplate::New(isolate, SetGlobalErrorHandler);
   auto ge_val = ge_tmpl->GetFunction(context).ToLocalChecked();
   fly->Set(context, v8_str(isolate, "setGlobalErrorHandler"), ge_val).FromJust();
-
-  auto sourcemaps = v8::Object::New(isolate);
-  fly->Set(context, v8_str("sourceMaps"), sourcemaps).FromJust();
 }
 
 extern "C"
@@ -554,10 +519,10 @@ extern "C"
     free(rt);
   }
 
-  bool js_eval(const js_runtime *rt, const char *filename, const char *code, const char *sourcemap)
+  bool js_eval(const js_runtime *rt, const char *filename, const char *code)
   {
     VALUE_SCOPE(rt->isolate, rt->context);
-    return ExecuteV8StringSource(ctx, filename, code, sourcemap);
+    return ExecuteV8StringSource(ctx, filename, code);
     // v8::TryCatch try_catch(rt->isolate);
     // try_catch.SetVerbose(true);
 
@@ -628,7 +593,7 @@ extern "C"
     const_cast<HeapSnapshot *>(snap)->Delete();
   }
 
-  fly_simple_buf js_create_snapshot(const char *filename, const char *code, const char *sourcemap)
+  fly_simple_buf js_create_snapshot(const char *filename, const char *code)
   {
     v8::StartupData blob;
     {
@@ -644,7 +609,7 @@ extern "C"
         v8::Context::Scope context_scope(context);
 
         InitContext(isolate, context);
-        ExecuteV8StringSource(context, filename, code, sourcemap);
+        ExecuteV8StringSource(context, filename, code);
 
         // auto fly = v8::Object::New(isolate);
         // context->Global()->Set(context, v8_str(isolate, "libfly"), fly).FromJust();

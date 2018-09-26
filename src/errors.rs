@@ -14,6 +14,7 @@ pub struct FlyError {
 
 #[derive(Debug)]
 enum Repr {
+  Simple(String),
   IoErr(io::Error),
   UrlErr(url::ParseError),
   HyperErr(hyper::Error),
@@ -22,7 +23,7 @@ enum Repr {
 impl FlyError {
   pub fn kind(&self) -> ErrorKind {
     match self.repr {
-      // Repr::Simple(kind) => kind,
+      Repr::Simple(_) => ErrorKind::String,
       Repr::IoErr(ref err) => {
         use std::io::ErrorKind::*;
         match err.kind() {
@@ -86,7 +87,7 @@ impl fmt::Display for FlyError {
       Repr::IoErr(ref err) => err.fmt(f),
       Repr::UrlErr(ref err) => err.fmt(f),
       Repr::HyperErr(ref err) => err.fmt(f),
-      // Repr::Simple(..) => Ok(()),
+      Repr::Simple(ref s) => write!(f, "{}", s),
     }
   }
 }
@@ -97,7 +98,7 @@ impl std::error::Error for FlyError {
       Repr::IoErr(ref err) => err.description(),
       Repr::UrlErr(ref err) => err.description(),
       Repr::HyperErr(ref err) => err.description(),
-      // Repr::Simple(..) => "FIXME",
+      Repr::Simple(ref s) => s.as_str(),
     }
   }
 
@@ -106,7 +107,7 @@ impl std::error::Error for FlyError {
       Repr::IoErr(ref err) => Some(err),
       Repr::UrlErr(ref err) => Some(err),
       Repr::HyperErr(ref err) => Some(err),
-      // Repr::Simple(..) => None,
+      Repr::Simple(_) => None,
     }
   }
 }
@@ -134,6 +135,15 @@ impl From<hyper::Error> for FlyError {
   fn from(err: hyper::Error) -> FlyError {
     FlyError {
       repr: Repr::HyperErr(err),
+    }
+  }
+}
+
+impl From<String> for FlyError {
+  #[inline]
+  fn from(err: String) -> FlyError {
+    FlyError {
+      repr: Repr::Simple(err),
     }
   }
 }

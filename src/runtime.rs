@@ -13,6 +13,8 @@ use std::io::Read;
 
 use libfly::*;
 
+use std::sync::mpsc as stdmspc;
+
 use futures::sync::{mpsc, oneshot};
 use std::collections::HashMap;
 
@@ -130,7 +132,6 @@ impl Runtime {
         ptr,
         CString::new("fly_main.js").unwrap().as_ptr(),
         CString::new("flyMain()").unwrap().as_ptr(),
-        stdptr::null() as *const i8,
       );
       ptr
     };
@@ -144,7 +145,6 @@ impl Runtime {
         self.ptr.0,
         CString::new(filename).unwrap().as_ptr(),
         CString::new(code).unwrap().as_ptr(),
-        stdptr::null() as *const i8,
       )
     };
   }
@@ -173,31 +173,69 @@ const NATIVES_DATA: &'static [u8] =
   include_bytes!("../third_party/v8/out.gn/x64.debug/natives_blob.bin");
 const SNAPSHOT_DATA: &'static [u8] =
   include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
+const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../fly/packages/v8env/dist/v8env.js.map");
 
 extern crate tokio_io_pool;
 
 // pub static mut EVENT_LOOP: Option<tokio_io_pool::Runtime> = None;
 
+extern crate sourcemap;
+// use self::sourcemap;
+use self::sourcemap::{DecodedMap, SourceMap};
+use std::fs;
+
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
 
-    let filename = "fly/packages/v8env/dist/bundle.js";
+    let filename = "fly/packages/v8env/dist/v8env.js";
     let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
 
-    let sourcemapfilename = "fly/packages/v8env/dist/bundle.js.map";
-    let mut sourcemapfile = File::open(sourcemapfilename).unwrap();
-
-    let mut sourcemap = String::new();
-    println!("sm read: {} bytes", sourcemapfile.read_to_string(&mut sourcemap).unwrap());
-
     js_create_snapshot(
-      CString::new(filename).unwrap().as_ptr(),
+      CString::new("v8env.js").unwrap().as_ptr(),
       CString::new(contents).unwrap().as_ptr(),
-      CString::new(sourcemap).unwrap().as_ptr(),
     )
   };
+
+  static ref SM_CHAN: Mutex<stdmspc::Sender<(Vec<(u32, u32, String,String)>, oneshot::Sender<Vec<(u32, u32, String, String)>>)>> = {
+    let (sender, receiver) = stdmspc::channel::<(Vec<(u32, u32, String, String)>, oneshot::Sender<Vec<(u32, u32, String, String)>>)>();
+    thread::spawn(move||{
+      let sm = SourceMap::from_reader(V8ENV_SOURCEMAP).unwrap();
+      for tup in receiver.iter() {
+        let ch = tup.1;
+        let v = tup.0;
+        ch.send(v.iter()
+          .map(|(line, col, name, filename)| {
+            if filename == "v8env.js" {
+              return match sm.lookup_token(*line, *col) {
+                Some(t) => {
+                  let newline = t.get_src_line();
+                  let newcol = t.get_src_col();
+                  let newfilename = match t.get_source() {
+                    Some(s) => String::from(s),
+                    None => filename.clone()
+                  };
+                  (newline, newcol, name.clone(), newfilename)
+                }
+                None => (*line, *col, name.clone(), filename.clone())
+              };
+            }
+            (*line, *col, name.clone(), filename.clone())
+          }).collect()
+        );
+      }
+    });
+    Mutex::new(sender)
+  };
+
+  // static ref V8ENV_SOURCEMAP: Arc<Mutex<SourceMap>> = {
+  //   let mut f = fs::File::open("fly/packages/v8env/dist/v8env.js.map").unwrap();
+  //   match sourcemap::decode(&mut f).unwrap() {
+  //     DecodedMap::Regular(s) => Arc::new(Mutex::new(s)),
+  //     _ => unimplemented!()
+  //   }
+  // };
   // pub static ref EVENT_LOOP: Arc<tokio_io_pool::Runtime> = Arc::new(tokio_io_pool::Runtime::new());
 }
 
@@ -237,6 +275,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CacheGet => handle_cache_get,
     msg::Any::CacheSet => handle_cache_set,
     msg::Any::CryptoDigest => handle_crypto_digest,
+    msg::Any::SourceMap => handle_source_map,
     _ => unimplemented!(),
   };
 
@@ -400,6 +439,142 @@ fn handle_timer_clear(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   remove_timer(rt.ptr, msg.id());
   ok_future(None)
 }
+
+fn handle_source_map(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_source_map().unwrap();
+
+  let msg_frames = msg.frames().unwrap();
+  let mut frames = Vec::with_capacity(msg_frames.len());
+
+  for i in 0..msg_frames.len() {
+    let f = msg_frames.get(i);
+
+    println!(
+      "got frame: {:?} {:?} {:?} {:?}",
+      f.name(),
+      f.filename(),
+      f.line(),
+      f.col()
+    );
+
+    let name = match f.name() {
+      Some(n) => n,
+      None => "",
+    };
+
+    let mut filename = match f.filename() {
+      Some(f) => f,
+      None => "",
+    };
+
+    let mut line = f.line();
+    let mut col = f.col();
+
+    frames.insert(i, (line, col, String::from(name), String::from(filename)));
+  }
+
+  let (tx, rx) = oneshot::channel::<Vec<(u32, u32, String, String)>>();
+  SM_CHAN.lock().unwrap().send((frames, tx));
+
+  Box::new(
+    rx.map_err(|e| FlyError::from(format!("{}", e)))
+      .and_then(move |v| {
+        let builder = &mut FlatBufferBuilder::new();
+        let framed: Vec<_> = v
+          .iter()
+          .map(|(line, col, name, filename)| {
+            let namefbb = builder.create_string(name.as_str());
+            let filenamefbb = builder.create_string(filename.as_str());
+            msg::Frame::create(
+              builder,
+              &msg::FrameArgs {
+                name: Some(namefbb),
+                filename: Some(filenamefbb),
+                line: *line,
+                col: *col,
+              },
+            )
+          }).collect();
+        let ret_frames = builder.create_vector(&framed);
+
+        let ret_msg = msg::SourceMapReady::create(
+          builder,
+          &msg::SourceMapReadyArgs {
+            frames: Some(ret_frames),
+            ..Default::default()
+          },
+        );
+        Ok(serialize_response(
+          cmd_id,
+          builder,
+          msg::BaseArgs {
+            msg: Some(ret_msg.as_union_value()),
+            msg_type: msg::Any::SourceMapReady,
+            ..Default::default()
+          },
+        ))
+      }),
+  )
+}
+// match rx.wait() {
+//   Ok(v) => {
+//     println!("got a vec! {:?}", v);
+//   }
+//   Err(e) => {
+//     return
+//     println!("ERROR USING SM CHAN {}", e);
+//   }
+// };
+
+// if filename == "v8env.js" {
+//   match sm.lookup_token(line, col) {
+//     Some(t) => {
+//       line = t.get_src_line();
+//       col = t.get_src_col();
+//       match t.get_source() {
+//         Some(s) => filename = s,
+//         None => {}
+//       };
+//     }
+//     None => {}
+//   };
+// }
+
+//     frames.insert(
+//       i,
+//       msg::Frame::create(
+//         builder,
+//         &msg::FrameArgs {
+//           name: Some(namefbb),
+//           filename: Some(filenamefbb),
+//           line: line,
+//           col: col,
+//         },
+//       ),
+//     );
+//   }
+// }
+
+// let ret_frames = builder.create_vector(&frames);
+
+// let ret_msg = msg::SourceMapReady::create(
+//   builder,
+//   &msg::SourceMapReadyArgs {
+//     frames: Some(ret_frames),
+//     ..Default::default()
+//   },
+// );
+// ok_future(serialize_response(
+//   cmd_id,
+//   builder,
+//   msg::BaseArgs {
+//     msg: Some(ret_msg.as_union_value()),
+//     msg_type: msg::Any::SourceMapReady,
+//     ..Default::default()
+//   },
+// ))
+// }
 
 extern crate sha1;
 extern crate sha2; // SHA-1 // SHA-256, etc.
@@ -943,4 +1118,29 @@ where
     .map_err(|_| ());
 
   (delay_task, cancel_tx)
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  extern crate sourcemap;
+  use self::sourcemap::{decode, DecodedMap, SourceMap};
+  use std::fs;
+
+  #[test]
+  fn it_sm() {
+    let mut f = fs::File::open("fly/packages/v8env/dist/v8env.js.map").unwrap();
+    let sm = sourcemap::decode(&mut f).unwrap();
+    match sm {
+      DecodedMap::Regular(s) => {
+        println!("got a regular map!");
+        let t = s.lookup_token(12956, 20).unwrap();
+        println!("token: {:?}", t);
+        let (source, src_line, src_col, name) = t.to_tuple();
+        println!("{:?} {}:{} {}", name, src_line, src_col, source);
+      }
+      DecodedMap::Index(s) => println!("got an index map!"),
+    };
+    assert!(true);
+  }
 }

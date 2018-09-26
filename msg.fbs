@@ -13,11 +13,13 @@ union Any {
   CacheSetReady,
   CryptoDigest,
   CryptoDigestReady,
+  SourceMap,
+  SourceMapReady,
 }
 
 enum ErrorKind: byte {
   NoError = 0,
-
+  String,
   // io errors
 
   NotFound,
@@ -153,6 +155,21 @@ table CryptoDigest {
 
 table CryptoDigestReady {
   buffer: [ubyte];
+}
+
+table Frame {
+  line: uint;
+  col: uint;
+  filename: string;
+  name: string;
+}
+
+table SourceMap {
+  frames: [Frame];
+}
+
+table SourceMapReady {
+  frames: [Frame];
 }
 
 root_type Base;
