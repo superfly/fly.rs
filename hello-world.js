@@ -5,6 +5,10 @@ console.log("ha");
 let now = Date.now();
 setTimeout(() => { console.log("in timeout!", Date.now() - now); now = Date.now() }, 100)
 
+let arr = new Uint8Array(32);
+crypto.getRandomValues(arr);
+console.log("some random values:", arr);
+
 addEventListener("fetch", function (event) {
   const req = event.request;
   // console.log("req url:", event.request.url);

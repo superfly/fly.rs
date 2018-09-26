@@ -27,6 +27,7 @@ sha2 = "0.7"
 sha-1 = "0.7"
 url = "1.7"
 sourcemap = "2.2"
+rand = "0.5"
 
 [build-dependencies]
 cc = "*"

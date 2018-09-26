@@ -13,6 +13,8 @@ union Any {
   CacheSetReady,
   CryptoDigest,
   CryptoDigestReady,
+  CryptoRandomValues,
+  CryptoRandomValuesReady,
   SourceMap,
   SourceMapReady,
 }
@@ -154,6 +156,14 @@ table CryptoDigest {
 }
 
 table CryptoDigestReady {
+  buffer: [ubyte];
+}
+
+table CryptoRandomValues {
+  len: uint;
+}
+
+table CryptoRandomValuesReady {
   buffer: [ubyte];
 }
 

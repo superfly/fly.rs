@@ -48,6 +48,9 @@ use errors::{FlyError, FlyResult};
 
 use redis_stream;
 
+extern crate rand;
+use self::rand::{thread_rng, Rng};
+
 #[derive(Debug)]
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
@@ -275,6 +278,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CacheGet => handle_cache_get,
     msg::Any::CacheSet => handle_cache_set,
     msg::Any::CryptoDigest => handle_crypto_digest,
+    msg::Any::CryptoRandomValues => handle_crypto_random_values,
     msg::Any::SourceMap => handle_source_map,
     _ => unimplemented!(),
   };
@@ -517,64 +521,38 @@ fn handle_source_map(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
       }),
   )
 }
-// match rx.wait() {
-//   Ok(v) => {
-//     println!("got a vec! {:?}", v);
-//   }
-//   Err(e) => {
-//     return
-//     println!("ERROR USING SM CHAN {}", e);
-//   }
-// };
 
-// if filename == "v8env.js" {
-//   match sm.lookup_token(line, col) {
-//     Some(t) => {
-//       line = t.get_src_line();
-//       col = t.get_src_col();
-//       match t.get_source() {
-//         Some(s) => filename = s,
-//         None => {}
-//       };
-//     }
-//     None => {}
-//   };
-// }
+fn handle_crypto_random_values(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_crypto_random_values().unwrap();
 
-//     frames.insert(
-//       i,
-//       msg::Frame::create(
-//         builder,
-//         &msg::FrameArgs {
-//           name: Some(namefbb),
-//           filename: Some(filenamefbb),
-//           line: line,
-//           col: col,
-//         },
-//       ),
-//     );
-//   }
-// }
+  let len = msg.len() as usize;
+  let mut v = vec![0u8; len];
+  let mut arr = v.as_mut_slice();
 
-// let ret_frames = builder.create_vector(&frames);
+  thread_rng().fill(arr);
 
-// let ret_msg = msg::SourceMapReady::create(
-//   builder,
-//   &msg::SourceMapReadyArgs {
-//     frames: Some(ret_frames),
-//     ..Default::default()
-//   },
-// );
-// ok_future(serialize_response(
-//   cmd_id,
-//   builder,
-//   msg::BaseArgs {
-//     msg: Some(ret_msg.as_union_value()),
-//     msg_type: msg::Any::SourceMapReady,
-//     ..Default::default()
-//   },
-// ))
-// }
+  let builder = &mut FlatBufferBuilder::new();
+  let ret_buffer = builder.create_vector(arr);
+
+  let crypto_rand = msg::CryptoRandomValuesReady::create(
+    builder,
+    &msg::CryptoRandomValuesReadyArgs {
+      buffer: Some(ret_buffer),
+      ..Default::default()
+    },
+  );
+
+  ok_future(serialize_response(
+    cmd_id,
+    builder,
+    msg::BaseArgs {
+      msg: Some(crypto_rand.as_union_value()),
+      msg_type: msg::Any::CryptoRandomValuesReady,
+      ..Default::default()
+    },
+  ))
+}
 
 extern crate sha1;
 extern crate sha2; // SHA-1 // SHA-256, etc.
@@ -607,17 +585,13 @@ fn handle_crypto_digest(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op>
       }
       _ => unimplemented!(),
     };
-    // hasher.input(buffer.as_slice());
-    // let res = hasher.result();
 
-    // let bytes_vec = builder.create_vector(res.as_slice());
     let crypto_ready = msg::CryptoDigestReady::create(
       builder,
       &msg::CryptoDigestReadyArgs {
-          buffer: Some(bytes_vec),
-          ..Default::default()
-          // done: body.is_end_stream(),
-        },
+        buffer: Some(bytes_vec),
+        ..Default::default()
+      },
     );
     Ok(serialize_response(
       cmd_id,
