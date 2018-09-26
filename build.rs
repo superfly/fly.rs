@@ -5,8 +5,6 @@ use std::env;
 use std::path::Path;
 use std::process::Command;
 
-use std::path::PathBuf;
-
 fn main() {
   let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
   let crate_dir2 = crate_dir.clone();
@@ -21,30 +19,20 @@ fn main() {
       ..Default::default()
     },
     language: cbindgen::Language::Cxx,
-    // enumeration: cbindgen::EnumConfig {
-    //   derive_helper_methods: true,
-    //   ..Default::default()
-    // },
-    // structure: cbindgen::StructConfig {
-    //   derive_eq: true,
-    //   ..Default::default()
-    // },
     ..Default::default()
   };
 
   cbindgen::Builder::new()
-    // .with_src(&PathBuf::from(format!("{}/src", crate_dir)))
     .with_crate(crate_dir)
     .with_documentation(true)
     .with_config(config)
     .generate()
-    // .generate_with_config(&crate_dir, config)
     .expect("Unable to generate bindings")
     .write_to_file("binding.h");
 
   cc::Build::new()
     .file("binding.cc")
-    // .include(Path::new(&crate_dir2))
+    .include(Path::new("third_party/v8/include/"))
     .cpp(true)
     .warnings(true)
     .flag("--std=c++11")
