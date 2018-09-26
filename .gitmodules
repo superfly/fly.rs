@@ -11,3 +11,6 @@
 	path = fly
 	url = git@github.com:superfly/fly.git
 	branch = crazytrain-rust
+[submodule "libvips"]
+	path = third_party/libvips
+	url = https://github.com/libvips/libvips.git

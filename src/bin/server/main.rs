@@ -13,7 +13,7 @@ extern crate tokio;
 extern crate tokio_io_pool;
 extern crate toml;
 
-use fly::libfly;
+extern crate libfly;
 
 extern crate hyper;
 use hyper::body::Payload;

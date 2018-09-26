@@ -28,7 +28,10 @@ sha-1 = "0.7"
 url = "1.7"
 sourcemap = "2.2"
 rand = "0.5"
+libfly = { path = "libfly" }
 
-[build-dependencies]
-cc = "*"
-cbindgen = "*"
+[workspace]
+
+members = [
+    "libfly",
+]

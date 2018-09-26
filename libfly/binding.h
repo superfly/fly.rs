@@ -58,8 +58,6 @@ extern void js_set_response(const js_runtime *rt, fly_buf buf);
 
 extern const char *js_version();
 
-void msg_from_js(const js_runtime *raw, fly_buf buf, fly_buf raw_buf);
-
 } // extern "C"
 
 #endif // libfly
