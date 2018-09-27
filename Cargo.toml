@@ -3,9 +3,6 @@ name = "fly"
 version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 
-[profile.release]
-debug = true
-
 [dependencies]
 tokio = "0.1"
 tokio-signal = "0.2"
@@ -20,6 +17,7 @@ flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 serde = "*"
 serde_derive = "1.0"
 hyper = "0.12"
+hyper-tls = "0.3"
 http = "0.1"
 rusqlite = "0.14"
 r2d2_redis = "0.8"
@@ -34,4 +32,5 @@ libfly = { path = "libfly" }
 
 members = [
     "libfly",
+    "vips",
 ]

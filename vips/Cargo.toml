@@ -1,5 +1,5 @@
 [package]
-name = "libfly"
+name = "vips"
 version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 
@@ -7,5 +7,5 @@ authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 libc = "*"
 
 [build-dependencies]
-cc = "*"
-cbindgen = "0.6"
+bindgen = "0.40"
+pkg-config = "0.3"

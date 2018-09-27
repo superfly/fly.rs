@@ -41,6 +41,9 @@ use self::hyper::rt::{poll_fn, Future, Stream};
 use self::hyper::HeaderMap;
 use self::hyper::{Body, Client, Method, Request, Response, StatusCode};
 
+extern crate hyper_tls;
+use self::hyper_tls::HttpsConnector;
+
 use flatbuffers::FlatBufferBuilder;
 use msg;
 
@@ -78,7 +81,8 @@ pub struct Runtime {
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   // pub bytes_recv: Mutex<HashMap<u32, mpsc::UnboundedReceiver<Vec<u8>>>>,
   pub bytes: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
-  pub http_client: Client<HttpConnector, Body>,
+  pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
+  // pub https_client: Client<HttpsConnector, Body>,
 }
 
 static JSINIT: Once = Once::new();
@@ -123,7 +127,7 @@ impl Runtime {
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
       bytes: Mutex::new(HashMap::new()),
-      http_client: Client::new(), //Client::builder().set_host(false).build_http(),
+      http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
     });
 
     (*rt_box).ptr.0 = unsafe {
@@ -172,10 +176,6 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
   Box::leak(rt_box)
 }
 
-const NATIVES_DATA: &'static [u8] =
-  include_bytes!("../third_party/v8/out.gn/x64.debug/natives_blob.bin");
-const SNAPSHOT_DATA: &'static [u8] =
-  include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");
 const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../fly/packages/v8env/dist/v8env.js.map");
 
 extern crate tokio_io_pool;

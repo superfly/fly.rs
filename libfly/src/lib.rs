@@ -72,3 +72,8 @@ extern "C" {
 
     pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char) -> bool;
 }
+
+pub const NATIVES_DATA: &'static [u8] =
+    include_bytes!("../third_party/v8/out.gn/x64.debug/natives_blob.bin");
+pub const SNAPSHOT_DATA: &'static [u8] =
+    include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");

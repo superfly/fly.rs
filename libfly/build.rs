@@ -21,6 +21,9 @@ fn main() {
     ..Default::default()
   };
 
+  println!("cargo:rerun-if-changed=binding.cc");
+  println!("cargo:rerun-if-changed=src/lib.rs");
+
   cbindgen::Builder::new()
     .with_crate(crate_dir)
     .with_documentation(true)
@@ -31,14 +34,15 @@ fn main() {
 
   cc::Build::new()
     .file("binding.cc")
-    .include(Path::new("../third_party/v8/include/"))
+    .include(Path::new("third_party/v8/include/"))
     .cpp(true)
-    .warnings(true)
+    // .warnings(true)
+    .extra_warnings(false)
     .flag("--std=c++11")
     .compile("libfly.a");
 
   println!(
-    "cargo:rustc-link-search=native={}/../third_party/v8/out.gn/x64.debug/",
+    "cargo:rustc-link-search=native={}/third_party/v8/out.gn/x64.debug/",
     crate_dir2
   );
 

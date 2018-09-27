@@ -591,6 +591,7 @@ extern "C"
     // but we cannot call HeapProfiler::DeleteAllHeapSnapshots() because that
     // invalidates _all_ snapshots, including those created by other tools.
     const_cast<HeapSnapshot *>(snap)->Delete();
+    return true;
   }
 
   fly_simple_buf js_create_snapshot(const char *filename, const char *code)
