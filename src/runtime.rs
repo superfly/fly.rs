@@ -67,14 +67,6 @@ pub struct JsHttpResponse {
   pub bytes: Option<mpsc::UnboundedReceiver<Vec<u8>>>,
 }
 
-// #[derive(Debug)]
-// pub struct JsHttpRequest {
-//   pub headers: HeaderMap,
-//   pub method: Method,
-//   pub url: String,
-//   pub bytes: Option<mpsc::Receiver<Chunk>>,
-// }
-
 #[derive(Debug, Copy, Clone)]
 pub struct JsRuntime(pub *const js_runtime);
 unsafe impl Send for JsRuntime {}
@@ -86,10 +78,8 @@ pub struct Runtime {
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
-  // pub bytes_recv: Mutex<HashMap<u32, mpsc::UnboundedReceiver<Vec<u8>>>>,
   pub bytes: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
-  // pub https_client: Client<HttpsConnector, Body>,
 }
 
 static JSINIT: Once = Once::new();

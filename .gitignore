@@ -3,3 +3,4 @@ target
 node_modules
 third_party/.gclient*
 rls*.log
+/src/msg_generated.rs

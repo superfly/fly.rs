@@ -10,7 +10,7 @@ fn main() {
   Command::new("flatc")
     .arg("--rust")
     .arg("-o")
-    .arg(out_dir)
+    .arg(format!("{}/src", crate_root))
     .arg(format!("{}/msg.fbs", crate_root))
     .spawn()
     .unwrap();
