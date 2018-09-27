@@ -20,7 +20,7 @@ use hyper::body::Payload;
 use hyper::header;
 use hyper::rt::{poll_fn, Future, Stream};
 use hyper::service::{service_fn, service_fn_ok, Service};
-use hyper::{Body, Chunk, Method, Request, Response, Server, StatusCode};
+use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
 #[macro_use]
 extern crate futures;
@@ -48,16 +48,13 @@ use config::*;
 
 use std::alloc::System;
 
-extern crate http;
-use http::{request, response};
-
 extern crate flatbuffers;
 use flatbuffers::FlatBufferBuilder;
 
 #[global_allocator]
 static A: System = System;
 
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::atomic::Ordering;
 
 lazy_static! {
     pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
@@ -70,8 +67,6 @@ pub struct FlyServer {
 extern crate libc;
 
 use fly::msg;
-
-use std::ffi::{CStr, CString};
 
 impl Service for FlyServer {
     type ReqBody = Body;
@@ -221,13 +216,14 @@ impl Service for FlyServer {
                         };
                     }
                     Ok(Async::Ready(()))
-                }).map_err(|e: hyper::Error| ()),
+                }).map_err(|e: hyper::Error| println!("hyper server error: {}", e)),
             );
         }
 
         Box::new(c.and_then(|res: JsHttpResponse| {
             let (mut parts, mut body) = Response::<Body>::default().into_parts();
             parts.headers = res.headers;
+            parts.status = res.status;
 
             if let Some(bytes) = res.bytes {
                 body = Body::wrap_stream(bytes.map_err(|_| RecvError {}));
@@ -237,8 +233,6 @@ impl Service for FlyServer {
         }))
     }
 }
-
-use std::net;
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");

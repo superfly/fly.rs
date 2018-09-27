@@ -62,7 +62,7 @@ enum ErrorKind: byte {
   HttpClosed,
   HttpCanceled,
   HttpParse,
-  HttpOther,
+  HttpOther
 }
 
 table Base {
@@ -120,7 +120,7 @@ table HttpRequest {
 table HttpResponse {
   id: uint;
   headers: [HttpHeader];
-  status: int;
+  status: ushort;
   body: bool;
 }
 
@@ -131,6 +131,7 @@ table HttpRequestStart {
 table FetchHttpResponse {
   id: uint;
   headers: [HttpHeader];
+  status: ushort;
   body: bool;
 }
 

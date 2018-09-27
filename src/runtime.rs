@@ -6,7 +6,7 @@ use tokio::prelude::*;
 use std::io;
 
 use std::ffi::CString;
-use std::sync::{Arc, Mutex, Once, RwLock};
+use std::sync::{Arc, Mutex, Once};
 
 use std::fs::File;
 use std::io::Read;
@@ -29,17 +29,23 @@ use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use futures::future;
 
+extern crate sha1;
+extern crate sha2; // SHA-1 // SHA-256, etc.
+use self::sha1::Digest as Sha1Digest; // puts trait in scope
+use self::sha1::Sha1;
+use self::sha2::Digest; // puts trait in scope
+use self::sha2::Sha256;
+
 extern crate hyper;
 extern crate r2d2_redis;
-use self::r2d2_redis::{r2d2, redis, RedisConnectionManager};
-use self::redis::Commands;
+use self::r2d2_redis::redis;
 
 use self::hyper::body::Payload;
 use self::hyper::client::HttpConnector;
 use self::hyper::header::HeaderName;
 use self::hyper::rt::{poll_fn, Future, Stream};
 use self::hyper::HeaderMap;
-use self::hyper::{Body, Client, Method, Request, Response, StatusCode};
+use self::hyper::{Body, Client, Method, Request, StatusCode};
 
 extern crate hyper_tls;
 use self::hyper_tls::HttpsConnector;
@@ -57,6 +63,7 @@ use self::rand::{thread_rng, Rng};
 #[derive(Debug)]
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
+  pub status: StatusCode,
   pub bytes: Option<mpsc::UnboundedReceiver<Vec<u8>>>,
 }
 
@@ -86,8 +93,6 @@ pub struct Runtime {
 }
 
 static JSINIT: Once = Once::new();
-
-use std::ptr as stdptr;
 
 impl Runtime {
   pub fn new() -> Box<Self> {
@@ -183,9 +188,7 @@ extern crate tokio_io_pool;
 // pub static mut EVENT_LOOP: Option<tokio_io_pool::Runtime> = None;
 
 extern crate sourcemap;
-// use self::sourcemap;
-use self::sourcemap::{DecodedMap, SourceMap};
-use std::fs;
+use self::sourcemap::SourceMap;
 
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
@@ -254,8 +257,6 @@ pub type Buf = Option<Box<[u8]>>;
 // JS promises in Deno map onto a specific Future
 // which yields either a DenoError or a byte array.
 type Op = Future<Item = Buf, Error = FlyError> + Send;
-
-type OpResult = FlyResult<Buf>;
 
 type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 
@@ -370,9 +371,7 @@ pub fn fly_buf_from(x: Box<[u8]>) -> fly_buf {
   }
 }
 
-use std::mem;
-
-fn handle_timer_start(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_timer_start(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("handle_timer_start");
   let msg = base.msg_as_timer_start().unwrap();
   let cmd_id = base.cmd_id();
@@ -437,14 +436,14 @@ fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
-fn handle_timer_clear(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_timer_clear(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_timer_clear().unwrap();
   println!("handle_timer_clear");
   remove_timer(rt.ptr, msg.id());
   ok_future(None)
 }
 
-fn handle_source_map(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_source_map().unwrap();
 
@@ -522,13 +521,13 @@ fn handle_source_map(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   )
 }
 
-fn handle_crypto_random_values(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_crypto_random_values(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_crypto_random_values().unwrap();
 
   let len = msg.len() as usize;
   let mut v = vec![0u8; len];
-  let mut arr = v.as_mut_slice();
+  let arr = v.as_mut_slice();
 
   thread_rng().fill(arr);
 
@@ -554,14 +553,7 @@ fn handle_crypto_random_values(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> 
   ))
 }
 
-extern crate sha1;
-extern crate sha2; // SHA-1 // SHA-256, etc.
-use self::sha1::Digest as Sha1Digest;
-use self::sha1::Sha1;
-use self::sha2::Digest;
-use self::sha2::Sha256;
-
-fn handle_crypto_digest(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_crypto_digest(_rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_crypto_digest().unwrap();
 
@@ -609,7 +601,7 @@ use super::NEXT_STREAM_ID;
 use std::str;
 
 use std::ops::Deref;
-fn handle_cache_set(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("CACHE SET");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_set().unwrap();
@@ -617,12 +609,7 @@ fn handle_cache_set(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
 
   let stream_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
-  let rtptr = rt.ptr;
-
   let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
-  // {
-  //   rt.bytes_recv.lock().unwrap().insert(stream_id, recver);
-  // }
   {
     rt.bytes.lock().unwrap().insert(stream_id, sender);
   }
@@ -639,7 +626,7 @@ fn handle_cache_set(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
           let start = offset.fetch_add(b.len(), Ordering::SeqCst);
           match redis::cmd("SETRANGE").arg(key.clone()).arg(start).arg(b).query::<usize>(con.deref())
           {
-            Ok(r) => {}
+            Ok(_r) => {}
             Err(e) => println!("error in redis.. {}", e),
           }
           Ok(())
@@ -666,8 +653,7 @@ fn handle_cache_set(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   ))
 }
 
-fn handle_cache_get(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
-  println!("CACHE GET");
+fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_get().unwrap();
 
@@ -820,13 +806,13 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   // ))
 }
 
-fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_http_request().unwrap();
   let req_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
-  let mut req_body: Body;
+  let req_body: Body;
   if msg.body() {
     unimplemented!();
   } else {
@@ -845,7 +831,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
     };
 
     let msg_headers = msg.headers().unwrap();
-    let mut headers = req.headers_mut();
+    let headers = req.headers_mut();
     for i in 0..msg_headers.len() {
       let h = msg_headers.get(i);
       // println!("header: {} => {}", h.key().unwrap(), h.value().unwrap());
@@ -886,6 +872,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
 
       p.send(Ok(JsHttpResponse {
         headers: parts.headers,
+        status: parts.status,
         bytes: bytes_rx,
       }));
 
@@ -927,7 +914,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
               };
             }
             Ok(Async::Ready(()))
-          }).map_err(|e: hyper::Error| ()),
+          }).map_err(|e: hyper::Error| println!("hyper error: {}",e)),
         );
       }
       Ok(())
@@ -970,6 +957,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
         &msg::FetchHttpResponseArgs {
           id: req_id,
           headers: Some(res_headers),
+          status: res.status.as_u16(),
           body: res.bytes.is_some(),
           ..Default::default()
         },
@@ -1011,10 +999,14 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
   // ))
 }
 
-fn handle_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
-  // println!("handle_http_response");
+fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
+
+  let status = match StatusCode::from_u16(msg.status()) {
+    Ok(s) => s,
+    Err(e) => return odd_future(format!("{}", e).into()),
+  };
 
   let mut headers = HeaderMap::new();
 
@@ -1040,9 +1032,10 @@ fn handle_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op>
 
   let mut responses = rt.responses.lock().unwrap();
   match responses.remove(&req_id) {
-    Some(mut sender) => {
+    Some(sender) => {
       sender.send(JsHttpResponse {
         headers: headers,
+        status: status,
         bytes: chunk_recver,
       });
     }
@@ -1057,9 +1050,9 @@ fn handle_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
   let stream_id = msg.id();
 
   let mut bytes = rt.bytes.lock().unwrap();
-  if (raw.data_len > 0) {
+  if raw.data_len > 0 {
     match bytes.get_mut(&stream_id) {
-      Some(mut sender) => {
+      Some(sender) => {
         let bytes = unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec();
         match sender.unbounded_send(bytes.to_vec()) {
           Err(e) => println!("error sending chunk: {}", e),
@@ -1069,7 +1062,7 @@ fn handle_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
       _ => unimplemented!(),
     };
   }
-  if (msg.done()) {
+  if msg.done() {
     bytes.remove(&stream_id);
   }
 

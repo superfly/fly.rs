@@ -1,8 +1,6 @@
 extern crate r2d2_redis;
 
 use self::r2d2_redis::{r2d2, redis, RedisConnectionManager};
-use self::redis::Commands;
-use futures::future::FutureResult;
 use futures::{future, stream};
 use std::ops::Deref;
 
@@ -39,7 +37,7 @@ pub fn redis_stream(
     {
       Ok(r) => {
         let len = r.len();
-        if (len == 0) {
+        if len == 0 {
           return None;
         }
         Some(future::ok::<(Vec<u8>, usize), _>((r, pos + len)))
