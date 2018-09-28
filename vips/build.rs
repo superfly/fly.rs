@@ -6,6 +6,8 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
+  println!("cargo:rerun-if-changed=wrapper.h");
+
   let crate_root = env::var("CARGO_MANIFEST_DIR").unwrap();
 
   let glib = pkg_config::Config::new()
@@ -16,16 +18,33 @@ fn main() {
   // Configure and generate bindings.
   let mut bindings = builder()
     .header("wrapper.h")
-    .whitelist_type("vips_.*")
-    .whitelist_function("vips_.*")
-    .whitelist_var("vips_.*")
-    .whitelist_type("g_object.*")
-    .whitelist_function("g_object.*")
-    .whitelist_var("g_object.*")
+    .ctypes_prefix("libc")
+    .rustified_enum(".*")
+    .blacklist_type("max_align_t")
+    .blacklist_type("FP_NAN")
+    .blacklist_type("FP_INFINITE")
+    .blacklist_type("FP_ZERO")
+    .blacklist_type("FP_SUBNORMAL")
+    .blacklist_type("FP_NORMAL")
     .derive_debug(true)
     .derive_hash(true)
     .derive_eq(true)
-    .derive_partialeq(true);
+    .derive_partialeq(true)
+    .clang_arg("-isystem/usr/include")
+    .clang_arg("-isysroot/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk");
+
+  // .whitelist_type("vips_.*")
+  // .whitelist_function("vips_.*")
+  // .whitelist_var("vips_.*")
+  // .whitelist_type("VIPS_.*")
+  // .whitelist_function("VIPS_.*")
+  // .whitelist_var("VIPS_.*")
+  // .whitelist_type("g_object.*")
+  // .whitelist_function("g_object.*")
+  // .whitelist_var("g_object.*")
+  // .whitelist_type("g_value.*")
+  // .whitelist_function("g_value.*")
+  // .whitelist_var("g_value.*")
 
   bindings = bindings.clang_arg(format!(
     "-I{}{}",

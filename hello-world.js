@@ -1,5 +1,19 @@
 console.log("ha");
 
+const coll = flyData.collection("testing")
+coll.put("id", { foo: "bar" }).then(b => {
+  console.log("put returned:", b);
+  coll.get("id").then(d => {
+    console.log("get returned:", d)
+    coll.del("id").then(b => {
+      console.log("del returned:", b)
+      coll.get("id").then(d => {
+        console.log("get returned:", d);
+      }).catch(console.log)
+    }).catch(console.log)
+  }).catch(console.log)
+}).catch(console.log)
+
 // console.log(new TextDecoder().decode(new Uint8Array([104, 101, 108, 108, 111])))
 
 let now = Date.now();

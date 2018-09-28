@@ -6,8 +6,8 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 extern crate libc;
 use libc::c_int;
+use libc::c_void;
 use std::ffi::{CStr, CString};
-use std::os::raw::c_void;
 use std::ptr;
 use std::sync::Once;
 
@@ -18,6 +18,10 @@ pub enum Error {
 pub struct Image(*mut VipsImage);
 
 impl Image {
+    pub fn new() -> Self {
+        Image(unsafe { vips_image_new() })
+    }
+
     pub fn from_file<T: Into<Vec<u8>>>(path: T) -> Result<Self, String> {
         let raw = match CString::new(path) {
             Ok(s) => unsafe { vips_image_new_from_file(s.as_ptr(), ptr::null() as *const c_int) },
@@ -43,6 +47,24 @@ impl Image {
 }
 
 impl Drop for Image {
+    fn drop(&mut self) {
+        unsafe { g_object_unref(self.as_raw() as *mut _ as *mut c_void) };
+    }
+}
+
+pub struct Operation(*mut VipsOperation);
+
+impl Operation {
+    pub fn new<T: Into<Vec<u8>>>(name: T) -> Self {
+        let op = unsafe { vips_operation_new(CString::new(name).unwrap().as_ptr()) };
+        Operation(op)
+    }
+    fn as_raw(&self) -> *mut VipsOperation {
+        self.0
+    }
+}
+
+impl Drop for Operation {
     fn drop(&mut self) {
         unsafe { g_object_unref(self.as_raw() as *mut _ as *mut c_void) };
     }
@@ -76,8 +98,9 @@ mod tests {
     use super::*;
     extern crate libc;
     use std::ffi::CString;
+
     #[test]
-    fn it_works() {
-        assert!(unsafe { vips_init(CString::new("fly").unwrap().as_ptr()) } == 0);
+    fn it_creates_an_empty_image() {
+        assert!(!Image::new().0.is_null())
     }
 }

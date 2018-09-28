@@ -1,2 +1,2 @@
-#include <vips/vips.h>
 #include <glib-object.h>
+#include <vips/vips.h>

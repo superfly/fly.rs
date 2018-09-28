@@ -37,8 +37,12 @@ use self::sha2::Digest; // puts trait in scope
 use self::sha2::Sha256;
 
 extern crate hyper;
+extern crate r2d2;
 extern crate r2d2_redis;
+extern crate r2d2_sqlite;
+extern crate rusqlite;
 use self::r2d2_redis::redis;
+use self::r2d2_sqlite::SqliteConnectionManager;
 
 use self::hyper::body::Payload;
 use self::hyper::client::HttpConnector;
@@ -83,6 +87,7 @@ pub struct Runtime {
 }
 
 static JSINIT: Once = Once::new();
+static NEXT_RUNTIME_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 impl Runtime {
   pub fn new() -> Box<Self> {
@@ -100,21 +105,25 @@ impl Runtime {
     });
 
     let (c, p) = oneshot::channel::<current_thread::Handle>();
-    thread::spawn(move || {
-      let mut l = current_thread::Runtime::new().unwrap();
-      let task = Interval::new_interval(Duration::from_secs(5))
-        .for_each(move |_| {
-          // println!("keepalive");
-          Ok(())
-        }).map_err(|e| panic!("interval errored; err={:?}", e));
-      l.spawn(task);
-      match c.send(l.handle()) {
-        Ok(_) => println!("sent event loop handle fine"),
-        Err(e) => panic!(e),
-      };
+    thread::Builder::new()
+      .name(format!(
+        "runtime-loop-{}",
+        NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
+      )).spawn(move || {
+        let mut l = current_thread::Runtime::new().unwrap();
+        let task = Interval::new_interval(Duration::from_secs(5))
+          .for_each(move |_| {
+            // println!("keepalive");
+            Ok(())
+          }).map_err(|e| panic!("interval errored; err={:?}", e));
+        l.spawn(task);
+        match c.send(l.handle()) {
+          Ok(_) => println!("sent event loop handle fine"),
+          Err(e) => panic!(e),
+        };
 
-      l.run()
-    });
+        l.run()
+      });
 
     let mut rt_box = Box::new(Runtime {
       ptr: JsRuntime(0 as *const js_runtime),
@@ -171,11 +180,9 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
   Box::leak(rt_box)
 }
 
-const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../fly/packages/v8env/dist/v8env.js.map");
-
 extern crate tokio_io_pool;
 
-// pub static mut EVENT_LOOP: Option<tokio_io_pool::Runtime> = None;
+const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../fly/packages/v8env/dist/v8env.js.map");
 
 extern crate sourcemap;
 use self::sourcemap::SourceMap;
@@ -194,9 +201,15 @@ lazy_static! {
     )
   };
 
+  static ref SQLITE_POOL: Arc<r2d2::Pool<SqliteConnectionManager>> = {
+    let manager = SqliteConnectionManager::file("play.db");
+    let pool = r2d2::Pool::builder().build(manager).unwrap();
+    Arc::new(pool)
+  };
+
   static ref SM_CHAN: Mutex<stdmspc::Sender<(Vec<(u32, u32, String,String)>, oneshot::Sender<Vec<(u32, u32, String, String)>>)>> = {
     let (sender, receiver) = stdmspc::channel::<(Vec<(u32, u32, String, String)>, oneshot::Sender<Vec<(u32, u32, String, String)>>)>();
-    thread::spawn(move||{
+    thread::Builder::new().name("sourcemapper".to_string()).spawn(move||{
       let sm = SourceMap::from_reader(V8ENV_SOURCEMAP).unwrap();
       for tup in receiver.iter() {
         let ch = tup.1;
@@ -271,6 +284,10 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CryptoDigest => handle_crypto_digest,
     msg::Any::CryptoRandomValues => handle_crypto_random_values,
     msg::Any::SourceMap => handle_source_map,
+    msg::Any::DataPut => handle_data_put,
+    msg::Any::DataGet => handle_data_get,
+    msg::Any::DataDel => handle_data_del,
+    msg::Any::DataDropCollection => handle_data_drop_coll,
     _ => unimplemented!(),
   };
 
@@ -1077,27 +1094,118 @@ where
   (delay_task, cancel_tx)
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-  extern crate sourcemap;
-  use self::sourcemap::{decode, DecodedMap, SourceMap};
-  use std::fs;
+fn handle_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_data_put().unwrap();
+  let coll = msg.collection().unwrap().to_string();
+  let key = msg.key().unwrap().to_string();
+  let value = msg.json().unwrap().to_string();
 
-  #[test]
-  fn it_sm() {
-    let mut f = fs::File::open("fly/packages/v8env/dist/v8env.js.map").unwrap();
-    let sm = sourcemap::decode(&mut f).unwrap();
-    match sm {
-      DecodedMap::Regular(s) => {
-        println!("got a regular map!");
-        let t = s.lookup_token(12956, 20).unwrap();
-        println!("token: {:?}", t);
-        let (source, src_line, src_col, name) = t.to_tuple();
-        println!("{:?} {}:{} {}", name, src_line, src_col, source);
+  Box::new(future::lazy(move || -> FlyResult<Buf> {
+    let pool = Arc::clone(&SQLITE_POOL);
+    let con = pool.get().unwrap(); // TODO: no unwrap
+
+    create_collection(&*con, &coll).unwrap();
+
+    match con.execute(
+      format!("INSERT OR REPLACE INTO {} VALUES (?, ?)", coll).as_str(),
+      &[&key, &value],
+    ) {
+      Ok(r) => {
+        println!("PUT returned: {}", r);
+        Ok(None)
       }
-      DecodedMap::Index(s) => println!("got an index map!"),
-    };
-    assert!(true);
-  }
+      Err(e) => Err(format!("{}", e).into()),
+    }
+  }))
+}
+
+fn handle_data_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_data_get().unwrap();
+  let coll = msg.collection().unwrap().to_string();
+  let key = msg.key().unwrap().to_string();
+
+  Box::new(future::lazy(move || -> FlyResult<Buf> {
+    let pool = Arc::clone(&SQLITE_POOL);
+    let con = pool.get().unwrap(); // TODO: no unwrap
+
+    create_collection(&*con, &coll).unwrap();
+
+    match con.query_row::<String, _>(
+      format!("SELECT obj FROM {} WHERE key == ?", coll).as_str(),
+      &[&key],
+      |row| row.get(0),
+    ) {
+      Err(e) => match e {
+        rusqlite::Error::QueryReturnedNoRows => Ok(None),
+        _ => Err(format!("{}", e).into()),
+      },
+      Ok(s) => {
+        let builder = &mut FlatBufferBuilder::new();
+        let json = builder.create_string(&s);
+        let msg = msg::DataGetReady::create(
+          builder,
+          &msg::DataGetReadyArgs {
+            json: Some(json),
+            ..Default::default()
+          },
+        );
+        Ok(serialize_response(
+          cmd_id,
+          builder,
+          msg::BaseArgs {
+            msg: Some(msg.as_union_value()),
+            msg_type: msg::Any::DataGetReady,
+            ..Default::default()
+          },
+        ))
+      }
+    }
+  }))
+}
+
+fn handle_data_del(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_data_del().unwrap();
+  let coll = msg.collection().unwrap().to_string();
+  let key = msg.key().unwrap().to_string();
+
+  Box::new(future::lazy(move || -> FlyResult<Buf> {
+    let pool = Arc::clone(&SQLITE_POOL);
+    let con = pool.get().unwrap(); // TODO: no unwrap
+
+    create_collection(&*con, &coll).unwrap();
+
+    match con.execute(
+      format!("DELETE FROM {} WHERE key == ?", coll).as_str(),
+      &[&key],
+    ) {
+      Ok(_) => Ok(None),
+      Err(e) => Err(format!("{}", e).into()),
+    }
+  }))
+}
+
+fn handle_data_drop_coll(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_data_del().unwrap();
+  let coll = msg.collection().unwrap().to_string();
+
+  Box::new(future::lazy(move || -> FlyResult<Buf> {
+    let pool = Arc::clone(&SQLITE_POOL);
+    let con = pool.get().unwrap(); // TODO: no unwrap
+
+    match con.execute(format!("DROP TABLE IF EXISTS {}", coll).as_str(), &[]) {
+      Ok(_) => Ok(None),
+      Err(e) => Err(format!("{}", e).into()),
+    }
+  }))
+}
+
+fn create_collection(con: &rusqlite::Connection, name: &String) -> rusqlite::Result<usize> {
+  con.execute(
+    format!(
+      "CREATE TABLE IF NOT EXISTS {} (key TEXT PRIMARY KEY NOT NULL, obj JSON NOT NULL)",
+      name
+    ).as_str(),
+    &[],
+  )
 }

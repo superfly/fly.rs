@@ -17,6 +17,11 @@ union Any {
   CryptoRandomValuesReady,
   SourceMap,
   SourceMapReady,
+  DataPut,
+  DataGet,
+  DataGetReady,
+  DataDel,
+  DataDropCollection,
 }
 
 enum ErrorKind: byte {
@@ -181,6 +186,26 @@ table SourceMap {
 
 table SourceMapReady {
   frames: [Frame];
+}
+
+table DataPut {
+  collection: string;
+  key: string;
+  json: string;
+}
+table DataGet {
+  collection: string;
+  key: string;
+}
+table DataGetReady {
+  json: string;
+}
+table DataDel {
+  collection: string;
+  key: string;
+}
+table DataDropCollection {
+  collection: string;
 }
 
 root_type Base;

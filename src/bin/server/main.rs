@@ -19,7 +19,7 @@ extern crate hyper;
 use hyper::body::Payload;
 use hyper::header;
 use hyper::rt::{poll_fn, Future, Stream};
-use hyper::service::{service_fn, service_fn_ok, Service};
+use hyper::service::{service_fn, Service};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
 #[macro_use]
