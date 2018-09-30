@@ -24,8 +24,7 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
 #[macro_use]
 extern crate futures;
-use futures::stream;
-use futures::sync::{mpsc, oneshot};
+use futures::sync::oneshot;
 use std::sync::mpsc::RecvError;
 
 use std::fs::File;
@@ -289,23 +288,6 @@ fn main() {
 
     let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
 
-    // FAST, one at a time:
-
-    // let ln = tokio::net::TcpListener::bind(&addr).expect("unable to bind TCP listener");
-    // let server = ln
-    //     .incoming()
-    //     .map_err(|_| unreachable!())
-    //     .for_each(move |sock| {
-    //         println!("got sock");
-    //         hyper::server::conn::Http::new()
-    //             .serve_connection(sock, FlyServer {})
-    //             .map_err(|e| {
-    //                 eprintln!("error serving conn: {}", e);
-    //                 // sock.shutdown(net::Shutdown::Both);
-    //             })
-    //     });
-
-    // SLOW, TOO MUCH CONCURRENCY but simpler...
     let server = Server::bind(&addr)
         .serve(move || service_fn(move |req| FlyServer {}.call(req)))
         .map_err(|e| eprintln!("server error: {}", e));
@@ -315,6 +297,4 @@ fn main() {
     };
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
-
-    // let el = EVENT_LOOP.read().unwrap();
 }

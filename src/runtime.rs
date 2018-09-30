@@ -112,7 +112,7 @@ impl Runtime {
         };
 
         l.run()
-      });
+      }).unwrap();
 
     let mut rt_box = Box::new(Runtime {
       ptr: JsRuntime(0 as *const js_runtime),
@@ -179,65 +179,56 @@ extern crate sourcemap;
 use self::sourcemap::SourceMap;
 
 lazy_static! {
-  static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
-    // let filename = "fly/packages/v8env/dist/v8env.js";
-    // let mut file = File::open(filename).unwrap();
-    // let mut contents = String::new();
-    // file.read_to_string(&mut contents).unwrap();
-
-    // js_create_snapshot(
-    //   CString::new("v8env.js").unwrap().as_ptr(),
-    //   CString::new(contents).unwrap().as_ptr(),
-    // )
-    println!("sourcemap bytes: {:?}", &V8ENV_SOURCEMAP[0..30]);
-    fly_simple_buf{ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8, len: V8ENV_SNAPSHOT.len() as i32}
+  static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
+    ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
+    len: V8ENV_SNAPSHOT.len() as i32
   };
-
   static ref SQLITE_POOL: Arc<r2d2::Pool<SqliteConnectionManager>> = {
     let manager = SqliteConnectionManager::file("play.db");
     let pool = r2d2::Pool::builder().build(manager).unwrap();
     Arc::new(pool)
   };
-
-  static ref SM_CHAN: Mutex<stdmspc::Sender<(Vec<(u32, u32, String,String)>, oneshot::Sender<Vec<(u32, u32, String, String)>>)>> = {
-    let (sender, receiver) = stdmspc::channel::<(Vec<(u32, u32, String, String)>, oneshot::Sender<Vec<(u32, u32, String, String)>>)>();
-    thread::Builder::new().name("sourcemapper".to_string()).spawn(move||{
-      let sm = SourceMap::from_reader(V8ENV_SOURCEMAP).unwrap();
-      for tup in receiver.iter() {
-        let ch = tup.1;
-        let v = tup.0;
-        ch.send(v.iter()
-          .map(|(line, col, name, filename)| {
-            if filename == "v8env.js" {
-              return match sm.lookup_token(*line, *col) {
-                Some(t) => {
-                  let newline = t.get_src_line();
-                  let newcol = t.get_src_col();
-                  let newfilename = match t.get_source() {
-                    Some(s) => String::from(s),
-                    None => filename.clone()
+  static ref SM_CHAN: Mutex<
+    stdmspc::Sender<(
+      Vec<(u32, u32, String, String)>,
+      oneshot::Sender<Vec<(u32, u32, String, String)>>
+    )>,
+  > = {
+    let (sender, receiver) = stdmspc::channel::<(
+      Vec<(u32, u32, String, String)>,
+      oneshot::Sender<Vec<(u32, u32, String, String)>>,
+    )>();
+    thread::Builder::new()
+      .name("sourcemapper".to_string())
+      .spawn(move || {
+        let sm = SourceMap::from_reader(V8ENV_SOURCEMAP).unwrap();
+        for tup in receiver.iter() {
+          let ch = tup.1;
+          let v = tup.0;
+          ch.send(
+            v.iter()
+              .map(|(line, col, name, filename)| {
+                if filename == "v8env.js" {
+                  return match sm.lookup_token(*line, *col) {
+                    Some(t) => {
+                      let newline = t.get_src_line();
+                      let newcol = t.get_src_col();
+                      let newfilename = match t.get_source() {
+                        Some(s) => String::from(s),
+                        None => filename.clone(),
+                      };
+                      (newline, newcol, name.clone(), newfilename)
+                    }
+                    None => (*line, *col, name.clone(), filename.clone()),
                   };
-                  (newline, newcol, name.clone(), newfilename)
                 }
-                None => (*line, *col, name.clone(), filename.clone())
-              };
-            }
-            (*line, *col, name.clone(), filename.clone())
-          }).collect()
-        );
-      }
-    });
+                (*line, *col, name.clone(), filename.clone())
+              }).collect(),
+          ).unwrap();
+        }
+      }).unwrap();
     Mutex::new(sender)
   };
-
-  // static ref V8ENV_SOURCEMAP: Arc<Mutex<SourceMap>> = {
-  //   let mut f = fs::File::open("fly/packages/v8env/dist/v8env.js.map").unwrap();
-  //   match sourcemap::decode(&mut f).unwrap() {
-  //     DecodedMap::Regular(s) => Arc::new(Mutex::new(s)),
-  //     _ => unimplemented!()
-  //   }
-  // };
-  // pub static ref EVENT_LOOP: Arc<tokio_io_pool::Runtime> = Arc::new(tokio_io_pool::Runtime::new());
 }
 
 // pub static mut EVENT_LOOP: Option<Mutex<tokio_io_pool::Runtime>> = None;
@@ -257,7 +248,6 @@ type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 
 use std::slice;
 
-#[no_mangle]
 pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly_buf) {
   let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
   let base = msg::get_root_as_base(bytes);
@@ -1110,7 +1100,7 @@ fn handle_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn handle_data_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn handle_data_get(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_data_get().unwrap();
   let coll = msg.collection().unwrap().to_string();
