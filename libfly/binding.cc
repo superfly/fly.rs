@@ -52,7 +52,7 @@ v8::StartupData SerializeInternalFields(v8::Local<v8::Object> holder, int index,
   return {payload, size};
 }
 
-// auto allocator = v8::ArrayBuffer::Allocator::NewDefaultAllocator();
+extern "C" void free_fly_buf(fly_buf);
 
 static inline v8::Local<v8::String> v8_str(v8::Isolate *iso, const char *s)
 {
@@ -470,9 +470,11 @@ extern "C"
     v8::Local<v8::Value> args[args_len];
 
     args[0] = ImportBuf(rt, buf);
+    free_fly_buf(buf);
     if (raw.data_len > 0)
     {
       args[1] = ImportBuf(rt, raw);
+      // free_fly_buf(raw);
     }
 
     recv->Call(context->Global(), args_len, args);
@@ -490,6 +492,7 @@ extern "C"
   void js_set_response(const js_runtime *rt, fly_buf buf)
   {
     auto ab = ImportBuf(rt, buf);
+    free_fly_buf(buf);
     rt->current_args->GetReturnValue().Set(ab);
   }
 

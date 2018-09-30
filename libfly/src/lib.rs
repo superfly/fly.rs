@@ -78,3 +78,8 @@ extern "C" {
 
     pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char) -> bool;
 }
+
+#[no_mangle]
+pub extern "C" fn free_fly_buf(buf: fly_buf) {
+    unsafe { Box::from_raw(buf.data_ptr) };
+}

@@ -415,7 +415,6 @@ pub fn serialize_response(
   let base = msg::Base::create(builder, &args);
   msg::finish_base_buffer(builder, base);
   let data = builder.finished_data();
-  // println!("serialize_response {:x?}", data);
   let vec = data.to_vec();
   Some(vec.into_boxed_slice())
 }
