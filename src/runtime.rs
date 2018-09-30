@@ -91,18 +91,7 @@ static NEXT_RUNTIME_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 impl Runtime {
   pub fn new() -> Box<Self> {
-    JSINIT.call_once(|| unsafe {
-      js_init(
-        fly_simple_buf {
-          ptr: NATIVES_DATA.as_ptr() as *const i8,
-          len: NATIVES_DATA.len() as i32,
-        },
-        fly_simple_buf {
-          ptr: SNAPSHOT_DATA.as_ptr() as *const i8,
-          len: SNAPSHOT_DATA.len() as i32,
-        },
-      )
-    });
+    JSINIT.call_once(|| unsafe { js_init() });
 
     let (c, p) = oneshot::channel::<current_thread::Handle>();
     thread::Builder::new()
@@ -138,6 +127,7 @@ impl Runtime {
       let ptr = js_runtime_new(
         *FLY_SNAPSHOT,
         rt_box.as_ref() as *const _ as *mut libc::c_void,
+        msg_from_js,
       );
       js_eval(
         ptr,
@@ -183,22 +173,24 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
 extern crate tokio_io_pool;
 
 const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../fly/packages/v8env/dist/v8env.js.map");
+const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
 
 extern crate sourcemap;
 use self::sourcemap::SourceMap;
 
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = unsafe {
+    // let filename = "fly/packages/v8env/dist/v8env.js";
+    // let mut file = File::open(filename).unwrap();
+    // let mut contents = String::new();
+    // file.read_to_string(&mut contents).unwrap();
 
-    let filename = "fly/packages/v8env/dist/v8env.js";
-    let mut file = File::open(filename).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-
-    js_create_snapshot(
-      CString::new("v8env.js").unwrap().as_ptr(),
-      CString::new(contents).unwrap().as_ptr(),
-    )
+    // js_create_snapshot(
+    //   CString::new("v8env.js").unwrap().as_ptr(),
+    //   CString::new(contents).unwrap().as_ptr(),
+    // )
+    println!("sourcemap bytes: {:?}", &V8ENV_SOURCEMAP[0..30]);
+    fly_simple_buf{ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8, len: V8ENV_SNAPSHOT.len() as i32}
   };
 
   static ref SQLITE_POOL: Arc<r2d2::Pool<SqliteConnectionManager>> = {
@@ -759,7 +751,6 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         };
         Ok(())
       }).and_then(move |_| {
-        println!("done getting bytes");
         let builder = &mut FlatBufferBuilder::new();
         let chunk_msg = msg::StreamChunk::create(
           builder,

@@ -59,10 +59,16 @@ pub fn version() -> String {
     unsafe { CStr::from_ptr(js_version()).to_string_lossy().into_owned() }
 }
 
+type RecvCb = unsafe extern "C" fn(rt: *const js_runtime, buf: fly_buf, data_buf: fly_buf);
+
 extern "C" {
-    pub fn js_init(natives: fly_simple_buf, snapshot: fly_simple_buf);
+    pub fn js_init();
     pub fn js_version() -> *const c_char;
-    pub fn js_runtime_new(snapshot: fly_simple_buf, data: *mut c_void) -> *const js_runtime;
+    pub fn js_runtime_new(
+        snapshot: fly_simple_buf,
+        data: *mut c_void,
+        cb: RecvCb,
+    ) -> *const js_runtime;
     pub fn js_get_data(rt: *const js_runtime) -> *const c_void;
     pub fn js_set_response(rt: *const js_runtime, buf: fly_buf);
     pub fn js_send(rt: *const js_runtime, buf: fly_buf, raw: fly_buf) -> c_int;
@@ -72,8 +78,3 @@ extern "C" {
 
     pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char) -> bool;
 }
-
-pub const NATIVES_DATA: &'static [u8] =
-    include_bytes!("../third_party/v8/out.gn/x64.debug/natives_blob.bin");
-pub const SNAPSHOT_DATA: &'static [u8] =
-    include_bytes!("../third_party/v8/out.gn/x64.debug/snapshot_blob.bin");

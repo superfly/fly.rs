@@ -1,5 +1,6 @@
 #include <v8.h>
 #include "binding.h"
+#include "runtime.h"
 #include <libplatform/libplatform.h>
 #include "allocator.h"
 #include "file_output_stream.h"
@@ -74,8 +75,6 @@ char *str_to_char(const v8::String::Utf8Value &src)
 {
   return strdup(*src);
 }
-
-extern "C" void msg_from_js(const js_runtime *, fly_buf, fly_buf);
 
 js_runtime *FromIsolate(v8::Isolate *isolate)
 {
@@ -322,9 +321,7 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   }
 
   rt->current_args = &args;
-
-  msg_from_js(rt, buf, raw);
-
+  rt->cb(rt, buf, raw);
   rt->current_args = nullptr;
 }
 
@@ -389,58 +386,40 @@ extern "C"
     return v8::V8::GetVersion();
   }
 
-  void js_init(fly_simple_buf natives_blob, fly_simple_buf snapshot_blob)
+  void js_init()
   {
-    v8::StartupData natives;
-    natives.data = natives_blob.ptr;
-    natives.raw_size = natives_blob.len;
-    v8::V8::SetNativesDataBlob(&natives);
-
-    // TODO: make a custom snapshot
-    v8::StartupData snapshot;
-    snapshot.data = snapshot_blob.ptr;
-    snapshot.raw_size = snapshot_blob.len;
-    v8::V8::SetSnapshotDataBlob(&snapshot);
-
-    // v8::V8::InitializeExternalStartupData(natives_blob, snapshot_blob);
     auto p = v8::platform::CreateDefaultPlatform();
     v8::V8::InitializePlatform(p);
     v8::V8::Initialize();
-
-    // int argc = 4;
-    // const char *flags[] = {
-    //     "--max-semi-space-size", "0",
-    //     "--max-old-space-size", "0"};
-    // V8::SetFlagsFromCommandLine(&argc, const_cast<char **>(flags), false);
     return;
   }
 
-  const js_runtime *js_runtime_new(fly_simple_buf snapshot, void *data)
+  const js_runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb)
   {
     js_runtime *rt = new js_runtime;
 
-    v8::Isolate::CreateParams create_params;
-
+    rt->cb = cb;
     rt->allocator = new LimitedAllocator(10240 * 1024 * 1024);
+    v8::Isolate::CreateParams params;
 
-    if (snapshot.len > 0)
-    {
-      v8::StartupData blob;
-      blob.data = snapshot.ptr;
-      blob.raw_size = static_cast<int>(snapshot.len);
+    params.array_buffer_allocator = rt->allocator;
 
-      create_params.snapshot_blob = &blob;
-      create_params.external_references = ext_refs;
-    }
-
-    // TODO: create custom, better, allocator
-    create_params.array_buffer_allocator = rt->allocator;
+    // if (snapshot.len > 0)
+    // {
+    printf("SNAPSHOT LEN: %i\n", snapshot.len);
+    auto *blob = new v8::StartupData;
+    blob->data = snapshot.ptr;
+    blob->raw_size = static_cast<int>(snapshot.len);
+    params.snapshot_blob = blob;
+    params.external_references = ext_refs;
+    // }
 
     v8::ResourceConstraints rc;
     rc.set_max_old_space_size(128);
-    // rc.set_max_semi_space_size()
 
-    v8::Isolate *isolate = v8::Isolate::New(create_params);
+    params.constraints = rc;
+
+    v8::Isolate *isolate = v8::Isolate::New(params);
     isolate->SetData(0, rt);
     rt->isolate = isolate;
 
@@ -456,6 +435,8 @@ extern "C"
     }
 
     rt->data = data;
+
+    delete blob;
 
     return rt;
   }

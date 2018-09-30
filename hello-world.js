@@ -36,17 +36,13 @@ addEventListener("fetch", function (event) {
     let u = url.searchParams.get("url");
     let toFetch = new Request(req)
     toFetch.url = u;
-    console.log("to fetch url:", toFetch.url);
 
     if (url.searchParams.get("cache")) {
       return event.respondWith(cache.match(toFetch).then(res => {
-        console.log("got res?", !!res);
         if (res)
           return res
 
-        console.log("fetching then... url:", toFetch.url);
         return fetch(toFetch).then(res => {
-          console.log("fetched!")
           try {
             cache.put(toFetch, res.clone())
             return res
