@@ -35,7 +35,7 @@
   - ensure `./third_party/flatbuffers/Debug` is in `$PATH`
   - `cd ../../`
 - `cd fly/packages/v8env`
-  - `yarn build`
+  - `yarn install && yarn build`
   - `rollup -c`
   - `cd ../../../`
 - `cargo run`
