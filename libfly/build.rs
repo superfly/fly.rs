@@ -35,7 +35,6 @@ fn main() {
     .file("binding.cc")
     .include(Path::new("third_party/v8/include/"))
     .cpp(true)
-    // .warnings(true)
     .extra_warnings(false)
     .flag("--std=c++11")
     .compile("libfly.a");
@@ -59,19 +58,5 @@ fn main() {
     "cargo:rustc-link-search=native={}/third_party/v8/out.gn/x64.release/obj",
     crate_dir
   );
-  // println!(
-  //   "cargo:rustc-link-search=native={}/third_party/v8/out.gn/x64.release/obj/third_party/icu",
-  //   crate_dir
-  // );
-
-  // println!("cargo:rustc-link-lib=dylib=v8_init");
-  // println!("cargo:rustc-link-lib=dylib=v8_initializers");
   println!("cargo:rustc-link-lib=static=v8_monolith");
-  // println!("cargo:rustc-link-lib=dylib=v8_external_snapshot");
-  // println!("cargo:rustc-link-lib=dylib=v8_base");
-  // println!("cargo:rustc-link-lib=dylib=v8_nosnapshot");
-  // println!("cargo:rustc-link-lib=dylib=v8_libbase");
-  // println!("cargo:rustc-link-lib=dylib=v8_libplatform");
-  // println!("cargo:rustc-link-lib=dylib=icui18n");
-  // println!("cargo:rustc-link-lib=dylib=icuuc");
 }
