@@ -28,8 +28,9 @@
     ```
   - `ninja -C out.gn/x64.release`
   - go get coffee for about 30 minutes while your laptop flies off
-  - `cd ../../`
+  - `cd ../../../`
 - `cd third_party/flatbuffers`
+  - `cmake -G "Xcode" -DCMAKE_BUILD_TYPE=Release`
   - `cmakexbuild`
   - ensure `./third_party/flatbuffers/Debug` is in `$PATH`
   - `cd ../../`
