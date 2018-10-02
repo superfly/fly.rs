@@ -1,5 +1,3 @@
-console.log("ha");
-
 const coll = flyData.collection("testing")
 coll.put("id", { foo: "bar" }).then(b => {
   console.log("put returned:", b);

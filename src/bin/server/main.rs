@@ -282,9 +282,9 @@ fn main() {
             Ok(())
         }).map_err(|e| panic!("interval errored; err={:?}", e));
 
-    let mut main_el = tokio_io_pool::Runtime::new();
+    let mut main_el = tokio::runtime::Runtime::new().unwrap();
 
-    main_el.spawn(task).unwrap();
+    main_el.spawn(task);
 
     let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
 
@@ -293,7 +293,7 @@ fn main() {
         .map_err(|e| eprintln!("server error: {}", e));
 
     unsafe {
-        EVENT_LOOP_HANDLE = Some(Arc::new(Mutex::new(main_el.handle().clone())));
+        EVENT_LOOP_HANDLE = Some(main_el.executor());
     };
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();

@@ -64,6 +64,12 @@ use redis_stream;
 extern crate rand;
 use self::rand::{thread_rng, Rng};
 
+extern crate tokio_fs;
+// use self::tokio_fs;
+
+extern crate tokio_codec;
+use self::tokio_codec::{BytesCodec, FramedRead};
+
 #[derive(Debug)]
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
@@ -231,8 +237,8 @@ lazy_static! {
   };
 }
 
-// pub static mut EVENT_LOOP: Option<Mutex<tokio_io_pool::Runtime>> = None;
-pub static mut EVENT_LOOP_HANDLE: Option<Arc<Mutex<tokio_io_pool::Handle>>> = None;
+// pub static mut EVENT_LOOP: Option<Mutex<tokio::Runtime>> = None;
+pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
 
 // Buf represents a byte array returned from a "Op".
 // The message might be empty (which will be translated into a null object on
@@ -793,9 +799,204 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   // ))
 }
 
+fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
+  let req_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let rtptr = rt.ptr;
+
+  // let urlstr = String::from(url);
+
+  let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
+
+  let rtptr2 = rtptr.clone();
+
+  let urlstr: String = url.chars().skip(7).collect();
+
+  let fut = future::lazy(move || {
+    tokio_fs::File::open(urlstr).then(move |fileerr| -> Result<(), ()> {
+      if let Err(err) = fileerr {
+        use std::io::ErrorKind::*;
+        match err.kind() {
+          NotFound => p.send(Ok(JsHttpResponse {
+            headers: HeaderMap::new(),
+            status: StatusCode::NOT_FOUND,
+            bytes: None,
+          })),
+          _ => p.send(Err(err.into())),
+        };
+        return Ok(());
+      }
+
+      let file = fileerr.unwrap(); // should be safe.
+
+      let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
+      let bytes_rx = Some(rx);
+      let mut bytes = from_c(rtptr2.0).bytes.lock().unwrap();
+      bytes.insert(req_id, tx);
+
+      p.send(Ok(JsHttpResponse {
+        headers: HeaderMap::new(),
+        status: StatusCode::OK,
+        bytes: bytes_rx,
+      }));
+
+      let rt = from_c(rtptr.0); // like a clone
+      rt.rt.lock().unwrap().spawn(future::lazy(move || {
+        let innerfut = Box::new(
+          FramedRead::new(file, BytesCodec::new())
+            .map_err(|e| println!("error reading file chunk! {}", e))
+            .for_each(move |mut chunk| {
+              let builder = &mut FlatBufferBuilder::new();
+              let chunk_msg = msg::StreamChunk::create(
+                builder,
+                &msg::StreamChunkArgs {
+                  id: req_id,
+                  done: false,
+                },
+              );
+              unsafe {
+                js_send(
+                  rtptr.0,
+                  fly_buf_from(
+                    serialize_response(
+                      0,
+                      builder,
+                      msg::BaseArgs {
+                        msg: Some(chunk_msg.as_union_value()),
+                        msg_type: msg::Any::StreamChunk,
+                        ..Default::default()
+                      },
+                    ).unwrap(),
+                  ),
+                  fly_buf {
+                    alloc_ptr: 0 as *mut u8,
+                    alloc_len: 0,
+                    data_ptr: chunk.as_mut_ptr(),
+                    data_len: chunk.len(),
+                  },
+                )
+              };
+              Ok(())
+            }).and_then(move |_| {
+              let builder = &mut FlatBufferBuilder::new();
+              let chunk_msg = msg::StreamChunk::create(
+                builder,
+                &msg::StreamChunkArgs {
+                  id: req_id,
+                  done: true,
+                },
+              );
+              unsafe {
+                js_send(
+                  rtptr.0,
+                  fly_buf_from(
+                    serialize_response(
+                      0,
+                      builder,
+                      msg::BaseArgs {
+                        msg: Some(chunk_msg.as_union_value()),
+                        msg_type: msg::Any::StreamChunk,
+                        ..Default::default()
+                      },
+                    ).unwrap(),
+                  ),
+                  null_buf(),
+                )
+              };
+              Ok(())
+            }),
+        );
+
+        unsafe {
+          match EVENT_LOOP_HANDLE {
+            Some(ref mut elh) => {
+              elh.spawn(innerfut);
+            }
+            None => panic!("requires a multi-threaded event loop"),
+          }
+        };
+        Ok(())
+      }));
+
+      Ok(())
+    })
+  });
+
+  let fut2 = c
+    .map_err(|e| {
+      FlyError::from(io::Error::new(
+        io::ErrorKind::Other,
+        format!("err getting response from oneshot: {}", e).as_str(),
+      ))
+    }).and_then(move |reserr: FlyResult<JsHttpResponse>| {
+      if let Err(err) = reserr {
+        return Err(err);
+      }
+
+      let res = reserr.unwrap();
+
+      let builder = &mut FlatBufferBuilder::new();
+      let headers: Vec<_> = res
+        .headers
+        .iter()
+        .map(|(key, value)| {
+          let key = builder.create_string(key.as_str());
+          let value = builder.create_string(value.to_str().unwrap());
+          msg::HttpHeader::create(
+            builder,
+            &msg::HttpHeaderArgs {
+              key: Some(key),
+              value: Some(value),
+              ..Default::default()
+            },
+          )
+        }).collect();
+
+      let res_headers = builder.create_vector(&headers);
+
+      let msg = msg::FetchHttpResponse::create(
+        builder,
+        &msg::FetchHttpResponseArgs {
+          id: req_id,
+          headers: Some(res_headers),
+          status: res.status.as_u16(),
+          body: res.bytes.is_some(),
+          ..Default::default()
+        },
+      );
+      Ok(serialize_response(
+        cmd_id,
+        builder,
+        msg::BaseArgs {
+          msg: Some(msg.as_union_value()),
+          msg_type: msg::Any::FetchHttpResponse,
+          ..Default::default()
+        },
+      ))
+    });
+
+  unsafe {
+    match EVENT_LOOP_HANDLE {
+      Some(ref mut elh) => {
+        elh.spawn(fut);
+      }
+      None => {
+        rt.rt.lock().unwrap().spawn(fut);
+      }
+    }
+  };
+
+  Box::new(fut2)
+}
+
 fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_http_request().unwrap();
+
+  let url = msg.url().unwrap();
+  if url.starts_with("file://") {
+    return handle_file_request(rt, cmd_id, url);
+  }
+
   let req_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
@@ -808,7 +1009,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 
   let mut req = Request::new(req_body);
   {
-    let uri: hyper::Uri = msg.url().unwrap().parse().unwrap();
+    let uri: hyper::Uri = url.parse().unwrap();
     // println!("url: {:?}", uri);
     *req.uri_mut() = uri;
     *req.method_mut() = match msg.method() {
@@ -962,10 +1163,12 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 
   unsafe {
     match EVENT_LOOP_HANDLE {
-      Some(ref elh) => {
-        elh.lock().unwrap().spawn(fut);
+      Some(ref mut elh) => {
+        elh.spawn(fut);
       }
-      _ => panic!("event loop handle is NONE"),
+      None => {
+        rt.rt.lock().unwrap().spawn(fut);
+      }
     }
   };
 

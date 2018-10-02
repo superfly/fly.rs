@@ -32,6 +32,10 @@ url = "1.7"
 sourcemap = "2.2"
 rand = "0.5"
 libfly = { path = "libfly" }
+tokio-udp = "0.1.2"
+trust-dns-server = "0.15.0-alpha.1"
+tokio-fs = "0.1"
+tokio-codec = "0.1"
 
 [workspace]
 
