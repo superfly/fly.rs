@@ -38,4 +38,27 @@
   - `yarn install && yarn build`
   - `rollup -c`
   - `cd ../../../`
-- `cargo run`
+- `cargo build --bin create_snapshot`
+  - `target/debug/create_snapshot fly/packages/v8env/dist/v8env.js v8env.bin`
+- `cargo run --bin server`
+
+## TODO
+
+- [ ] Send `print` (all `console.x` calls) back into Rust to handle in various ways
+  - [ ] Send errors to stderr
+  - [ ] Use envlogger (`debug!`, `info!`, etc. macros) for messages
+  - [ ] Allow sending to graylog or something external
+- [ ] Builder
+  - [ ] TypeScript support
+  - [ ] HTTP imports!
+- [ ] CI builds + releases
+  - [ ] Mac
+  - [ ] Linux
+  - [ ] Windows
+- HTTP
+  - [ ] Actually use the config hostnames and correct app
+  - [ ] Add `Server` header for Fly and current version
+- Stability / Resilience
+  - [ ] do not use `unwrap` (that will panic and exit the process). Solution is to handle them and return or print proper errors
+  - [ ] Get rid of all warnings
+  - [ ] Tests!
