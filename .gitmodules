@@ -10,7 +10,7 @@
 [submodule "fly"]
 	path = fly
 	url = git@github.com:superfly/fly.git
-	branch = crazytrain-rust
+	branch = crazytrain-rust2
 [submodule "libvips"]
 	path = vips/third_party/libvips
 	url = https://github.com/libvips/libvips.git
