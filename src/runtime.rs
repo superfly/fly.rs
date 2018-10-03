@@ -70,6 +70,12 @@ extern crate tokio_fs;
 extern crate tokio_codec;
 use self::tokio_codec::{BytesCodec, FramedRead};
 
+// extern crate trust_dns as dns;
+extern crate trust_dns as dns;
+// use self::dns::op as dns_op;
+use self::dns::client::ClientHandle;
+use self::dns::rr as dns_rr;
+
 #[derive(Debug)]
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
@@ -82,7 +88,6 @@ pub struct JsRuntime(pub *const js_runtime);
 unsafe impl Send for JsRuntime {}
 unsafe impl Sync for JsRuntime {}
 
-#[derive(Debug)]
 pub struct Runtime {
   pub ptr: JsRuntime,
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
@@ -184,6 +189,9 @@ const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
 extern crate sourcemap;
 use self::sourcemap::SourceMap;
 
+// pub static mut EVENT_LOOP: Option<Mutex<tokio::Runtime>> = None;
+pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
+
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
     ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
@@ -193,6 +201,24 @@ lazy_static! {
     let manager = SqliteConnectionManager::file("play.db");
     let pool = r2d2::Pool::builder().build(manager).unwrap();
     Arc::new(pool)
+  };
+  static ref DNS_RESOLVER: Mutex<dns::client::BasicClientHandle> = {
+    let (stream, handle) = dns::udp::UdpClientStream::new(([8, 8, 8, 8], 53).into());
+    let client = dns::client::ClientFuture::new(stream, handle, None);
+    let (tx, rx) = oneshot::channel::<dns::client::BasicClientHandle>();
+    unsafe {
+      EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(
+        client
+          .map_err(|e| println!("error getting dns client: {}", e))
+          .and_then(move |client| {
+            println!("got a client from the spawned future :D");
+            tx.send(client);
+            Ok(())
+          }),
+      )
+    };
+    println!("spawned, waiting for a client");
+    Mutex::new(rx.wait().unwrap())
   };
   static ref SM_CHAN: Mutex<
     stdmspc::Sender<(
@@ -237,9 +263,6 @@ lazy_static! {
   };
 }
 
-// pub static mut EVENT_LOOP: Option<Mutex<tokio::Runtime>> = None;
-pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
-
 // Buf represents a byte array returned from a "Op".
 // The message might be empty (which will be translated into a null object on
 // the javascript side) or it is a heap allocated opaque sequence of bytes.
@@ -276,6 +299,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::DataGet => handle_data_get,
     msg::Any::DataDel => handle_data_del,
     msg::Any::DataDropCollection => handle_data_drop_coll,
+    msg::Any::DnsQuery => handle_dns_query,
     _ => unimplemented!(),
   };
 
@@ -986,6 +1010,286 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   };
 
   Box::new(fut2)
+}
+
+fn handle_dns_query(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  println!("handle dns");
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_dns_query().unwrap();
+  // {
+  //   let rt = from_c(rt.ptr.0);
+  //   let mut maybe_client = rt.dns_client.lock().unwrap();
+  //   if maybe_client.is_none() {
+  //     // probably best not to use google dns
+  //     let (stream, handle) = dns_udp::UdpClientStream::new(([8, 8, 8, 8], 53).into());
+  //     let client = dns_client::ClientFuture::new(stream, handle, None);
+  //     let (tx, rx) = oneshot::channel::<dns_client::BasicClientHandle>();
+  //     {
+  //       rt.rt.lock().unwrap().spawn(
+  //         client
+  //           .map_err(|e| println!("error getting dns client: {}", e))
+  //           .and_then(move |client| {
+  //             println!("got a client from the spawned future :D");
+  //             tx.send(client);
+  //             Ok(())
+  //           }),
+  //       );
+  //     }
+  //     println!("spawned dns client on loop");
+
+  //     let client = rx.wait().unwrap(); // EVENT_LOOP_HANDLE.unwrap().block_on(client).unwrap();
+  //     *maybe_client = Some(client);
+  //   }
+  // }
+  // let mut client = rt.dns_client.lock().unwrap().take().unwrap(); // probably best to not unwrap and double check.
+
+  let query_type = match msg.type_() {
+    msg::DnsRecordType::A => dns::rr::RecordType::A,
+    msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
+    msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
+    msg::DnsRecordType::AXFR => dns::rr::RecordType::AXFR,
+    msg::DnsRecordType::CAA => dns::rr::RecordType::CAA,
+    msg::DnsRecordType::CNAME => dns::rr::RecordType::CNAME,
+    msg::DnsRecordType::IXFR => dns::rr::RecordType::IXFR,
+    msg::DnsRecordType::MX => dns::rr::RecordType::MX,
+    msg::DnsRecordType::NS => dns::rr::RecordType::NS,
+    msg::DnsRecordType::NULL => dns::rr::RecordType::NULL,
+    msg::DnsRecordType::OPT => dns::rr::RecordType::OPT,
+    msg::DnsRecordType::PTR => dns::rr::RecordType::PTR,
+    msg::DnsRecordType::SOA => dns::rr::RecordType::SOA,
+    msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
+    msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
+    msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
+    _ => unimplemented!(),
+  };
+
+  // let type_ = msg.type_();
+  // println!(
+  //   "want type: {:?} {} {:?}",
+  //   type_,
+  //   type_ as u16,
+  //   dns::rr::RecordType::from(msg.type_() as u16)
+  // );
+
+  Box::new(
+    DNS_RESOLVER
+      .lock()
+      .unwrap()
+      .query(
+        msg.name().unwrap().parse().unwrap(),
+        dns::rr::DNSClass::IN,
+        query_type,
+      ).map_err(|e| format!("dns query error: {}", e).into())
+      .and_then(move |res| {
+        // println!("got a dns response! {:?}", res);
+        for q in res.queries() {
+          println!("queried: {:?}", q);
+        }
+        let builder = &mut FlatBufferBuilder::new();
+        let answers: Vec<_> = res
+          .answers()
+          .iter()
+          .map(|ans| {
+            println!("answer: {:?}", ans);
+            use self::dns::rr::{DNSClass, RData, RecordType};
+            let name = builder.create_string(&ans.name().to_utf8());
+            let type_ = match ans.rr_type() {
+              RecordType::A => msg::DnsRecordType::A,
+              RecordType::AAAA => msg::DnsRecordType::AAAA,
+              RecordType::AXFR => msg::DnsRecordType::AXFR,
+              RecordType::CAA => msg::DnsRecordType::CAA,
+              RecordType::CNAME => msg::DnsRecordType::CNAME,
+              RecordType::IXFR => msg::DnsRecordType::IXFR,
+              RecordType::MX => msg::DnsRecordType::MX,
+              RecordType::NS => msg::DnsRecordType::NS,
+              RecordType::NULL => msg::DnsRecordType::NULL,
+              RecordType::OPT => msg::DnsRecordType::OPT,
+              RecordType::PTR => msg::DnsRecordType::PTR,
+              RecordType::SOA => msg::DnsRecordType::SOA,
+              RecordType::SRV => msg::DnsRecordType::SRV,
+              RecordType::TLSA => msg::DnsRecordType::TLSA,
+              RecordType::TXT => msg::DnsRecordType::TXT,
+              _ => unimplemented!(),
+            };
+            let dns_class = match ans.dns_class() {
+              DNSClass::IN => msg::DnsClass::IN,
+              DNSClass::CH => msg::DnsClass::CH,
+              DNSClass::HS => msg::DnsClass::HS,
+              DNSClass::NONE => msg::DnsClass::NONE,
+              DNSClass::ANY => msg::DnsClass::ANY,
+              _ => unimplemented!(),
+            };
+            let rdata_type = match ans.rdata() {
+              RData::A(_) => msg::DnsRecordData::DnsA,
+              RData::AAAA(_) => msg::DnsRecordData::DnsAAAA,
+              RData::CNAME(_) => msg::DnsRecordData::DnsCNAME,
+              RData::MX(_) => msg::DnsRecordData::DnsMX,
+              RData::NS(_) => msg::DnsRecordData::DnsNS,
+              RData::PTR(_) => msg::DnsRecordData::DnsPTR,
+              RData::SOA(_) => msg::DnsRecordData::DnsSOA,
+              RData::SRV(_) => msg::DnsRecordData::DnsSRV,
+              RData::TXT(_) => msg::DnsRecordData::DnsTXT,
+              _ => unimplemented!(),
+            };
+            let rdata = match ans.rdata() {
+              RData::A(ip) => {
+                let ipstr = builder.create_string(&ip.to_string());
+                msg::DnsA::create(
+                  builder,
+                  &msg::DnsAArgs {
+                    ip: Some(ipstr),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::AAAA(ip) => {
+                let ipstr = builder.create_string(&ip.to_string());
+                msg::DnsAAAA::create(
+                  builder,
+                  &msg::DnsAAAAArgs {
+                    ip: Some(ipstr),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::CNAME(name) => {
+                let namestr = builder.create_string(&name.to_utf8());
+                msg::DnsCNAME::create(
+                  builder,
+                  &msg::DnsCNAMEArgs {
+                    name: Some(namestr),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::MX(mx) => {
+                let exstr = builder.create_string(&mx.exchange().to_utf8());
+                msg::DnsMX::create(
+                  builder,
+                  &msg::DnsMXArgs {
+                    exchange: Some(exstr),
+                    preference: mx.preference(),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::NS(name) => {
+                let namestr = builder.create_string(&name.to_utf8());
+                msg::DnsNS::create(
+                  builder,
+                  &msg::DnsNSArgs {
+                    name: Some(namestr),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::PTR(name) => {
+                let namestr = builder.create_string(&name.to_utf8());
+                msg::DnsPTR::create(
+                  builder,
+                  &msg::DnsPTRArgs {
+                    name: Some(namestr),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::SOA(soa) => {
+                let mnamestr = builder.create_string(&soa.mname().to_utf8());
+                let rnamestr = builder.create_string(&soa.rname().to_utf8());
+                msg::DnsSOA::create(
+                  builder,
+                  &msg::DnsSOAArgs {
+                    mname: Some(mnamestr),
+                    rname: Some(rnamestr),
+                    serial: soa.serial(),
+                    refresh: soa.refresh(),
+                    retry: soa.retry(),
+                    expire: soa.expire(),
+                    minimum: soa.minimum(),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::SRV(srv) => {
+                let targetstr = builder.create_string(&srv.target().to_utf8());
+                msg::DnsSRV::create(
+                  builder,
+                  &msg::DnsSRVArgs {
+                    priority: srv.priority(),
+                    weight: srv.weight(),
+                    port: srv.port(),
+                    target: Some(targetstr),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              RData::TXT(txt) => {
+                let coll: Vec<_> = txt
+                  .iter()
+                  .map(|t| {
+                    let d = builder.create_vector(&Vec::from(t.clone()));
+                    msg::DnsTXTData::create(
+                      builder,
+                      &msg::DnsTXTDataArgs {
+                        data: Some(d),
+                        ..Default::default()
+                      },
+                    )
+                  }).collect();
+                let data = builder.create_vector(&coll);
+
+                msg::DnsTXT::create(
+                  builder,
+                  &msg::DnsTXTArgs {
+                    data: Some(data),
+                    ..Default::default()
+                  },
+                ).as_union_value()
+              }
+              _ => unimplemented!(),
+            };
+
+            msg::DnsRecord::create(
+              builder,
+              &msg::DnsRecordArgs {
+                name: Some(name),
+                type_: type_,
+                dns_class: dns_class,
+                ttl: ans.ttl(),
+                rdata_type: rdata_type,
+                rdata: Some(rdata),
+                ..Default::default()
+              },
+            )
+          }).collect();
+
+        let res_answers = builder.create_vector(&answers);
+        let dns_msg = msg::DnsResponse::create(
+          builder,
+          &msg::DnsResponseArgs {
+            id: res.id(),
+            op_code: msg::DnsOpCode::Query,
+            type_: msg::DnsMessageType::Response,
+            authoritative: res.authoritative(),
+            truncated: res.truncated(),
+            // response_code: ,
+            answers: Some(res_answers),
+            // done: body.is_end_stream(),
+            ..Default::default()
+          },
+        );
+
+        Ok(serialize_response(
+          cmd_id,
+          builder,
+          msg::BaseArgs {
+            msg: Some(dns_msg.as_union_value()),
+            msg_type: msg::Any::DnsResponse,
+            ..Default::default()
+          },
+        ))
+      }),
+  )
 }
 
 fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {

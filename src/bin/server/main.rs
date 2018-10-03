@@ -240,6 +240,11 @@ fn main() {
 
     env_logger::init_from_env(env);
 
+    let mut main_el = tokio::runtime::Runtime::new().unwrap();
+    unsafe {
+        EVENT_LOOP_HANDLE = Some(main_el.executor());
+    };
+
     let mut file = File::open("fly.toml").unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -282,8 +287,6 @@ fn main() {
             Ok(())
         }).map_err(|e| panic!("interval errored; err={:?}", e));
 
-    let mut main_el = tokio::runtime::Runtime::new().unwrap();
-
     main_el.spawn(task);
 
     let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
@@ -292,9 +295,6 @@ fn main() {
         .serve(move || service_fn(move |req| FlyServer {}.call(req)))
         .map_err(|e| eprintln!("server error: {}", e));
 
-    unsafe {
-        EVENT_LOOP_HANDLE = Some(main_el.executor());
-    };
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
 }
