@@ -1,16 +1,12 @@
 #[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
 extern crate log;
 
-#[macro_use]
-extern crate lazy_static;
+// #[macro_use]
+// extern crate lazy_static;
 
 extern crate env_logger;
 extern crate fly;
 extern crate tokio;
-extern crate tokio_io_pool;
 extern crate toml;
 
 extern crate libfly;
@@ -39,11 +35,11 @@ use fly::runtime::*;
 
 use env_logger::Env;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+// use std::collections::HashMap;
+// use std::sync::{Arc, Mutex, RwLock};
 
-mod config;
 use config::*;
+use fly::config;
 
 use std::alloc::System;
 
@@ -54,10 +50,6 @@ use flatbuffers::FlatBufferBuilder;
 static A: System = System;
 
 use std::sync::atomic::Ordering;
-
-lazy_static! {
-    pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
-}
 
 pub struct FlyServer {
     // config: Config,
@@ -106,7 +98,7 @@ impl Service for FlyServer {
 
         let builder = &mut FlatBufferBuilder::new();
 
-        let req_id = fly::NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst);
+        let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst);
 
         let req_url = builder.create_string(url.as_str());
 

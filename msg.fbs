@@ -336,7 +336,7 @@ table DnsTXT {
 }
 
 table DnsRequest {
-  id: ushort;
+  id: uint;
   type: DnsMessageType;
   queries: [DnsQuery];
 }
@@ -356,7 +356,7 @@ table DnsRecord {
 }
 
 table DnsResponse {
-  id: ushort;
+  id: uint;
   op_code: DnsOpCode;
   type: DnsMessageType;
   authoritative: bool;

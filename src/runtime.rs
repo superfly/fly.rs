@@ -6,7 +6,7 @@ use tokio::prelude::*;
 use std::io;
 
 use std::ffi::CString;
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Arc, Mutex, Once, RwLock};
 
 use std::fs::File;
 use std::io::Read;
@@ -29,8 +29,8 @@ use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use futures::future;
 
-extern crate sha1;
-extern crate sha2; // SHA-1 // SHA-256, etc.
+extern crate sha1; // SHA-1
+extern crate sha2; // SHA-256, etc.
 use self::sha1::Digest as Sha1Digest; // puts trait in scope
 use self::sha1::Sha1;
 use self::sha2::Digest; // puts trait in scope
@@ -65,22 +65,36 @@ extern crate rand;
 use self::rand::{thread_rng, Rng};
 
 extern crate tokio_fs;
-// use self::tokio_fs;
 
 extern crate tokio_codec;
 use self::tokio_codec::{BytesCodec, FramedRead};
 
-// extern crate trust_dns as dns;
 extern crate trust_dns as dns;
-// use self::dns::op as dns_op;
-use self::dns::client::ClientHandle;
-use self::dns::rr as dns_rr;
+use self::dns::client::ClientHandle; // necessary for trait to be in scope
 
 #[derive(Debug)]
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
   pub status: StatusCode,
   pub bytes: Option<mpsc::UnboundedReceiver<Vec<u8>>>,
+}
+
+#[derive(Debug)]
+pub struct JsDnsResponse {
+  pub op_code: dns::op::OpCode,
+  pub type_: dns::op::MessageType,
+  pub response_code: dns::op::ResponseCode,
+  pub answers: Vec<JsDnsRecord>,
+  pub authoritative: bool,
+  pub truncated: bool,
+}
+
+#[derive(Debug)]
+pub struct JsDnsRecord {
+  pub name: dns::rr::Name,
+  pub rdata: dns::rr::RData,
+  pub dns_class: dns::rr::DNSClass,
+  pub ttl: u32,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -93,6 +107,7 @@ pub struct Runtime {
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
+  pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<JsDnsResponse>>>,
   pub bytes: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
 }
@@ -130,6 +145,7 @@ impl Runtime {
       rt: Mutex::new(p.wait().unwrap()),
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
+      dns_responses: Mutex::new(HashMap::new()),
       bytes: Mutex::new(HashMap::new()),
       http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
     });
@@ -193,6 +209,7 @@ use self::sourcemap::SourceMap;
 pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
 
 lazy_static! {
+  pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
   static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
     ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
     len: V8ENV_SNAPSHOT.len() as i32
@@ -615,7 +632,7 @@ fn handle_crypto_digest(_rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op
   }))
 }
 
-use super::NEXT_STREAM_ID;
+use super::NEXT_EVENT_ID;
 use std::str;
 
 use std::ops::Deref;
@@ -625,7 +642,7 @@ fn handle_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_set().unwrap();
   let key = msg.key().unwrap().to_string();
 
-  let stream_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
   let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
   {
@@ -675,7 +692,7 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_get().unwrap();
 
-  let stream_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
   let rtptr = rt.ptr;
 
@@ -824,7 +841,7 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 }
 
 fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
-  let req_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
   // let urlstr = String::from(url);
@@ -1012,36 +1029,10 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   Box::new(fut2)
 }
 
-fn handle_dns_query(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("handle dns");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
-  // {
-  //   let rt = from_c(rt.ptr.0);
-  //   let mut maybe_client = rt.dns_client.lock().unwrap();
-  //   if maybe_client.is_none() {
-  //     // probably best not to use google dns
-  //     let (stream, handle) = dns_udp::UdpClientStream::new(([8, 8, 8, 8], 53).into());
-  //     let client = dns_client::ClientFuture::new(stream, handle, None);
-  //     let (tx, rx) = oneshot::channel::<dns_client::BasicClientHandle>();
-  //     {
-  //       rt.rt.lock().unwrap().spawn(
-  //         client
-  //           .map_err(|e| println!("error getting dns client: {}", e))
-  //           .and_then(move |client| {
-  //             println!("got a client from the spawned future :D");
-  //             tx.send(client);
-  //             Ok(())
-  //           }),
-  //       );
-  //     }
-  //     println!("spawned dns client on loop");
-
-  //     let client = rx.wait().unwrap(); // EVENT_LOOP_HANDLE.unwrap().block_on(client).unwrap();
-  //     *maybe_client = Some(client);
-  //   }
-  // }
-  // let mut client = rt.dns_client.lock().unwrap().take().unwrap(); // probably best to not unwrap and double check.
 
   let query_type = match msg.type_() {
     msg::DnsRecordType::A => dns::rr::RecordType::A,
@@ -1060,16 +1051,7 @@ fn handle_dns_query(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
     msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
     msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
-    _ => unimplemented!(),
   };
-
-  // let type_ = msg.type_();
-  // println!(
-  //   "want type: {:?} {} {:?}",
-  //   type_,
-  //   type_ as u16,
-  //   dns::rr::RecordType::from(msg.type_() as u16)
-  // );
 
   Box::new(
     DNS_RESOLVER
@@ -1267,7 +1249,6 @@ fn handle_dns_query(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         let dns_msg = msg::DnsResponse::create(
           builder,
           &msg::DnsResponseArgs {
-            id: res.id(),
             op_code: msg::DnsOpCode::Query,
             type_: msg::DnsMessageType::Response,
             authoritative: res.authoritative(),
@@ -1301,7 +1282,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
     return handle_file_request(rt, cmd_id, url);
   }
 
-  let req_id = NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
   let req_body: Body;
@@ -1531,6 +1512,125 @@ fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op
         headers: headers,
         status: status,
         bytes: chunk_recver,
+      });
+    }
+    _ => unimplemented!(),
+  };
+
+  ok_future(None)
+}
+
+fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_dns_response().unwrap();
+  let req_id = msg.id();
+
+  let op_code = match msg.op_code() {
+    msg::DnsOpCode::Query => dns::op::OpCode::Query,
+    msg::DnsOpCode::Status => dns::op::OpCode::Status,
+    msg::DnsOpCode::Notify => dns::op::OpCode::Notify,
+    msg::DnsOpCode::Update => dns::op::OpCode::Update,
+  };
+
+  let res_code = msg.response_code() as u16;
+
+  let type_ = match msg.type_() {
+    msg::DnsMessageType::Query => dns::op::MessageType::Query,
+    msg::DnsMessageType::Response => dns::op::MessageType::Response,
+  };
+
+  use self::dns::rr::RData;
+
+  let answers = if let Some(msg_answers) = msg.answers() {
+    let anslen = msg_answers.len();
+    let mut answers: Vec<JsDnsRecord> = Vec::with_capacity(anslen);
+    for i in 0..anslen {
+      let ans = msg_answers.get(i);
+
+      let dns_class = match ans.dns_class() {
+        msg::DnsClass::IN => dns::rr::DNSClass::IN,
+        msg::DnsClass::CH => dns::rr::DNSClass::CH,
+        msg::DnsClass::HS => dns::rr::DNSClass::HS,
+        msg::DnsClass::NONE => dns::rr::DNSClass::NONE,
+        msg::DnsClass::ANY => dns::rr::DNSClass::ANY,
+        _ => unimplemented!(),
+      };
+
+      let rdata: RData = match ans.rdata_type() {
+        msg::DnsRecordData::DnsA => {
+          let d = ans.rdata_as_dns_a().unwrap();
+          RData::A(d.ip().unwrap().parse().unwrap())
+        }
+        msg::DnsRecordData::DnsAAAA => {
+          let d = ans.rdata_as_dns_aaaa().unwrap();
+          RData::AAAA(d.ip().unwrap().parse().unwrap())
+        }
+        msg::DnsRecordData::DnsCNAME => {
+          let d = ans.rdata_as_dns_cname().unwrap();
+          RData::CNAME(d.name().unwrap().parse().unwrap())
+        }
+        msg::DnsRecordData::DnsMX => {
+          let d = ans.rdata_as_dns_mx().unwrap();
+          RData::MX(dns::rr::rdata::mx::MX::new(
+            d.preference(),
+            d.exchange().unwrap().parse().unwrap(),
+          ))
+        }
+        msg::DnsRecordData::DnsNS => {
+          let d = ans.rdata_as_dns_ns().unwrap();
+          RData::NS(d.name().unwrap().parse().unwrap())
+        }
+        msg::DnsRecordData::DnsPTR => {
+          let d = ans.rdata_as_dns_ptr().unwrap();
+          RData::PTR(d.name().unwrap().parse().unwrap())
+        }
+        msg::DnsRecordData::DnsSOA => {
+          let d = ans.rdata_as_dns_soa().unwrap();
+          RData::SOA(dns::rr::rdata::soa::SOA::new(
+            d.mname().unwrap().parse().unwrap(),
+            d.rname().unwrap().parse().unwrap(),
+            d.serial(),
+            d.refresh(),
+            d.retry(),
+            d.expire(),
+            d.minimum(),
+          ))
+        }
+        msg::DnsRecordData::DnsSRV => {
+          let d = ans.rdata_as_dns_srv().unwrap();
+          RData::SRV(dns::rr::rdata::srv::SRV::new(
+            d.priority(),
+            d.weight(),
+            d.port(),
+            d.target().unwrap().parse().unwrap(),
+          ))
+        }
+        msg::DnsRecordData::DnsTXT => {
+          let d = ans.rdata_as_dns_txt().unwrap();
+          RData::TXT(dns::rr::rdata::txt::TXT::new(d.data()))
+        }
+      };
+
+      answers.push(JsDnsRecord {
+        name: ans.name().unwrap().parse().unwrap(),
+        dns_class: dns_class,
+        ttl: ans.ttl(),
+      });
+    }
+    answers
+  } else {
+    vec![]
+  };
+
+  let mut responses = rt.dns_responses.lock().unwrap();
+  match responses.remove(&req_id) {
+    Some(sender) => {
+      sender.send(JsDnsResponse {
+        op_code: op_code,
+        authoritative: msg.authoritative(),
+        truncated: msg.truncated(),
+        response_code: res_code.into(),
+        type_: type_,
+        answers: answers,
       });
     }
     _ => unimplemented!(),
