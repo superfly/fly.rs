@@ -110,12 +110,12 @@ fn main() {
     }).map_err(|e| panic!("interval errored; err={:?}", e));
 
   main_el.spawn(task);
-
-  main_el.block_on(future::lazy(move || -> Result<(), ()> {
+  let _ = main_el.block_on_all(future::lazy(move || -> Result<(), ()> {
     server.register_socket(udp_socket);
     Ok(())
   }));
-  main_el.shutdown_on_idle();
+
+  // main_el.shutdown_on_idle();
 }
 
 pub struct DnsHandler;
@@ -145,7 +145,7 @@ impl RequestHandler for DnsHandler {
         println!("query: {:?}", q);
         use self::dns::rr::{DNSClass, LowerName, Name, RecordType};
         let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
-        let type_ = match q.query_type() {
+        let rr_type = match q.query_type() {
           RecordType::A => msg::DnsRecordType::A,
           RecordType::AAAA => msg::DnsRecordType::AAAA,
           RecordType::AXFR => msg::DnsRecordType::AXFR,
@@ -176,7 +176,7 @@ impl RequestHandler for DnsHandler {
           builder,
           &msg::DnsQueryArgs {
             name: Some(name),
-            type_: type_,
+            rr_type: rr_type,
             dns_class: dns_class,
             ..Default::default()
           },
@@ -189,7 +189,7 @@ impl RequestHandler for DnsHandler {
       builder,
       &msg::DnsRequestArgs {
         id: eid,
-        type_: msg::DnsMessageType::Query,
+        message_type: msg::DnsMessageType::Query,
         queries: Some(req_queries),
         ..Default::default()
       },
@@ -225,31 +225,25 @@ impl RequestHandler for DnsHandler {
     }
 
     let dns_res: JsDnsResponse = c.wait().unwrap();
-
     let mut msg = Message::new();
 
-    for q in req.message.queries() {
-      let mut r = Record::new();
-
-      r.set_name(q.name().clone().into())
-        .set_rr_type(q.query_type())
-        .set_rdata(RData::A([127, 0, 0, 1].into()))
-        .set_dns_class(q.query_class())
-        .set_ttl(10);
-
-      msg.add_query(q.original().clone());
-      msg.add_answer(r);
+    for ans in dns_res.answers {
+      msg.add_answer(Record::from_rdata(
+        ans.name,
+        ans.ttl,
+        ans.rdata.to_record_type(),
+        ans.rdata,
+      ));
     }
 
     msg
       .set_id(req.message.id())
-      .set_op_code(OpCode::Query)
-      .set_message_type(MessageType::Response)
-      .set_response_code(ResponseCode::NoError)
-      .set_authoritative(true);
+      .set_op_code(dns_res.op_code)
+      .set_message_type(dns_res.message_type)
+      .set_response_code(dns_res.response_code)
+      .set_authoritative(dns_res.authoritative)
+      .set_truncated(dns_res.truncated);
 
     res.send(msg)
-
-    // let mut queries: Vec<&Query> = vec![];
   }
 }

@@ -82,9 +82,10 @@ pub struct JsHttpResponse {
 #[derive(Debug)]
 pub struct JsDnsResponse {
   pub op_code: dns::op::OpCode,
-  pub type_: dns::op::MessageType,
+  pub message_type: dns::op::MessageType,
   pub response_code: dns::op::ResponseCode,
   pub answers: Vec<JsDnsRecord>,
+  pub queries: Vec<JsDnsQuery>,
   pub authoritative: bool,
   pub truncated: bool,
 }
@@ -95,6 +96,13 @@ pub struct JsDnsRecord {
   pub rdata: dns::rr::RData,
   pub dns_class: dns::rr::DNSClass,
   pub ttl: u32,
+}
+
+#[derive(Debug)]
+pub struct JsDnsQuery {
+  pub name: dns::rr::Name,
+  pub rr_type: dns::rr::RecordType,
+  pub dns_class: dns::rr::DNSClass,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -317,6 +325,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::DataDel => handle_data_del,
     msg::Any::DataDropCollection => handle_data_drop_coll,
     msg::Any::DnsQuery => handle_dns_query,
+    msg::Any::DnsResponse => handle_dns_response,
     _ => unimplemented!(),
   };
 
@@ -1034,7 +1043,7 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
 
-  let query_type = match msg.type_() {
+  let query_type = match msg.rr_type() {
     msg::DnsRecordType::A => dns::rr::RecordType::A,
     msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
     msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
@@ -1075,7 +1084,7 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             println!("answer: {:?}", ans);
             use self::dns::rr::{DNSClass, RData, RecordType};
             let name = builder.create_string(&ans.name().to_utf8());
-            let type_ = match ans.rr_type() {
+            let rr_type = match ans.rr_type() {
               RecordType::A => msg::DnsRecordType::A,
               RecordType::AAAA => msg::DnsRecordType::AAAA,
               RecordType::AXFR => msg::DnsRecordType::AXFR,
@@ -1235,7 +1244,7 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               builder,
               &msg::DnsRecordArgs {
                 name: Some(name),
-                type_: type_,
+                rr_type: rr_type,
                 dns_class: dns_class,
                 ttl: ans.ttl(),
                 rdata_type: rdata_type,
@@ -1250,7 +1259,7 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
           builder,
           &msg::DnsResponseArgs {
             op_code: msg::DnsOpCode::Query,
-            type_: msg::DnsMessageType::Response,
+            message_type: msg::DnsMessageType::Response,
             authoritative: res.authoritative(),
             truncated: res.truncated(),
             // response_code: ,
@@ -1533,12 +1542,57 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
 
   let res_code = msg.response_code() as u16;
 
-  let type_ = match msg.type_() {
+  let message_type = match msg.message_type() {
     msg::DnsMessageType::Query => dns::op::MessageType::Query,
     msg::DnsMessageType::Response => dns::op::MessageType::Response,
   };
 
   use self::dns::rr::RData;
+
+  let queries: Vec<JsDnsQuery> = if let Some(msg_queries) = msg.queries() {
+    let qlen = msg_queries.len();
+    let mut queries: Vec<JsDnsQuery> = Vec::with_capacity(qlen);
+    for i in 0..qlen {
+      let q = msg_queries.get(i);
+
+      let rr_type = match q.rr_type() {
+        msg::DnsRecordType::A => dns::rr::RecordType::A,
+        msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
+        msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
+        msg::DnsRecordType::AXFR => dns::rr::RecordType::AXFR,
+        msg::DnsRecordType::CAA => dns::rr::RecordType::CAA,
+        msg::DnsRecordType::CNAME => dns::rr::RecordType::CNAME,
+        msg::DnsRecordType::IXFR => dns::rr::RecordType::IXFR,
+        msg::DnsRecordType::MX => dns::rr::RecordType::MX,
+        msg::DnsRecordType::NS => dns::rr::RecordType::NS,
+        msg::DnsRecordType::NULL => dns::rr::RecordType::NULL,
+        msg::DnsRecordType::OPT => dns::rr::RecordType::OPT,
+        msg::DnsRecordType::PTR => dns::rr::RecordType::PTR,
+        msg::DnsRecordType::SOA => dns::rr::RecordType::SOA,
+        msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
+        msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
+        msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
+      };
+
+      let dns_class = match q.dns_class() {
+        msg::DnsClass::IN => dns::rr::DNSClass::IN,
+        msg::DnsClass::CH => dns::rr::DNSClass::CH,
+        msg::DnsClass::HS => dns::rr::DNSClass::HS,
+        msg::DnsClass::NONE => dns::rr::DNSClass::NONE,
+        msg::DnsClass::ANY => dns::rr::DNSClass::ANY,
+        _ => unimplemented!(),
+      };
+
+      queries.push(JsDnsQuery {
+        name: q.name().unwrap().parse().unwrap(),
+        rr_type: rr_type,
+        dns_class: dns_class,
+      });
+    }
+    vec![]
+  } else {
+    vec![]
+  };
 
   let answers = if let Some(msg_answers) = msg.answers() {
     let anslen = msg_answers.len();
@@ -1606,14 +1660,23 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
         }
         msg::DnsRecordData::DnsTXT => {
           let d = ans.rdata_as_dns_txt().unwrap();
-          RData::TXT(dns::rr::rdata::txt::TXT::new(d.data()))
+          let tdata = d.data().unwrap();
+          let data_len = tdata.len();
+          let mut txtdata: Vec<String> = Vec::with_capacity(data_len);
+          for i in 0..data_len {
+            let td = tdata.get(i);
+            txtdata.push(String::from_utf8_lossy(td.data().unwrap()).to_string());
+          }
+          RData::TXT(dns::rr::rdata::txt::TXT::new(txtdata))
         }
+        _ => unimplemented!(),
       };
 
       answers.push(JsDnsRecord {
         name: ans.name().unwrap().parse().unwrap(),
         dns_class: dns_class,
         ttl: ans.ttl(),
+        rdata: rdata,
       });
     }
     answers
@@ -1629,7 +1692,8 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
         authoritative: msg.authoritative(),
         truncated: msg.truncated(),
         response_code: res_code.into(),
-        type_: type_,
+        message_type: message_type,
+        queries: queries,
         answers: answers,
       });
     }

@@ -337,19 +337,19 @@ table DnsTXT {
 
 table DnsRequest {
   id: uint;
-  type: DnsMessageType;
+  message_type: DnsMessageType;
   queries: [DnsQuery];
 }
 
 table DnsQuery {
   name: string;
-  type: DnsRecordType;
+  rr_type: DnsRecordType;
   dns_class: DnsClass;
 }
 
 table DnsRecord {
   name: string;
-  type: DnsRecordType;
+  rr_type: DnsRecordType;
   rdata: DnsRecordData;
   dns_class: DnsClass;
   ttl: uint;
@@ -358,7 +358,7 @@ table DnsRecord {
 table DnsResponse {
   id: uint;
   op_code: DnsOpCode;
-  type: DnsMessageType;
+  message_type: DnsMessageType;
   authoritative: bool;
   truncated: bool;
   response_code: DnsResponseCode;

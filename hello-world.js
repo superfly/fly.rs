@@ -14,10 +14,6 @@ coll.put("id", { foo: "bar" }).then(b => {
 
 // console.log(new TextDecoder().decode(new Uint8Array([104, 101, 108, 108, 111])))
 
-resolv("fly.io").then(res => {
-  console.log("got res:", res)
-}).catch(err => { console.log("error resolving I guess:", err.stack) })
-
 let now = Date.now();
 setTimeout(() => { console.log("in timeout!", Date.now() - now); now = Date.now() }, 100)
 
@@ -57,4 +53,26 @@ addEventListener("fetch", function (event) {
     }
     event.respondWith(fetch(toFetch))
   }
+})
+
+resolv("fly.io").then(res => {
+  console.log("got res:", res)
+}).catch(err => { console.log("error resolving I guess:", err.stack) })
+
+addEventListener("resolv", event => {
+  console.log("got resolv event!")
+  // event.respondWith(resolv(event.request.queries[0]))
+  event.respondWith(function () {
+    return {
+      authoritative: true,
+      answers: [
+        {
+          name: event.request.queries[0].name,
+          rrType: DNSRecordType.A,
+          ttl: 5,
+          data: "127.0.0.1"
+        }
+      ]
+    }
+  })
 })
