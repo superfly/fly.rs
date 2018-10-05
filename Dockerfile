@@ -5,7 +5,7 @@ WORKDIR ./v8env
 RUN yarn install
 RUN ./node_modules/.bin/rollup -c
 
-RUN ls -lah ./v8env/dist
+RUN ls -lah dist
 
 FROM rust:1.29
 
