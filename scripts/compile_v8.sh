@@ -5,12 +5,11 @@ export PATH="$(pwd)/depot_tools:$PATH"
 cd v8
 
 gclient sync
-./build/install-build-deps.sh
+# ./build/install-build-deps.sh
 
 gn gen out.gn/x64.release --args='
     is_debug = false
     target_cpu = "x64"
-    cc_wrapper = "ccache"
     is_official_build = true
     v8_deprecation_warnings = false
     v8_enable_gdbjit = false
