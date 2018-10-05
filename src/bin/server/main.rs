@@ -1,16 +1,12 @@
 #[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
 extern crate log;
 
-#[macro_use]
-extern crate lazy_static;
+// #[macro_use]
+// extern crate lazy_static;
 
 extern crate env_logger;
 extern crate fly;
 extern crate tokio;
-extern crate tokio_io_pool;
 extern crate toml;
 
 extern crate libfly;
@@ -39,11 +35,11 @@ use fly::runtime::*;
 
 use env_logger::Env;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
+// use std::collections::HashMap;
+// use std::sync::{Arc, Mutex, RwLock};
 
-mod config;
 use config::*;
+use fly::config;
 
 use std::alloc::System;
 
@@ -54,10 +50,6 @@ use flatbuffers::FlatBufferBuilder;
 static A: System = System;
 
 use std::sync::atomic::Ordering;
-
-lazy_static! {
-    pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
-}
 
 pub struct FlyServer {
     // config: Config,
@@ -106,7 +98,7 @@ impl Service for FlyServer {
 
         let builder = &mut FlatBufferBuilder::new();
 
-        let req_id = fly::NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst);
+        let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst);
 
         let req_url = builder.create_string(url.as_str());
 
@@ -240,6 +232,11 @@ fn main() {
 
     env_logger::init_from_env(env);
 
+    let mut main_el = tokio::runtime::Runtime::new().unwrap();
+    unsafe {
+        EVENT_LOOP_HANDLE = Some(main_el.executor());
+    };
+
     let mut file = File::open("fly.toml").unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -282,8 +279,6 @@ fn main() {
             Ok(())
         }).map_err(|e| panic!("interval errored; err={:?}", e));
 
-    let mut main_el = tokio::runtime::Runtime::new().unwrap();
-
     main_el.spawn(task);
 
     let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
@@ -292,9 +287,6 @@ fn main() {
         .serve(move || service_fn(move |req| FlyServer {}.call(req)))
         .map_err(|e| eprintln!("server error: {}", e));
 
-    unsafe {
-        EVENT_LOOP_HANDLE = Some(main_el.executor());
-    };
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
 }
