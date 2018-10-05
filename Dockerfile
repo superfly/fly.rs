@@ -4,4 +4,4 @@ ADD v8env v8env
 
 WORKDIR ./v8env
 RUN yarn install
-RUN rollup -c
+RUN ./node_modules/.bin/rollup -c
