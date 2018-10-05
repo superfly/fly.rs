@@ -57,6 +57,7 @@
   - [ ] Windows
 - HTTP
   - [ ] Actually use the config hostnames and correct app
+  - [ ] Spawn multiple runtime instances for the same app (n cpus? configurable?)
   - [ ] Add `Server` header for Fly and current version
 - Stability / Resilience
   - [ ] do not use `unwrap` (that will panic and exit the process). Solution is to handle them and return or print proper errors
