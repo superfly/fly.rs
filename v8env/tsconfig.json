@@ -1,7 +1,7 @@
 {
-  "extends": "../../tsconfig.common.json",
+  "extends": "./tsconfig.common.json",
   "include": [
-    "./src/**/*"
+    "src/**/*"
   ],
   "compilerOptions": {
     "composite": true,
@@ -33,7 +33,7 @@
     "ignoreCompilerErrors": true
   },
   "files": [
-    "../../node_modules/typescript/lib/lib.esnext.d.ts",
+    "./node_modules/typescript/lib/lib.esnext.d.ts",
     "./src/globals.ts"
   ]
 }
