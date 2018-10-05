@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2017",
+    "module": "esnext",
+    "moduleResolution": "node",
+    "declaration": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "sourceMap": true,
+    // "inlineSourceMap": true,
+    // "inlineSources": true,
+    "baseUrl": "./",
+    "paths": {
+      "@fly/*": [
+        "./src"
+      ]
+    },
+    // not sure we need these yet...
+    // "esModuleInterop": true,
+    // "allowSyntheticDefaultImports": true,
+  }
+}

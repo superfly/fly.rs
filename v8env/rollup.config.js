@@ -10,12 +10,9 @@ export default {
     typescript({ useTsconfigDeclarationDir: true }),
     resolve({
       jsnext: true,
-      customResolveOptions: {
-        moduleDirectory: '../../node_modules'
-      }
     }),
     commonjs({
-      include: '../../node_modules/**',
+      include: './node_modules/**',
     }),
     sourceMaps(),
   ],
