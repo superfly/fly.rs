@@ -35,9 +35,6 @@ use fly::runtime::*;
 
 use env_logger::Env;
 
-// use std::collections::HashMap;
-// use std::sync::{Arc, Mutex, RwLock};
-
 use config::*;
 use fly::config;
 
@@ -49,7 +46,19 @@ use flatbuffers::FlatBufferBuilder;
 #[global_allocator]
 static A: System = System;
 
-use std::sync::atomic::Ordering;
+#[macro_use]
+extern crate lazy_static;
+extern crate num_cpus;
+
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::{Mutex, RwLock};
+
+lazy_static! {
+    static ref NCPUS: usize = num_cpus::get();
+    static ref REQ_PER_APP: RwLock<HashMap<String, AtomicUsize>> = RwLock::new(HashMap::new());
+}
 
 pub struct FlyServer {
     // config: Config,
@@ -139,7 +148,18 @@ impl Service for FlyServer {
         );
 
         let guard = RUNTIMES.read().unwrap();
-        let rt = guard.values().next().unwrap();
+        let rtsv = guard.values().next().unwrap();
+
+        let idx = {
+            let map = REQ_PER_APP.read().unwrap();
+            let counter = map.values().next().unwrap();
+            // let counter = map
+            //     .entry("hello-world".to_string())
+            //     .or_insert(ATOMIC_USIZE_INIT);
+            counter.fetch_add(1, Ordering::Relaxed) % *NCPUS
+        };
+
+        let rt = &rtsv[idx];
         let rtptr = rt.ptr;
 
         let to_send = fly_buf_from(
@@ -245,34 +265,42 @@ fn main() {
     println!("toml: {:?}", conf);
 
     for (name, app) in conf.apps.unwrap().iter() {
-        let rt = Runtime::new();
-        info!("inited rt");
-        // rt.eval_file("fly/packages/v8env/dist/bundle.js");
-        let filename = app.filename.as_str();
-        rt.eval_file(filename);
-
         {
             let mut rts = RUNTIMES.write().unwrap();
-            rts.insert(name.to_string(), rt);
+            let mut rtsv: Vec<Box<Runtime>> = vec![];
+            let filename = app.filename.as_str();
+            for _i in 0..*NCPUS {
+                let rt = Runtime::new();
+                info!("inited rt");
+                rt.eval_file(filename);
+                rtsv.push(rt);
+            }
+            rts.insert(name.to_string(), rtsv);
+            REQ_PER_APP
+                .write()
+                .unwrap()
+                .insert(name.to_string(), ATOMIC_USIZE_INIT);
         };
     }
 
     let task = Interval::new_interval(Duration::from_secs(5))
         .for_each(move |_| {
             match RUNTIMES.read() {
-                Ok(rts) => {
-                    for (key, rt) in rts.iter() {
-                        let stats = rt.heap_statistics();
-                        info!(
-                            "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
-                            key,
-                            stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
-                            stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
-                            stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
-                            stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
-                            stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
-                        );
-                    }
+                Ok(rtsv) => {
+                    // for (key, rts) in rtsv.iter() {
+                    //     for rt in rts.iter() {
+                    //     let stats = rt.heap_statistics();
+                    //     info!(
+                    //         "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
+                    //         key,
+                    //         stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
+                    //         stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
+                    //         stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
+                    //         stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
+                    //         stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
+                    //     );
+                    // }
+                    // }
                 }
                 Err(e) => error!("error locking runtimes: {}", e),
             };
