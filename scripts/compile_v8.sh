@@ -4,6 +4,7 @@ cd libfly/third_party
 export PATH="$(pwd)/depot_tools:$PATH"
 cd v8
 
+./build/install-build-deps.sh
 gclient sync
 
 gn gen out.gn/x64.release --args='
