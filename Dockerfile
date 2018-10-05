@@ -1,7 +1,7 @@
 FROM node:10 as v8env
 
-ADD fly fly
+ADD v8env v8env
 
-WORKDIR ./fly/packages/v8env
+WORKDIR ./v8env
 RUN yarn install
 RUN rollup -c
