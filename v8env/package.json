@@ -1,0 +1,56 @@
+{
+    "name": "@fly/v8env",
+    "version": "0.42.0-pre.8",
+    "description": "Open source Edge Application runtime",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/superfly/fly"
+    },
+    "main": "lib/index.js",
+    "types": "lib/index.d.ts",
+    "files": [
+        "lib/",
+        "dist/",
+        "testing/"
+    ],
+    "scripts": {
+        "clean": "rm -rf ./lib ./dist",
+        "build": "tsc -b .",
+        "build:watch": "tsc -b -w -v .",
+        "bundle": "webpack",
+        "doc": "./publish-docs.sh"
+    },
+    "dependencies": {
+        "@stardazed/streams": "^1.0.6",
+        "better-assert": "^1.0.2",
+        "cookie": "^0.3.1",
+        "css-select": "^1.3.0-rc0",
+        "domutils": "^1.6.2",
+        "eventemitter2": "^5.0.1",
+        "flatbuffers": "^1.9.0",
+        "htmlparser2": "^3.9.2",
+        "http-cache-semantics": "^4.0.0",
+        "query-string": "^6.1.0",
+        "rollup-plugin-sourcemaps": "^0.4.2",
+        "rollup-plugin-typescript2": "^0.17.0",
+        "source-map-support": "^0.5.9",
+        "text-encoding": "0.6.4"
+    },
+    "devDependencies": {
+        "@types/cookie": "^0.3.1",
+        "@types/flatbuffers": "^1.9.0",
+        "@types/query-string": "^6.1.0",
+        "@types/source-map-support": "^0.4.1",
+        "@types/text-encoding": "0.0.33",
+        "@types/whatwg-url": "^6.4.0",
+        "rollup": "^0.65.0",
+        "rollup-plugin-commonjs": "^9.1.6",
+        "rollup-plugin-node-globals": "^1.3.0",
+        "rollup-plugin-node-resolve": "^3.4.0",
+        "typescript": "3.0.1"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
