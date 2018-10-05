@@ -207,7 +207,7 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
 
 extern crate tokio_io_pool;
 
-const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../fly/packages/v8env/dist/v8env.js.map");
+const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../v8env/dist/v8env.js.map");
 const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
 
 extern crate sourcemap;
