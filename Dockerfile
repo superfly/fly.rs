@@ -12,7 +12,7 @@ FROM rust:1.29
 WORKDIR /usr/src/myapp
 
 ADD libfly libfly
-ADD scripts script
+ADD scripts scripts
 RUN scripts/compile_v8.sh
 
 COPY . .
