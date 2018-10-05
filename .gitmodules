@@ -9,8 +9,8 @@
 	url = https://github.com/google/flatbuffers.git
 [submodule "fly"]
 	path = fly
-	url = git@github.com:superfly/fly.git
-	branch = crazytrain-rust2
+	url = https://github.com/superfly/fly.git
+	branch = crazytrain-rust
 [submodule "libvips"]
 	path = vips/third_party/libvips
 	url = https://github.com/libvips/libvips.git
