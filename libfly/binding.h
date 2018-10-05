@@ -7,14 +7,15 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include "runtime.h"
 
-struct fly_simple_buf {
+struct fly_simple_buf
+{
   const char *ptr;
   int len;
 };
 
-struct js_heap_stats {
+struct js_heap_stats
+{
   size_t total_heap_size;
   size_t total_heap_size_executable;
   size_t total_physical_size;
@@ -29,34 +30,41 @@ struct js_heap_stats {
   size_t externally_allocated;
 };
 
-struct fly_buf {
+struct fly_buf
+{
   uint8_t *alloc_ptr;
   uintptr_t alloc_len;
   uint8_t *data_ptr;
   uintptr_t data_len;
 };
 
-extern "C" {
+struct js_runtime;
+typedef struct js_runtime runtime;
 
-extern fly_simple_buf js_create_snapshot(const char *filename, const char *code);
+typedef void (*fly_recv_cb)(runtime *rt, fly_buf control_buf,
+                            fly_buf data_buf);
 
-extern bool js_dump_heap_snapshot(const js_runtime *rt, const char *filename);
+extern "C"
+{
+  extern fly_simple_buf js_create_snapshot(const char *filename, const char *code);
 
-extern bool js_eval(const js_runtime *rt, const char *filename, const char *code);
+  extern bool js_dump_heap_snapshot(const runtime *rt, const char *filename);
 
-extern const void *js_get_data(const js_runtime *rt);
+  extern bool js_eval(const runtime *rt, const char *filename, const char *code);
 
-extern void js_init(fly_simple_buf natives, fly_simple_buf snapshot);
+  extern const void *js_get_data(const runtime *rt);
 
-extern js_heap_stats js_runtime_heap_statistics(const js_runtime *rt);
+  extern void js_init();
 
-extern const js_runtime *js_runtime_new(fly_simple_buf snapshot, void *data);
+  extern js_heap_stats js_runtime_heap_statistics(const runtime *rt);
 
-extern int js_send(const js_runtime *rt, fly_buf buf, fly_buf raw);
+  extern const runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb);
 
-extern void js_set_response(const js_runtime *rt, fly_buf buf);
+  extern int js_send(const runtime *rt, fly_buf buf, fly_buf raw);
 
-extern const char *js_version();
+  extern void js_set_response(const runtime *rt, fly_buf buf);
+
+  extern const char *js_version();
 
 } // extern "C"
 

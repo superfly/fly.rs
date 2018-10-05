@@ -1,16 +1,12 @@
 #[macro_use]
-extern crate serde_derive;
-
-#[macro_use]
 extern crate log;
 
-#[macro_use]
-extern crate lazy_static;
+// #[macro_use]
+// extern crate lazy_static;
 
 extern crate env_logger;
 extern crate fly;
 extern crate tokio;
-extern crate tokio_io_pool;
 extern crate toml;
 
 extern crate libfly;
@@ -24,8 +20,7 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 
 #[macro_use]
 extern crate futures;
-use futures::stream;
-use futures::sync::{mpsc, oneshot};
+use futures::sync::oneshot;
 use std::sync::mpsc::RecvError;
 
 use std::fs::File;
@@ -40,11 +35,8 @@ use fly::runtime::*;
 
 use env_logger::Env;
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex, RwLock};
-
-mod config;
 use config::*;
+use fly::config;
 
 use std::alloc::System;
 
@@ -54,10 +46,18 @@ use flatbuffers::FlatBufferBuilder;
 #[global_allocator]
 static A: System = System;
 
-use std::sync::atomic::Ordering;
+#[macro_use]
+extern crate lazy_static;
+extern crate num_cpus;
+
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
+use std::sync::{Mutex, RwLock};
 
 lazy_static! {
-    pub static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
+    static ref NCPUS: usize = num_cpus::get();
+    static ref REQ_PER_APP: RwLock<HashMap<String, AtomicUsize>> = RwLock::new(HashMap::new());
 }
 
 pub struct FlyServer {
@@ -107,7 +107,7 @@ impl Service for FlyServer {
 
         let builder = &mut FlatBufferBuilder::new();
 
-        let req_id = fly::NEXT_STREAM_ID.fetch_add(1, Ordering::SeqCst);
+        let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst);
 
         let req_url = builder.create_string(url.as_str());
 
@@ -148,7 +148,18 @@ impl Service for FlyServer {
         );
 
         let guard = RUNTIMES.read().unwrap();
-        let rt = guard.values().next().unwrap();
+        let rtsv = guard.values().next().unwrap();
+
+        let idx = {
+            let map = REQ_PER_APP.read().unwrap();
+            let counter = map.values().next().unwrap();
+            // let counter = map
+            //     .entry("hello-world".to_string())
+            //     .or_insert(ATOMIC_USIZE_INIT);
+            counter.fetch_add(1, Ordering::Relaxed) % *NCPUS
+        };
+
+        let rt = &rtsv[idx];
         let rtptr = rt.ptr;
 
         let to_send = fly_buf_from(
@@ -241,6 +252,11 @@ fn main() {
 
     env_logger::init_from_env(env);
 
+    let mut main_el = tokio::runtime::Runtime::new().unwrap();
+    unsafe {
+        EVENT_LOOP_HANDLE = Some(main_el.executor());
+    };
+
     let mut file = File::open("fly.toml").unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -249,72 +265,56 @@ fn main() {
     println!("toml: {:?}", conf);
 
     for (name, app) in conf.apps.unwrap().iter() {
-        let rt = Runtime::new();
-        info!("inited rt");
-        // rt.eval_file("fly/packages/v8env/dist/bundle.js");
-        let filename = app.filename.as_str();
-        rt.eval_file(filename);
-
         {
             let mut rts = RUNTIMES.write().unwrap();
-            rts.insert(name.to_string(), rt);
+            let mut rtsv: Vec<Box<Runtime>> = vec![];
+            let filename = app.filename.as_str();
+            for _i in 0..*NCPUS {
+                let rt = Runtime::new();
+                info!("inited rt");
+                rt.eval_file(filename);
+                rtsv.push(rt);
+            }
+            rts.insert(name.to_string(), rtsv);
+            REQ_PER_APP
+                .write()
+                .unwrap()
+                .insert(name.to_string(), ATOMIC_USIZE_INIT);
         };
     }
 
     let task = Interval::new_interval(Duration::from_secs(5))
         .for_each(move |_| {
             match RUNTIMES.read() {
-                Ok(rts) => {
-                    for (key, rt) in rts.iter() {
-                        let stats = rt.heap_statistics();
-                        info!(
-                            "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
-                            key,
-                            stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
-                            stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
-                            stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
-                            stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
-                            stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
-                        );
-                    }
+                Ok(rtsv) => {
+                    // for (key, rts) in rtsv.iter() {
+                    //     for rt in rts.iter() {
+                    //     let stats = rt.heap_statistics();
+                    //     info!(
+                    //         "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
+                    //         key,
+                    //         stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
+                    //         stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
+                    //         stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
+                    //         stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
+                    //         stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
+                    //     );
+                    // }
+                    // }
                 }
                 Err(e) => error!("error locking runtimes: {}", e),
             };
             Ok(())
         }).map_err(|e| panic!("interval errored; err={:?}", e));
 
-    let mut main_el = tokio_io_pool::Runtime::new();
-
-    main_el.spawn(task).unwrap();
+    main_el.spawn(task);
 
     let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
 
-    // FAST, one at a time:
-
-    // let ln = tokio::net::TcpListener::bind(&addr).expect("unable to bind TCP listener");
-    // let server = ln
-    //     .incoming()
-    //     .map_err(|_| unreachable!())
-    //     .for_each(move |sock| {
-    //         println!("got sock");
-    //         hyper::server::conn::Http::new()
-    //             .serve_connection(sock, FlyServer {})
-    //             .map_err(|e| {
-    //                 eprintln!("error serving conn: {}", e);
-    //                 // sock.shutdown(net::Shutdown::Both);
-    //             })
-    //     });
-
-    // SLOW, TOO MUCH CONCURRENCY but simpler...
     let server = Server::bind(&addr)
         .serve(move || service_fn(move |req| FlyServer {}.call(req)))
         .map_err(|e| eprintln!("server error: {}", e));
 
-    unsafe {
-        EVENT_LOOP_HANDLE = Some(Arc::new(Mutex::new(main_el.handle().clone())));
-    };
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
-
-    // let el = EVENT_LOOP.read().unwrap();
 }

@@ -1,5 +1,3 @@
-console.log("ha");
-
 const coll = flyData.collection("testing")
 coll.put("id", { foo: "bar" }).then(b => {
   console.log("put returned:", b);
@@ -36,17 +34,13 @@ addEventListener("fetch", function (event) {
     let u = url.searchParams.get("url");
     let toFetch = new Request(req)
     toFetch.url = u;
-    console.log("to fetch url:", toFetch.url);
 
     if (url.searchParams.get("cache")) {
       return event.respondWith(cache.match(toFetch).then(res => {
-        console.log("got res?", !!res);
         if (res)
           return res
 
-        console.log("fetching then... url:", toFetch.url);
         return fetch(toFetch).then(res => {
-          console.log("fetched!")
           try {
             cache.put(toFetch, res.clone())
             return res
@@ -59,4 +53,26 @@ addEventListener("fetch", function (event) {
     }
     event.respondWith(fetch(toFetch))
   }
+})
+
+resolv("fly.io").then(res => {
+  console.log("got res:", res)
+}).catch(err => { console.log("error resolving I guess:", err.stack) })
+
+addEventListener("resolv", event => {
+  console.log("got resolv event!")
+  // event.respondWith(resolv(event.request.queries[0]))
+  event.respondWith(function () {
+    return {
+      authoritative: true,
+      answers: [
+        {
+          name: event.request.queries[0].name,
+          rrType: DNSRecordType.A,
+          ttl: 5,
+          data: "127.0.0.1"
+        }
+      ]
+    }
+  })
 })

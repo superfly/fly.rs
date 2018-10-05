@@ -22,6 +22,9 @@ union Any {
   DataGetReady,
   DataDel,
   DataDropCollection,
+  DnsQuery,
+  DnsRequest,
+  DnsResponse,
 }
 
 enum ErrorKind: byte {
@@ -206,6 +209,161 @@ table DataDel {
 }
 table DataDropCollection {
   collection: string;
+}
+
+enum DnsRecordType: byte {
+  A = 0,
+  AAAA,
+  ANY,
+  AXFR,
+  CAA,
+  CNAME,
+  IXFR,
+  MX,
+  NS,
+  NULL,
+  OPT,
+  PTR,
+  SOA,
+  SRV,
+  TLSA,
+  TXT,
+}
+
+enum DnsResponseCode: byte {
+  NoError = 0,
+  FormErr,
+  ServFail,
+  NXDomain,
+  NotImp,
+  Refused,
+  YXDomain,
+  YXRRSet,
+  NXRRSet,
+  NotAuth,
+  NotZone,
+  BADVERS,
+  BADSIG,
+  BADKEY,
+  BADTIME,
+  BADMODE,
+  BADNAME,
+  BADALG,
+  BADTRUNC,
+  BADCOOKIE,
+}
+
+enum DnsOpCode: byte {
+  Query = 0,
+  Status,
+  Notify,
+  Update,
+}
+
+enum DnsMessageType: byte {
+  Query = 0,
+  Response,
+}
+
+enum DnsClass: byte {
+  IN = 0,
+  CH,
+  HS,
+  NONE,
+  ANY,
+  // OPT(u16) ?
+}
+
+union DnsRecordData {
+  DnsA,
+  DnsAAAA,
+  // DnsCAA,
+  DnsCNAME,
+  DnsMX,
+  // DnsNULL,
+  DnsNS,
+  // DnsOPT,
+  DnsPTR,
+  DnsSOA,
+  DnsSRV,
+  // DnsTLSA,
+  DnsTXT,
+  // TODO: more.
+}
+
+table DnsA {
+  ip: string;
+}
+table DnsAAAA {
+  ip: string;
+}
+
+table DnsCNAME {
+  name: string;
+}
+table DnsMX {
+  preference: ushort;
+  exchange: string;
+}
+table DnsNS {
+  name: string;
+}
+table DnsPTR {
+  name: string;
+}
+table DnsSOA {
+  mname: string;
+  rname: string;
+  serial: uint;
+  refresh: int;
+  retry: int;
+  expire: int;
+  minimum: uint;
+}
+table DnsSRV {
+  priority: ushort;
+  weight: ushort;
+  port: ushort;
+  target: string;
+}
+
+table DnsTXTData {
+  data: [ubyte];
+}
+
+table DnsTXT {
+  data: [DnsTXTData];
+}
+
+table DnsRequest {
+  id: uint;
+  message_type: DnsMessageType;
+  queries: [DnsQuery];
+}
+
+table DnsQuery {
+  name: string;
+  rr_type: DnsRecordType;
+  dns_class: DnsClass;
+}
+
+table DnsRecord {
+  name: string;
+  rr_type: DnsRecordType;
+  rdata: DnsRecordData;
+  dns_class: DnsClass;
+  ttl: uint;
+}
+
+table DnsResponse {
+  id: uint;
+  op_code: DnsOpCode;
+  message_type: DnsMessageType;
+  authoritative: bool;
+  truncated: bool;
+  response_code: DnsResponseCode;
+  answers: [DnsRecord];
+  queries: [DnsQuery];
 }
 
 root_type Base;
