@@ -13,6 +13,7 @@ WORKDIR /usr/src/myapp
 
 ADD libfly libfly
 ADD scripts scripts
+ADD .git .git
 ADD .gitmodules .gitmodules
 RUN scripts/compile_v8.sh
 
