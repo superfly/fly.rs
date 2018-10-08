@@ -7,15 +7,18 @@ RUN ./node_modules/.bin/rollup -c
 
 RUN ls -lah dist
 
+FROM flyio/v8:7.1 as v8
+
 FROM rust:1.29
 
 WORKDIR /usr/src/myapp
 
+COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
+
 ADD libfly libfly
-ADD scripts scripts
-ADD .git .git
-ADD .gitmodules .gitmodules
-RUN scripts/compile_v8.sh
+
+COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/obj
+# COPY --from=v8 /v8/include $GO_V8_DIR/include/
 
 COPY . .
 RUN cargo build --release --bin create_snapshot
