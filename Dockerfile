@@ -1,4 +1,4 @@
-FROM node:10 as v8env
+FROM node:10-stretch as v8env
 
 COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
 
