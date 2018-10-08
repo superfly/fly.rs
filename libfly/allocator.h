@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdlib>
+#include <atomic>
 #include <v8.h>
 
 using namespace v8;
