@@ -25,7 +25,7 @@ COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
 
 ADD libfly libfly
 
-COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/obj
+COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/obj/x64.release
 # COPY --from=v8 /v8/include $GO_V8_DIR/include/
 
 COPY . .
