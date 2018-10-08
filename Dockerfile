@@ -8,7 +8,7 @@ RUN yarn install
 
 ADD msg.fbs .
 
-RUN flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fb
+RUN flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fbs
 
 ADD v8env/ .
 
