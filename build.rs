@@ -20,7 +20,7 @@ fn main() {
     .arg("--no-fb-import")
     .arg("--gen-mutable")
     .arg("-o")
-    .arg(format!("{}/fly/packages/v8env/src", crate_root))
+    .arg(format!("{}/v8env/src", crate_root))
     .arg(format!("{}/msg.fbs", crate_root))
     .spawn()
     .unwrap();
