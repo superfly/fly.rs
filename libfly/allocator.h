@@ -13,7 +13,7 @@ private:
   int failures = 0;
 
 public:
-  std::atomic_size_t allocated;
+  std::atomic<std::size_t> allocated;
   bool Check(size_t length);
   explicit LimitedAllocator(size_t limit);
   void *Allocate(size_t length) final;
