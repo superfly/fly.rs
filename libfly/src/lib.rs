@@ -60,6 +60,7 @@ pub fn version() -> String {
 }
 
 type RecvCb = unsafe extern "C" fn(rt: *const js_runtime, buf: fly_buf, data_buf: fly_buf);
+type PrintCb = unsafe extern "C" fn(rt: *const js_runtime, lvl: i8, msg: *const c_char);
 
 extern "C" {
     pub fn js_init();
@@ -68,6 +69,7 @@ extern "C" {
         snapshot: fly_simple_buf,
         data: *mut c_void,
         cb: RecvCb,
+        print: PrintCb,
     ) -> *const js_runtime;
     pub fn js_get_data(rt: *const js_runtime) -> *const c_void;
     pub fn js_set_response(rt: *const js_runtime, buf: fly_buf);

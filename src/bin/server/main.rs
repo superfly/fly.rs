@@ -245,8 +245,8 @@ fn main() {
     println!("toml: {:?}", conf);
 
     for (name, app) in conf.apps.unwrap().iter() {
-        let rt = Runtime::new();
-        info!("inited rt");
+        let rt = Runtime::new(Some(name.to_string()));
+        info!("inited rt {}", rt.name);
         // rt.eval_file("fly/packages/v8env/dist/bundle.js");
         let filename = app.filename.as_str();
         rt.eval_file(filename);

@@ -14,6 +14,13 @@ coll.put("id", { foo: "bar" }).then(b => {
 
 // console.log(new TextDecoder().decode(new Uint8Array([104, 101, 108, 108, 111])))
 
+console.trace("this is a trace message")
+console.debug("this is a debug message")
+console.info("this is a info message")
+console.warn("this is a warn message")
+console.error("this is a error message")
+console.log("this is a log message")
+
 let now = Date.now();
 setTimeout(() => { console.log("in timeout!", Date.now() - now); now = Date.now() }, 100)
 

@@ -1,10 +1,6 @@
 #ifndef libfly
 #define libfly
 
-/* Generated with cbindgen:0.6.3 */
-
-// Auto-generated, don't edit!
-
 #include <cstdint>
 #include <cstdlib>
 
@@ -43,6 +39,7 @@ typedef struct js_runtime runtime;
 
 typedef void (*fly_recv_cb)(runtime *rt, fly_buf control_buf,
                             fly_buf data_buf);
+typedef void (*fly_print_cb)(runtime *rt, int8_t lvl, const char *msg);
 
 extern "C"
 {
@@ -58,7 +55,7 @@ extern "C"
 
   extern js_heap_stats js_runtime_heap_statistics(const runtime *rt);
 
-  extern const runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb);
+  extern const runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb, fly_print_cb print_cb);
 
   extern int js_send(const runtime *rt, fly_buf buf, fly_buf raw);
 

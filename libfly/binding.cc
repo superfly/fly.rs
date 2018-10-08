@@ -173,16 +173,18 @@ void HandleException(v8::Local<v8::Context> context,
   }
 }
 
-// TODO: handle in rust
 void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
-  // CHECK_EQ(args.Length(), 1);
-  auto *isolate = args.GetIsolate();
+  // TODO: assert arguments (level:Number, msg:String)
+  v8::Isolate *isolate = args.GetIsolate();
+  js_runtime *rt = static_cast<js_runtime *>(isolate->GetData(0));
+
+  auto lvl = v8::Int32::Cast(*args[0])->Value();
+
   v8::HandleScope handle_scope(isolate);
-  v8::String::Utf8Value str(isolate, args[0]);
-  // const char *cstr = ToCString(str);
-  printf("%s\n", *str);
-  fflush(stdout);
+  v8::String::Utf8Value msg(isolate, args[1]);
+
+  rt->print_cb(rt, lvl, *msg);
 }
 
 static v8::Local<v8::Value> ImportBuf(const js_runtime *rt, fly_buf buf)
@@ -394,11 +396,12 @@ extern "C"
     return;
   }
 
-  const js_runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb)
+  const js_runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb, fly_print_cb print_cb)
   {
     js_runtime *rt = new js_runtime;
 
     rt->cb = cb;
+    rt->print_cb = print_cb;
     rt->allocator = new LimitedAllocator(10240 * 1024 * 1024);
     v8::Isolate::CreateParams params;
 
