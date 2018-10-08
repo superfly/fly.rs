@@ -9,6 +9,7 @@ fn main() {
 
   println!("cargo:rerun-if-changed=binding.cc");
   println!("cargo:rerun-if-changed=src/lib.rs");
+  println!("cargo:rerun-if-changed=third_party/v8/out.gn/x64.release/obj");
 
   // let config = cbindgen::Config {
   //   autogen_warning: Some(String::from("// Auto-generated, don't edit!")),

@@ -1,16 +1,16 @@
-const coll = flyData.collection("testing")
-coll.put("id", { foo: "bar" }).then(b => {
-  console.log("put returned:", b);
-  coll.get("id").then(d => {
-    console.log("get returned:", d)
-    coll.del("id").then(b => {
-      console.log("del returned:", b)
-      coll.get("id").then(d => {
-        console.log("get returned:", d);
-      }).catch(console.log)
-    }).catch(console.log)
-  }).catch(console.log)
-}).catch(console.log)
+// const coll = flyData.collection("testing")
+// coll.put("id", { foo: "bar" }).then(b => {
+//   console.log("put returned:", b);
+//   coll.get("id").then(d => {
+//     console.log("get returned:", d)
+//     coll.del("id").then(b => {
+//       console.log("del returned:", b)
+//       coll.get("id").then(d => {
+//         console.log("get returned:", d);
+//       }).catch(console.log)
+//     }).catch(console.log)
+//   }).catch(console.log)
+// }).catch(console.log)
 
 // console.log(new TextDecoder().decode(new Uint8Array([104, 101, 108, 108, 111])))
 
@@ -27,6 +27,11 @@ setTimeout(() => { console.log("in timeout!", Date.now() - now); now = Date.now(
 let arr = new Uint8Array(32);
 crypto.getRandomValues(arr);
 console.log("some random values:", arr);
+
+fetch("file://.").then(res => {
+  console.log("file res:", res);
+  res.text().then(p => { console.log("p", p) })
+}).catch(err => { console.log("err fetching file://.:", err.stack) })
 
 addEventListener("fetch", function (event) {
   const req = event.request;

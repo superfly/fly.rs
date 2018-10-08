@@ -30,7 +30,7 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
     v8_use_external_startup_data = false
     v8_use_snapshot = true
     ```
-  - `ninja -C out.gn/x64.release`
+  - `ninja -C out.gn/x64.release v8_monolith`
   - go get coffee for about 30 minutes while your laptop flies off
   - `cd ../../../`
 - `cd third_party/flatbuffers`

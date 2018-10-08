@@ -8,7 +8,8 @@ use std::io;
 use std::ffi::{CStr, CString};
 use std::sync::{Arc, Mutex, Once, RwLock};
 
-use std::fs::File;
+use self::fs::File;
+use std::fs;
 use std::io::Read;
 
 use libfly::*;
@@ -874,123 +875,221 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
-  // let urlstr = String::from(url);
-
   let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
 
   let rtptr2 = rtptr.clone();
 
-  let urlstr: String = url.chars().skip(7).collect();
+  let path: String = url.chars().skip(7).collect();
 
-  let fut = future::lazy(move || {
-    tokio_fs::File::open(urlstr).then(move |fileerr| -> Result<(), ()> {
-      if let Err(err) = fileerr {
-        use std::io::ErrorKind::*;
-        match err.kind() {
-          NotFound => p.send(Ok(JsHttpResponse {
+  let meta = match fs::metadata(path.clone()) {
+    Ok(m) => m,
+    Err(e) => return odd_future(e.into()),
+  };
+
+  println!("META: {:?}", meta);
+
+  if meta.is_file() {
+    let fut = future::lazy(move || {
+      tokio_fs::File::open(path).then(
+        move |fileerr: Result<tokio_fs::File, io::Error>| -> Result<(), ()> {
+          if let Err(err) = fileerr {
+            p.send(Err(err.into()));
+            return Ok(());
+          }
+
+          let file = fileerr.unwrap(); // should be safe.
+
+          let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
+          let bytes_rx = Some(rx);
+          let mut bytes = from_c(rtptr2.0).bytes.lock().unwrap();
+          bytes.insert(req_id, tx);
+
+          p.send(Ok(JsHttpResponse {
             headers: HeaderMap::new(),
-            status: StatusCode::NOT_FOUND,
-            bytes: None,
-          })),
-          _ => p.send(Err(err.into())),
-        };
+            status: StatusCode::OK,
+            bytes: bytes_rx,
+          }));
+
+          let rt = from_c(rtptr.0); // like a clone
+          rt.rt.lock().unwrap().spawn(future::lazy(move || {
+            let innerfut = Box::new(
+              FramedRead::new(file, BytesCodec::new())
+                .map_err(|e| println!("error reading file chunk! {}", e))
+                .for_each(move |mut chunk| {
+                  let builder = &mut FlatBufferBuilder::new();
+                  let chunk_msg = msg::StreamChunk::create(
+                    builder,
+                    &msg::StreamChunkArgs {
+                      id: req_id,
+                      done: false,
+                    },
+                  );
+                  unsafe {
+                    js_send(
+                      rtptr.0,
+                      fly_buf_from(
+                        serialize_response(
+                          0,
+                          builder,
+                          msg::BaseArgs {
+                            msg: Some(chunk_msg.as_union_value()),
+                            msg_type: msg::Any::StreamChunk,
+                            ..Default::default()
+                          },
+                        ).unwrap(),
+                      ),
+                      fly_buf {
+                        alloc_ptr: 0 as *mut u8,
+                        alloc_len: 0,
+                        data_ptr: chunk.as_mut_ptr(),
+                        data_len: chunk.len(),
+                      },
+                    )
+                  };
+                  Ok(())
+                }).and_then(move |_| {
+                  let builder = &mut FlatBufferBuilder::new();
+                  let chunk_msg = msg::StreamChunk::create(
+                    builder,
+                    &msg::StreamChunkArgs {
+                      id: req_id,
+                      done: true,
+                    },
+                  );
+                  unsafe {
+                    js_send(
+                      rtptr.0,
+                      fly_buf_from(
+                        serialize_response(
+                          0,
+                          builder,
+                          msg::BaseArgs {
+                            msg: Some(chunk_msg.as_union_value()),
+                            msg_type: msg::Any::StreamChunk,
+                            ..Default::default()
+                          },
+                        ).unwrap(),
+                      ),
+                      null_buf(),
+                    )
+                  };
+                  Ok(())
+                }),
+            );
+
+            unsafe {
+              match EVENT_LOOP_HANDLE {
+                Some(ref mut elh) => {
+                  elh.spawn(innerfut);
+                }
+                None => panic!("requires a multi-threaded event loop"),
+              }
+            };
+            Ok(())
+          }));
+
+          Ok(())
+        },
+      );
+      Ok(())
+    });
+    unsafe { EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(fut) };
+  } else {
+    let fut = tokio_fs::read_dir(path).then(move |read_dir_err| {
+      if let Err(e) = read_dir_err {
+        p.send(Err(e.into()));
         return Ok(());
       }
-
-      let file = fileerr.unwrap(); // should be safe.
-
+      let read_dir = read_dir_err.unwrap();
       let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-      let bytes_rx = Some(rx);
       let mut bytes = from_c(rtptr2.0).bytes.lock().unwrap();
       bytes.insert(req_id, tx);
 
       p.send(Ok(JsHttpResponse {
         headers: HeaderMap::new(),
         status: StatusCode::OK,
-        bytes: bytes_rx,
+        bytes: Some(rx),
       }));
 
-      let rt = from_c(rtptr.0); // like a clone
-      rt.rt.lock().unwrap().spawn(future::lazy(move || {
-        let innerfut = Box::new(
-          FramedRead::new(file, BytesCodec::new())
-            .map_err(|e| println!("error reading file chunk! {}", e))
-            .for_each(move |mut chunk| {
-              let builder = &mut FlatBufferBuilder::new();
-              let chunk_msg = msg::StreamChunk::create(
-                builder,
-                &msg::StreamChunkArgs {
-                  id: req_id,
-                  done: false,
+      let fut = read_dir
+        .map_err(|e| println!("error read_dir stream: {}", e))
+        .for_each(move |entry| {
+          let rt = from_c(rtptr.0); // like a clone
+          rt.rt.lock().unwrap().spawn(future::lazy(move || {
+            let entrypath = entry.path();
+            let pathstr = format!("{}\n", entrypath.to_str().unwrap());
+            let pathbytes = pathstr.as_bytes();
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: false,
+              },
+            );
+            unsafe {
+              js_send(
+                rtptr.0,
+                fly_buf_from(
+                  serialize_response(
+                    0,
+                    builder,
+                    msg::BaseArgs {
+                      msg: Some(chunk_msg.as_union_value()),
+                      msg_type: msg::Any::StreamChunk,
+                      ..Default::default()
+                    },
+                  ).unwrap(),
+                ),
+                fly_buf {
+                  alloc_ptr: 0 as *mut u8,
+                  alloc_len: 0,
+                  data_ptr: pathbytes.as_ptr() as *mut u8,
+                  data_len: pathbytes.len(),
                 },
-              );
-              unsafe {
-                js_send(
-                  rtptr.0,
-                  fly_buf_from(
-                    serialize_response(
-                      0,
-                      builder,
-                      msg::BaseArgs {
-                        msg: Some(chunk_msg.as_union_value()),
-                        msg_type: msg::Any::StreamChunk,
-                        ..Default::default()
-                      },
-                    ).unwrap(),
-                  ),
-                  fly_buf {
-                    alloc_ptr: 0 as *mut u8,
-                    alloc_len: 0,
-                    data_ptr: chunk.as_mut_ptr(),
-                    data_len: chunk.len(),
-                  },
-                )
-              };
-              Ok(())
-            }).and_then(move |_| {
-              let builder = &mut FlatBufferBuilder::new();
-              let chunk_msg = msg::StreamChunk::create(
-                builder,
-                &msg::StreamChunkArgs {
-                  id: req_id,
-                  done: true,
-                },
-              );
-              unsafe {
-                js_send(
-                  rtptr.0,
-                  fly_buf_from(
-                    serialize_response(
-                      0,
-                      builder,
-                      msg::BaseArgs {
-                        msg: Some(chunk_msg.as_union_value()),
-                        msg_type: msg::Any::StreamChunk,
-                        ..Default::default()
-                      },
-                    ).unwrap(),
-                  ),
-                  null_buf(),
-                )
-              };
-              Ok(())
-            }),
-        );
-
-        unsafe {
-          match EVENT_LOOP_HANDLE {
-            Some(ref mut elh) => {
-              elh.spawn(innerfut);
-            }
-            None => panic!("requires a multi-threaded event loop"),
-          }
-        };
-        Ok(())
-      }));
-
+              )
+            };
+            Ok(())
+          }));
+          Ok(())
+        }).and_then(move |_| {
+          let rt = from_c(rtptr.0); // like a clone
+          rt.rt.lock().unwrap().spawn(future::lazy(move || {
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: true,
+                ..Default::default()
+              },
+            );
+            unsafe {
+              js_send(
+                rtptr.0,
+                fly_buf_from(
+                  serialize_response(
+                    0,
+                    builder,
+                    msg::BaseArgs {
+                      msg: Some(chunk_msg.as_union_value()),
+                      msg_type: msg::Any::StreamChunk,
+                      ..Default::default()
+                    },
+                  ).unwrap(),
+                ),
+                null_buf(),
+              )
+            };
+            Ok(())
+          }));
+          Ok(())
+        });
+      unsafe { EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(fut) };
       Ok(())
-    })
-  });
+    });
+    unsafe { EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(fut) };
+  };
 
   let fut2 = c
     .map_err(|e| {
@@ -1045,16 +1144,16 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
       ))
     });
 
-  unsafe {
-    match EVENT_LOOP_HANDLE {
-      Some(ref mut elh) => {
-        elh.spawn(fut);
-      }
-      None => {
-        rt.rt.lock().unwrap().spawn(fut);
-      }
-    }
-  };
+  // unsafe {
+  //   match EVENT_LOOP_HANDLE {
+  //     Some(ref mut elh) => {
+  //       elh.spawn(fut);
+  //     }
+  //     None => {
+  //       rt.rt.lock().unwrap().spawn(fut);
+  //     }
+  //   }
+  // };
 
   Box::new(fut2)
 }
