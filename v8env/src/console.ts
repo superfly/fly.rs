@@ -1,78 +1,3 @@
-// /**
-//  * @module fly
-//  * @private
-//  */
-// declare var fly: any
-
-// // Console
-
-// /**
-//  * @hidden
-//  */
-// export const console: Console = {
-// 	// TODO: adding junk to conform to merged Console interface from node & lib.dom
-// 	memory: undefined,
-// 	markTimeline: undefined,
-// 	msIsIndependentlyComposed: undefined,
-// 	select: undefined,
-// 	timeStamp: undefined,
-// 	timeline: undefined,
-// 	timelineEnd: undefined,
-// 	Console: undefined,
-
-// 	log(...args) {
-// 		fly.log('info', ...args)
-// 	},
-// 	info(...args) {
-// 		fly.log('info', ...args)
-// 	},
-// 	assert(assertion, ...args) {
-// 		if (!assertion)
-// 			fly.log('info', ...args)
-// 	},
-// 	error(...args) {
-// 		fly.log('error', ...args)
-// 	},
-// 	exception(...args) {
-// 		fly.log('error', ...args)
-// 	},
-// 	warn(...args) {
-// 		fly.log('warn', ...args)
-// 	},
-// 	trace() {
-// 		let stack = new Error().stack.match(/[^\r\n]+/g)
-// 		fly.log('info', "Trace:\n" + stack.slice(2).join("\n"))
-// 	},
-
-// 	// off-spec
-// 	debug(...args) {
-// 		fly.log('debug', ...args)
-// 	},
-
-// 	// unimplemented
-// 	clear: noop,
-// 	count: noop,
-// 	countReset: noop,
-// 	dir: noop,
-// 	dirxml: noop,
-// 	group: noop,
-// 	groupCollapsed: noop,
-// 	groupEnd: noop,
-// 	// TODO: commenting out to resolve definition conflict between @types/node & lib.dom
-// 	//  see: https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/node/v4/index.d.ts#L15
-// 	//  note: 'timestamp' here & 'timeStamp' above...
-// 	// timestamp: noop,
-
-// 	// TODO: Implement
-// 	profile: noop,
-// 	profileEnd: noop,
-// 	table: noop,
-// 	time: noop,
-// 	timeEnd: noop,
-// }
-
-// function noop() { }
-
 // tslint:disable-next-line:no-any
 type ConsoleContext = Set<any>;
 
@@ -183,31 +108,43 @@ export function stringifyArgs(args: any[]): string {
 	return out.join(" ");
 }
 
-type PrintFunc = (x: string) => void;
+type PrintFunc = (level: number, msg: string) => void;
+
+const LogLevelError = 0
+const LogLevelWarn = 1
+const LogLevelInfo = 2
+const LogLevelDebug = 3
+const LogLevelTrace = 4
 
 export class Console {
 	constructor(private printFunc: PrintFunc) { }
 
-	// tslint:disable-next-line:no-any
-	log(...args: any[]): void {
-		this.printFunc(stringifyArgs(args));
+	public error(...args: any[]): void {
+		this.printFunc(LogLevelError, stringifyArgs(args))
 	}
 
-	debug = this.log;
-	info = this.log;
-
-	// tslint:disable-next-line:no-any
-	warn(...args: any[]): void {
-		// TODO Log to stderr.
-		this.printFunc(stringifyArgs(args));
+	public warn(...args: any[]): void {
+		this.printFunc(LogLevelWarn, stringifyArgs(args))
 	}
 
-	error = this.warn;
+	public info(...args: any[]): void {
+		this.printFunc(LogLevelInfo, stringifyArgs(args))
+	}
+
+	public debug(...args: any[]): void {
+		this.printFunc(LogLevelDebug, stringifyArgs(args))
+	}
+
+	public trace(...args: any[]): void {
+		this.printFunc(LogLevelTrace, stringifyArgs(args))
+	}
+
+	public log = this.info;
 
 	// tslint:disable-next-line:no-any
-	assert(condition: boolean, ...args: any[]): void {
+	public assert(condition: boolean, ...args: any[]): void {
 		if (!condition) {
-			throw new Error(`Assertion failed: ${stringifyArgs(args)}`);
+			this.error(`Assertion failed:`, args)
 		}
 	}
 }

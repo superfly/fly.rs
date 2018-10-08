@@ -2,6 +2,9 @@ extern crate flatbuffers;
 extern crate hyper;
 
 #[macro_use]
+extern crate log;
+
+#[macro_use]
 extern crate futures;
 extern crate libfly;
 extern crate tokio;

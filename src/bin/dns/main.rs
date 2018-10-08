@@ -61,16 +61,16 @@ lazy_static! {
 }
 
 fn main() {
+  let env = Env::default().filter_or("LOG_LEVEL", "info");
+
   let handler = DnsHandler {};
   let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8053);
   let server = ServerFuture::new(handler);
 
   let udp_socket = UdpSocket::bind(&addr).expect(&format!("udp bind failed: {}", addr));
-  println!("listening for udp on {:?}", udp_socket);
+  info!("listening for udp on {:?}", udp_socket);
 
-  let env = Env::default().filter_or("LOG_LEVEL", "info");
-
-  println!("V8 version: {}", libfly::version());
+  info!("V8 version: {}", libfly::version());
 
   env_logger::init_from_env(env);
 
@@ -84,7 +84,7 @@ fn main() {
   file.read_to_string(&mut contents).unwrap();
   let conf: Config = toml::from_str(&contents).unwrap();
 
-  println!("toml: {:?}", conf);
+  debug!("toml: {:?}", conf);
 
   for (name, app) in conf.apps.unwrap().iter() {
     {
@@ -92,8 +92,8 @@ fn main() {
       let mut rtsv: Vec<Box<Runtime>> = vec![];
       let filename = app.filename.as_str();
       for _i in 0..*NCPUS {
-        let rt = Runtime::new();
-        info!("inited rt");
+        let rt = Runtime::new(Some(name.to_string()));
+        info!("inited rt {}", rt.name);
         rt.eval_file(filename);
         rtsv.push(rt);
       }

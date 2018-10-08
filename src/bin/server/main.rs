@@ -270,8 +270,8 @@ fn main() {
             let mut rtsv: Vec<Box<Runtime>> = vec![];
             let filename = app.filename.as_str();
             for _i in 0..*NCPUS {
-                let rt = Runtime::new();
-                info!("inited rt");
+                let rt = Runtime::new(Some(name.to_string()));
+                info!("inited rt {}", rt.name);
                 rt.eval_file(filename);
                 rtsv.push(rt);
             }

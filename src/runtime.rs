@@ -5,7 +5,7 @@ use tokio::prelude::*;
 
 use std::io;
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::sync::{Arc, Mutex, Once, RwLock};
 
 use std::fs::File;
@@ -60,6 +60,8 @@ use msg;
 use errors::{FlyError, FlyResult};
 
 use redis_stream;
+
+extern crate log;
 
 extern crate rand;
 use self::rand::{thread_rng, Rng};
@@ -118,13 +120,14 @@ pub struct Runtime {
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<JsDnsResponse>>>,
   pub bytes: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
+  pub name: String,
 }
 
 static JSINIT: Once = Once::new();
 static NEXT_RUNTIME_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 impl Runtime {
-  pub fn new() -> Box<Self> {
+  pub fn new(name: Option<String>) -> Box<Self> {
     JSINIT.call_once(|| unsafe { js_init() });
 
     let (c, p) = oneshot::channel::<current_thread::Handle>();
@@ -156,6 +159,7 @@ impl Runtime {
       dns_responses: Mutex::new(HashMap::new()),
       bytes: Mutex::new(HashMap::new()),
       http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
+      name: name.unwrap_or("v8".to_string()),
     });
 
     (*rt_box).ptr.0 = unsafe {
@@ -163,6 +167,7 @@ impl Runtime {
         *FLY_SNAPSHOT,
         rt_box.as_ref() as *const _ as *mut libc::c_void,
         msg_from_js,
+        print_from_js,
       );
       js_eval(
         ptr,
@@ -414,6 +419,22 @@ pub fn fly_buf_from(x: Box<[u8]>) -> fly_buf {
     data_ptr: ptr as *mut u8,
     data_len: len,
   }
+}
+
+pub extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *const libc::c_char) {
+  let rt = from_c(raw);
+  let msg = unsafe { CStr::from_ptr(msg).to_string_lossy().into_owned() };
+
+  let lvl = match lvl {
+    0 => log::Level::Error,
+    1 => log::Level::Warn,
+    2 => log::Level::Info,
+    3 => log::Level::Debug,
+    4 => log::Level::Trace,
+    _ => log::Level::Info,
+  };
+
+  log!(lvl, "console/{}: {}", &rt.name, &msg);
 }
 
 fn handle_timer_start(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {

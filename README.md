@@ -38,12 +38,12 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
   - `cmakexbuild`
   - ensure `./third_party/flatbuffers/Debug` is in `$PATH`
   - `cd ../../`
-- `cd fly/packages/v8env`
+- `cd v8env`
   - `yarn install && yarn build`
   - `rollup -c`
   - `cd ../../../`
 - `cargo build --bin create_snapshot`
-  - `target/debug/create_snapshot fly/packages/v8env/dist/v8env.js v8env.bin`
+  - `target/debug/create_snapshot v8env/dist/v8env.js v8env.bin`
 - `cargo run --bin server`
 
 ## Fly & Deno

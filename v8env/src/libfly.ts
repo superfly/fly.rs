@@ -5,7 +5,7 @@ type MessageCallback = (msg: Uint8Array, raw: Uint8Array) => void;
 interface Libfly {
   recv(cb: MessageCallback): void;
   send(msg: ArrayBufferView, raw: ArrayBufferView | ArrayBufferLike): null | Uint8Array;
-  print(x: string): void;
+  print(lvl: number, msg: string): void;
   setGlobalErrorHandler: (
     handler: (
       message: string,
