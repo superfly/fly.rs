@@ -6,11 +6,10 @@ WORKDIR /v8env
 COPY v8env/package.json package.json
 RUN yarn install
 
-ADD msg.fbs .
-
-RUN flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fbs
-
 ADD v8env/ .
+
+ADD msg.fbs .
+RUN flatc --ts -o src --no-fb-import --gen-mutable msg.fbs
 
 RUN ./node_modules/.bin/rollup -c
 
