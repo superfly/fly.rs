@@ -1,4 +1,8 @@
-# Fly Rust V8
+# Fly Edge Runtime
+
+## A multi-tenant, v8 based runtime for building Edge Apps
+
+This is the next generation version of [fly](superfly/fly), and replaces the Node / isolated-vm portions of the runtime with a native Rust + v8 binary. It's much faster. And much more concurrent. Plus it's Rust so it's even technically cooler.
 
 ## Installation
 
@@ -41,6 +45,10 @@
 - `cargo build --bin create_snapshot`
   - `target/debug/create_snapshot fly/packages/v8env/dist/v8env.js v8env.bin`
 - `cargo run --bin server`
+
+## Fly & Deno
+
+The Fly runtime was originally derived from [deno](denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
 
 ## TODO
 
