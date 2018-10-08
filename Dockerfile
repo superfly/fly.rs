@@ -3,7 +3,7 @@ FROM node:10-stretch as v8env
 COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
 
 WORKDIR /v8env
-COPY package.json package.json
+COPY v8env/package.json package.json
 RUN yarn install
 
 ADD msg.fbs .
