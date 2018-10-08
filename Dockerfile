@@ -1,8 +1,17 @@
 FROM node:10 as v8env
-ADD v8env v8env
 
-WORKDIR ./v8env
+COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
+
+WORKDIR /v8env
+COPY package.json package.json
 RUN yarn install
+
+ADD msg.fbs .
+
+RUN flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fb
+
+ADD v8env/ .
+
 RUN ./node_modules/.bin/rollup -c
 
 RUN ls -lah dist
