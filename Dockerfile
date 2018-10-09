@@ -21,7 +21,7 @@ FROM rust:1.29
 
 WORKDIR /usr/src/myapp
 
-COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
+COPY --from=neomantra/flatbuffers:20181001 /usr/local/bin/flatc /usr/local/bin/flatc
 
 ADD libfly libfly
 
