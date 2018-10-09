@@ -61,6 +61,8 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [ ] Cache
     - [ ] Expire (set ttl)
     - [ ] TTL (get ttl)
+    - [ ] Tags / purge
+    - [ ] global.purgeTag / del
 - [ ] Builder
   - [ ] TypeScript support
   - [ ] HTTP imports!
