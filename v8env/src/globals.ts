@@ -25,8 +25,8 @@ declare global {
     define: Readonly<unknown>;
   }
 
-  //   const clearTimeout: typeof timers.clearTimer;
-  //   const clearInterval: typeof timers.clearTimer;
+  const clearTimeout: typeof timers.clearTimer;
+  const clearInterval: typeof timers.clearTimer;
   const setTimeout: typeof timers.setTimeout;
   const setInterval: typeof timers.setInterval;
 
@@ -69,11 +69,12 @@ window.window = window;
 window.libfly = null;
 
 window.setTimeout = timers.setTimeout;
+window.clearTimeout = timers.clearTimer;
 window.setInterval = timers.setInterval;
+window.clearInterval = timers.clearTimer;
+window.setImmediate = timers.setImmediate;
 window.Response = FlyResponse;
 window.Request = FlyRequest;
-// window.clearTimeout = timers.clearTimer;
-// window.clearInterval = timers.clearTimer;
 
 window.addEventListener = bridge.addEventListener;
 
