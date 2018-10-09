@@ -2,14 +2,14 @@
 
 ## A multi-tenant, v8 based runtime for building Edge Apps
 
-This is the next generation version of [fly](superfly/fly), and replaces the Node / isolated-vm portions of the runtime with a native Rust + v8 binary. It's much faster. And much more concurrent. Plus it's Rust so it's even technically cooler.
+This is the next generation version of [fly](superfly/fly), and replaces the Node / isolated-vm portions of the runtime with a native Rust + v8 binary. It's much faster. And much more concurrent. Plus it's Rust so it's more fun.
 
 ## Installation
 
 - `brew install ccache` (this will make your life faster)
 - `git submodule update --init`
 - `cd libfly/third_party/v8`
-  - setup `.gclient` & `.gclient_entries` https://flyio.slack.com/archives/C504D8602/p1537975314000100
+  - setup `.gclient` & `.gclient_entries` https://gist.github.com/mrkurt/f2faac7e0b591c6f5faf0562e4a0b167
   - ensure `./libfly/third_party/depot_tools` is in `$PATH` (prepending works best)
   - `../depot_tools/gclient sync` (might fail, but could be ok)
   - `tools/dev/v8gen.py x64.release`
