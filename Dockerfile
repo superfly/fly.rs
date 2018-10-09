@@ -29,7 +29,7 @@ COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/x64.release/obj
 COPY . .
 
 # RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
-RUN cargo build --debug --bin create_snapshot
+RUN cargo build --bin create_snapshot
 
 RUN ls -lah target/debug
 
@@ -41,6 +41,6 @@ RUN cargo build --release
 
 RUN ls -lah target/release.
 
-FROM tianon/true as bin
+FROM rust:1.29-slim as bin
 COPY --from=builder /usr/src/myapp/target/release/server /app/server
 COPY --from=builder /usr/src/myapp/target/release/dns /app/dns
