@@ -26,12 +26,14 @@ COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
 ADD libfly libfly
 
 COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/x64.release/obj
-# COPY --from=v8 /v8/include $GO_V8_DIR/include/
-COPY --from=v8env v8env/dist v8env/dist
 COPY . .
+
+RUN touch v8env.bin
 RUN cargo build --release --bin create_snapshot
 
 RUN ls -lah target/release
+
+COPY --from=v8env v8env/dist v8env/dist
 
 RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
