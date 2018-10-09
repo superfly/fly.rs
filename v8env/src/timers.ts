@@ -87,6 +87,10 @@ export function setInterval(
   return id;
 }
 
+export function setImmediate(cb: TimerCallback, ...args: any[]): number {
+  return setTimeout(cb, 0, ...args)
+}
+
 export function clearTimer(id: number) {
   const builder = new flatbuffers.Builder();
   fbs.TimerClear.startTimerClear(builder);

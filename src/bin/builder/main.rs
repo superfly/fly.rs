@@ -17,7 +17,7 @@ const ROLLUP_BROWSER: &'static [u8] =
 const BUILDER_CODE: &'static [u8] = include_bytes!("./builder.js");
 
 fn main() {
-  let rt = Runtime::new(Some("builder".to_string()));
+  let rt = Runtime::new(None);
   rt.eval("rollup.browser.js", str::from_utf8(ROLLUP_BROWSER).unwrap());
   rt.eval("builder.js", str::from_utf8(BUILDER_CODE).unwrap());
   let args: Vec<String> = env::args().collect();
