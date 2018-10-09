@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("Headers", () => {
   it('gets a single value correctly', () => {
     const headers = new Headers()

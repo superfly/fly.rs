@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("Response", () => {
   it("errors on unknown body types", () => {
     expect(() => new Response(1)).to.throw(/Bad Response body type/)

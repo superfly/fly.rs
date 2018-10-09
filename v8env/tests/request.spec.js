@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("Request", () => {
   const text = "helloFLY" //This must be a multiple of 8 charictars long (eg. 8, 16, 24)
   const buffer = new TextEncoder("utf-8").encode(text).buffer

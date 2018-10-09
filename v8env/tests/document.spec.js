@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 const html = `
 <html>
   <p something="yo">hello</p>

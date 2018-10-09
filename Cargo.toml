@@ -39,6 +39,7 @@ trust-dns-proto = "*"
 tokio-fs = "0.1"
 tokio-codec = "0.1"
 num_cpus = "1"
+glob = "0.2"
 
 [workspace]
 

@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("crypto", () => {
   describe("hashing", () => {
     it("creates a hash", async () => {
@@ -32,7 +30,7 @@ describe("crypto", () => {
       expect(typeof hash).to.equal("string")
     })
 
-    it("errors on bad algo", (done) => {
+    it.skip("errors on bad algo", (done) => {
       let ret = crypto.subtle.digest("SHA-123", '')
         .then(() => { done(new Error("should've thrown!")) })
         .catch((e) => {
@@ -41,7 +39,7 @@ describe("crypto", () => {
         })
     })
 
-    it("errors on bad algo (sync)", () => {
+    it.skip("errors on bad algo (sync)", () => {
       expect(function () { crypto.subtle.digestSync("SHA-123", '') }).to.throw("Digest method not supported")
     })
   })

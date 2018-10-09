@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("require fly", () => {
   it("requires fly.Image", () => {
     const { Image } = require("@fly/image")

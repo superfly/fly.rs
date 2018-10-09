@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("timers", () => {
   describe("setTimeout", () => {
     it("calls after the right amount of time", function (done) {

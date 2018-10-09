@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe("TextDecoder", () => {
   it("can be instantiated", () => {
     const td = new TextDecoder()

@@ -1,5 +1,3 @@
-import { expect } from 'chai'
-
 describe('FormData', () => {
   it('exists', () => {
     expect(typeof FormData).to.equal('function')
