@@ -219,10 +219,7 @@ impl RequestHandler for DnsHandler {
     let idx = {
       let map = REQ_PER_APP.read().unwrap();
       let counter = map.values().next().unwrap();
-      // let counter = map
-      //     .entry("hello-world".to_string())
-      //     .or_insert(ATOMIC_USIZE_INIT);
-      counter.fetch_add(1, Ordering::Relaxed) % *NCPUS
+      counter.fetch_add(1, Ordering::Relaxed) % rtsv.len()
     };
 
     let rt = &rtsv[idx];

@@ -269,8 +269,7 @@ fn main() {
             let mut rts = RUNTIMES.write().unwrap();
             let mut rtsv: Vec<Box<Runtime>> = vec![];
             let filename = app.filename.as_str();
-            for _i in 0..1 {
-                //*NCPUS
+            for _i in 0..*NCPUS {
                 let rt = Runtime::new(Some(name.to_string()));
                 info!("inited rt");
                 rt.eval_file(filename);
