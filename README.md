@@ -12,23 +12,23 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
   - setup `.gclient` & `.gclient_entries` https://gist.github.com/mrkurt/f2faac7e0b591c6f5faf0562e4a0b167
   - ensure `./libfly/third_party/depot_tools` is in `$PATH` (prepending works best)
   - `../depot_tools/gclient sync` (might fail, but could be ok)
-  - `tools/dev/v8gen.py x64.release`
-  - edit `out.gn/x64.release/args.gn`:
+  - run
     ```
-    is_debug = false
-    target_cpu = "x64"
-    cc_wrapper = "ccache"
-    is_official_build = true
-    v8_deprecation_warnings = false
-    v8_enable_gdbjit = false
-    v8_enable_i18n_support = false
-    v8_experimental_extra_library_files = []
-    v8_extra_library_files = []
-    v8_imminent_deprecation_warnings = false
-    v8_monolithic = true
-    v8_untrusted_code_mitigations = false
-    v8_use_external_startup_data = false
-    v8_use_snapshot = true
+    gn gen out.gn/x64.release --args='
+        is_debug = false
+        target_cpu = "x64"
+        cc_wrapper = "ccache"
+        is_official_build = true
+        v8_deprecation_warnings = false
+        v8_enable_gdbjit = false
+        v8_enable_i18n_support = false
+        v8_experimental_extra_library_files = []
+        v8_extra_library_files = []
+        v8_imminent_deprecation_warnings = false
+        v8_monolithic = true
+        v8_untrusted_code_mitigations = false
+        v8_use_external_startup_data = false
+        v8_use_snapshot = true'
     ```
   - `ninja -C out.gn/x64.release v8_monolith`
   - go get coffee for about 30 minutes while your laptop flies off
@@ -42,8 +42,6 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
   - `yarn install && yarn build`
   - `rollup -c`
   - `cd ../../../`
-- `cargo build --bin create_snapshot`
-  - `target/debug/create_snapshot v8env/dist/v8env.js v8env.bin`
 - `cargo run --bin server`
 
 ## Fly & Deno
