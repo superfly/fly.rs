@@ -52,10 +52,15 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
 
 ## TODO
 
-- [ ] Send `print` (all `console.x` calls) back into Rust to handle in various ways
-  - [ ] Send errors to stderr
-  - [ ] Use envlogger (`debug!`, `info!`, etc. macros) for messages
+- [x] Send `print` (all `console.x` calls) back into Rust to handle in various ways
+  - [x] Send errors to stderr
+  - [x] Use envlogger (`debug!`, `info!`, etc. macros) for messages
   - [ ] Allow sending to graylog or something external
+- [ ] Feature-parity
+  - [ ] Image API
+  - [ ] Cache
+    - [ ] Expire (set ttl)
+    - [ ] TTL (get ttl)
 - [ ] Builder
   - [ ] TypeScript support
   - [ ] HTTP imports!
