@@ -35,14 +35,14 @@ export function resolv(req: DNSQuery | string): Promise<DNSResponse> {
             data = d.ip();
             break;
           }
-          case fbs.DnsRecordData.DnsAAAA: {
-            const d = new fbs.DnsAAAA()
+          case fbs.DnsRecordData.DnsAaaa: {
+            const d = new fbs.DnsAaaa()
             ans.rdata(d);
             data = d.ip();
             break;
           }
-          case fbs.DnsRecordData.DnsNS: {
-            const d = new fbs.DnsNS()
+          case fbs.DnsRecordData.DnsNs: {
+            const d = new fbs.DnsNs()
             ans.rdata(d)
             data = d.name()
             break;
