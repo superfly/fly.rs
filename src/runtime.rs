@@ -1272,14 +1272,14 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             };
             let rdata_type = match ans.rdata() {
               RData::A(_) => msg::DnsRecordData::DnsA,
-              RData::AAAA(_) => msg::DnsRecordData::DnsAAAA,
-              RData::CNAME(_) => msg::DnsRecordData::DnsCNAME,
-              RData::MX(_) => msg::DnsRecordData::DnsMX,
-              RData::NS(_) => msg::DnsRecordData::DnsNS,
-              RData::PTR(_) => msg::DnsRecordData::DnsPTR,
-              RData::SOA(_) => msg::DnsRecordData::DnsSOA,
-              RData::SRV(_) => msg::DnsRecordData::DnsSRV,
-              RData::TXT(_) => msg::DnsRecordData::DnsTXT,
+              RData::AAAA(_) => msg::DnsRecordData::DnsAaaa,
+              RData::CNAME(_) => msg::DnsRecordData::DnsCname,
+              RData::MX(_) => msg::DnsRecordData::DnsMx,
+              RData::NS(_) => msg::DnsRecordData::DnsNs,
+              RData::PTR(_) => msg::DnsRecordData::DnsPtr,
+              RData::SOA(_) => msg::DnsRecordData::DnsSoa,
+              RData::SRV(_) => msg::DnsRecordData::DnsSrv,
+              RData::TXT(_) => msg::DnsRecordData::DnsTxt,
               _ => unimplemented!(),
             };
             let rdata = match ans.rdata() {
@@ -1295,9 +1295,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               }
               RData::AAAA(ip) => {
                 let ipstr = builder.create_string(&ip.to_string());
-                msg::DnsAAAA::create(
+                msg::DnsAaaa::create(
                   builder,
-                  &msg::DnsAAAAArgs {
+                  &msg::DnsAaaaArgs {
                     ip: Some(ipstr),
                     ..Default::default()
                   },
@@ -1305,9 +1305,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               }
               RData::CNAME(name) => {
                 let namestr = builder.create_string(&name.to_utf8());
-                msg::DnsCNAME::create(
+                msg::DnsCname::create(
                   builder,
-                  &msg::DnsCNAMEArgs {
+                  &msg::DnsCnameArgs {
                     name: Some(namestr),
                     ..Default::default()
                   },
@@ -1315,9 +1315,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               }
               RData::MX(mx) => {
                 let exstr = builder.create_string(&mx.exchange().to_utf8());
-                msg::DnsMX::create(
+                msg::DnsMx::create(
                   builder,
-                  &msg::DnsMXArgs {
+                  &msg::DnsMxArgs {
                     exchange: Some(exstr),
                     preference: mx.preference(),
                     ..Default::default()
@@ -1326,9 +1326,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               }
               RData::NS(name) => {
                 let namestr = builder.create_string(&name.to_utf8());
-                msg::DnsNS::create(
+                msg::DnsNs::create(
                   builder,
-                  &msg::DnsNSArgs {
+                  &msg::DnsNsArgs {
                     name: Some(namestr),
                     ..Default::default()
                   },
@@ -1336,9 +1336,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               }
               RData::PTR(name) => {
                 let namestr = builder.create_string(&name.to_utf8());
-                msg::DnsPTR::create(
+                msg::DnsPtr::create(
                   builder,
-                  &msg::DnsPTRArgs {
+                  &msg::DnsPtrArgs {
                     name: Some(namestr),
                     ..Default::default()
                   },
@@ -1347,9 +1347,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               RData::SOA(soa) => {
                 let mnamestr = builder.create_string(&soa.mname().to_utf8());
                 let rnamestr = builder.create_string(&soa.rname().to_utf8());
-                msg::DnsSOA::create(
+                msg::DnsSoa::create(
                   builder,
-                  &msg::DnsSOAArgs {
+                  &msg::DnsSoaArgs {
                     mname: Some(mnamestr),
                     rname: Some(rnamestr),
                     serial: soa.serial(),
@@ -1363,9 +1363,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               }
               RData::SRV(srv) => {
                 let targetstr = builder.create_string(&srv.target().to_utf8());
-                msg::DnsSRV::create(
+                msg::DnsSrv::create(
                   builder,
-                  &msg::DnsSRVArgs {
+                  &msg::DnsSrvArgs {
                     priority: srv.priority(),
                     weight: srv.weight(),
                     port: srv.port(),
@@ -1379,9 +1379,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                   .iter()
                   .map(|t| {
                     let d = builder.create_vector(&Vec::from(t.clone()));
-                    msg::DnsTXTData::create(
+                    msg::DnsTxtData::create(
                       builder,
-                      &msg::DnsTXTDataArgs {
+                      &msg::DnsTxtDataArgs {
                         data: Some(d),
                         ..Default::default()
                       },
@@ -1389,9 +1389,9 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                   }).collect();
                 let data = builder.create_vector(&coll);
 
-                msg::DnsTXT::create(
+                msg::DnsTxt::create(
                   builder,
-                  &msg::DnsTXTArgs {
+                  &msg::DnsTxtArgs {
                     data: Some(data),
                     ..Default::default()
                   },
@@ -1774,30 +1774,30 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
           let d = ans.rdata_as_dns_a().unwrap();
           RData::A(d.ip().unwrap().parse().unwrap())
         }
-        msg::DnsRecordData::DnsAAAA => {
+        msg::DnsRecordData::DnsAaaa => {
           let d = ans.rdata_as_dns_aaaa().unwrap();
           RData::AAAA(d.ip().unwrap().parse().unwrap())
         }
-        msg::DnsRecordData::DnsCNAME => {
+        msg::DnsRecordData::DnsCname => {
           let d = ans.rdata_as_dns_cname().unwrap();
           RData::CNAME(d.name().unwrap().parse().unwrap())
         }
-        msg::DnsRecordData::DnsMX => {
+        msg::DnsRecordData::DnsMx => {
           let d = ans.rdata_as_dns_mx().unwrap();
           RData::MX(dns::rr::rdata::mx::MX::new(
             d.preference(),
             d.exchange().unwrap().parse().unwrap(),
           ))
         }
-        msg::DnsRecordData::DnsNS => {
+        msg::DnsRecordData::DnsNs => {
           let d = ans.rdata_as_dns_ns().unwrap();
           RData::NS(d.name().unwrap().parse().unwrap())
         }
-        msg::DnsRecordData::DnsPTR => {
+        msg::DnsRecordData::DnsPtr => {
           let d = ans.rdata_as_dns_ptr().unwrap();
           RData::PTR(d.name().unwrap().parse().unwrap())
         }
-        msg::DnsRecordData::DnsSOA => {
+        msg::DnsRecordData::DnsSoa => {
           let d = ans.rdata_as_dns_soa().unwrap();
           RData::SOA(dns::rr::rdata::soa::SOA::new(
             d.mname().unwrap().parse().unwrap(),
@@ -1809,7 +1809,7 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
             d.minimum(),
           ))
         }
-        msg::DnsRecordData::DnsSRV => {
+        msg::DnsRecordData::DnsSrv => {
           let d = ans.rdata_as_dns_srv().unwrap();
           RData::SRV(dns::rr::rdata::srv::SRV::new(
             d.priority(),
@@ -1818,7 +1818,7 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
             d.target().unwrap().parse().unwrap(),
           ))
         }
-        msg::DnsRecordData::DnsTXT => {
+        msg::DnsRecordData::DnsTxt => {
           let d = ans.rdata_as_dns_txt().unwrap();
           let tdata = d.data().unwrap();
           let data_len = tdata.len();

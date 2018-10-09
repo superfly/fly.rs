@@ -276,42 +276,42 @@ enum DnsClass: byte {
 
 union DnsRecordData {
   DnsA,
-  DnsAAAA,
+  DnsAaaa,
   // DnsCAA,
-  DnsCNAME,
-  DnsMX,
+  DnsCname,
+  DnsMx,
   // DnsNULL,
-  DnsNS,
+  DnsNs,
   // DnsOPT,
-  DnsPTR,
-  DnsSOA,
-  DnsSRV,
+  DnsPtr,
+  DnsSoa,
+  DnsSrv,
   // DnsTLSA,
-  DnsTXT,
+  DnsTxt,
   // TODO: more.
 }
 
 table DnsA {
   ip: string;
 }
-table DnsAAAA {
+table DnsAaaa {
   ip: string;
 }
 
-table DnsCNAME {
+table DnsCname {
   name: string;
 }
-table DnsMX {
+table DnsMx {
   preference: ushort;
   exchange: string;
 }
-table DnsNS {
+table DnsNs {
   name: string;
 }
-table DnsPTR {
+table DnsPtr {
   name: string;
 }
-table DnsSOA {
+table DnsSoa {
   mname: string;
   rname: string;
   serial: uint;
@@ -320,19 +320,19 @@ table DnsSOA {
   expire: int;
   minimum: uint;
 }
-table DnsSRV {
+table DnsSrv {
   priority: ushort;
   weight: ushort;
   port: ushort;
   target: string;
 }
 
-table DnsTXTData {
+table DnsTxtData {
   data: [ubyte];
 }
 
-table DnsTXT {
-  data: [DnsTXTData];
+table DnsTxt {
+  data: [DnsTxtData];
 }
 
 table DnsRequest {
