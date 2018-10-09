@@ -1,6 +1,6 @@
 FROM node:10-stretch as v8env
 
-COPY --from=neomantra/flatbuffers /usr/local/bin/flatc /usr/local/bin/flatc
+COPY --from=neomantra/flatbuffers:20180924 /usr/local/bin/flatc /usr/local/bin/flatc
 
 WORKDIR /v8env
 COPY v8env/package.json package.json
@@ -21,14 +21,14 @@ FROM rust:1.29
 
 WORKDIR /usr/src/myapp
 
-COPY --from=neomantra/flatbuffers:20181001 /usr/local/bin/flatc /usr/local/bin/flatc
+COPY --from=neomantra/flatbuffers:20180924 /usr/local/bin/flatc /usr/local/bin/flatc
 
 ADD libfly libfly
 
 COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/x64.release/obj
 COPY . .
 
-RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
+# RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
 RUN cargo build --release --bin create_snapshot
 
 RUN ls -lah target/release

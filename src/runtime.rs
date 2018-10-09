@@ -113,6 +113,27 @@ pub struct JsRuntime(pub *const js_runtime);
 unsafe impl Send for JsRuntime {}
 unsafe impl Sync for JsRuntime {}
 
+impl JsRuntime {
+  pub fn send(&self, buf: fly_buf, raw: Option<fly_buf>) {
+    unsafe {
+      js_send(
+        self.0,
+        buf,
+        match raw {
+          Some(r) => r,
+          None => null_buf(),
+        },
+      )
+    };
+  }
+  pub fn to_runtime(&self) -> &mut Runtime {
+    let ptr = unsafe { js_get_data(self.0) };
+    let rt_ptr = ptr as *mut Runtime;
+    let rt_box = unsafe { Box::from_raw(rt_ptr) };
+    Box::leak(rt_box)
+  }
+}
+
 pub struct Runtime {
   pub ptr: JsRuntime,
   pub rt: Mutex<tokio::runtime::current_thread::Handle>,
@@ -213,13 +234,32 @@ pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
 
 extern crate tokio_io_pool;
 
-const V8ENV_SOURCEMAP: &'static [u8] = include_bytes!("../v8env/dist/v8env.js.map");
+#[cfg(debug_assertions)]
+lazy_static! {
+  static ref V8ENV_SNAPSHOT: Box<[u8]> = {
+    let filename = "v8env/dist/v8env.js";
+    let mut file = File::open(filename).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+    let snap = unsafe {
+      js_create_snapshot(
+        CString::new(filename).unwrap().as_ptr(),
+        CString::new(contents).unwrap().as_ptr(),
+      )
+    };
+    let bytes: Vec<u8> =
+      unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();
+    bytes.into_boxed_slice()
+  };
+}
+
+lazy_static_include_bytes!(V8ENV_SOURCEMAP, "v8env/dist/v8env.js.map");
+#[cfg(not(debug_assertions))]
 const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
 
 extern crate sourcemap;
 use self::sourcemap::SourceMap;
 
-// pub static mut EVENT_LOOP: Option<Mutex<tokio::Runtime>> = None;
 pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
 
 lazy_static! {
@@ -264,7 +304,7 @@ lazy_static! {
     thread::Builder::new()
       .name("sourcemapper".to_string())
       .spawn(move || {
-        let sm = SourceMap::from_reader(V8ENV_SOURCEMAP).unwrap();
+        let sm = SourceMap::from_reader(*V8ENV_SOURCEMAP).unwrap();
         for tup in receiver.iter() {
           let ch = tup.1;
           let v = tup.0;

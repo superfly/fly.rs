@@ -3,7 +3,6 @@ use std::process::Command;
 
 fn main() {
   let crate_root = env::var("CARGO_MANIFEST_DIR").unwrap();
-  let out_dir = env::var("OUT_DIR").unwrap();
 
   println!("cargo:rerun-if-changed=msg.fbs");
 
