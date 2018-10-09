@@ -39,10 +39,16 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
   - ensure `./third_party/flatbuffers/Debug` is in `$PATH`
   - `cd ../../`
 - `cd v8env`
-  - `yarn install && yarn build`
+  - `yarn install`
   - `rollup -c`
-  - `cd ../../../`
+  - `cd ..`
 - `cargo run --bin server`
+
+## Running v8env tests
+
+```
+cargo run --bin test "v8env/tests/**/*.spec.js"
+```
 
 ## Fly & Deno
 
