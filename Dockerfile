@@ -35,7 +35,7 @@ COPY . .
 RUN ls -l third_party/flatbuffers
 
 # RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
-RUN cargo build --verbose --bin create_snapshot
+RUN cargo build --bin create_snapshot
 
 RUN ls -lah target/debug
 

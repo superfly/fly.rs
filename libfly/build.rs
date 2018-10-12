@@ -60,10 +60,10 @@ fn main() {
     crate_dir
   );
   println!("cargo:rustc-link-lib=static=v8_monolith");
+
   if cfg!(any(target_os = "macos", target_os = "freebsd")) {
     println!("cargo:rustc-link-lib=dylib=c++");
   } else {
     println!("cargo:rustc-link-lib=dylib=stdc++");
-    println!("cargo:rustc-link-lib=dylib=gcc");
   }
 }

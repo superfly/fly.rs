@@ -23,4 +23,10 @@ fn main() {
     .arg(format!("{}/msg.fbs", crate_root))
     .spawn()
     .unwrap();
+
+  if cfg!(any(target_os = "macos", target_os = "freebsd")) {
+    println!("cargo:rustc-link-lib=dylib=c++");
+  } else {
+    println!("cargo:rustc-link-lib=dylib=stdc++");
+  }
 }
