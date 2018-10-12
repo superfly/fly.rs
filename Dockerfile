@@ -31,21 +31,20 @@ COPY --from=neomantra/flatbuffers:20180924 /usr/local/bin/flatc /usr/local/bin/f
 COPy libfly libfly
 COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/x64.release/obj
 COPY . .
-# RUN scripts/compile_v8.sh
 
 # RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
-# RUN cargo build --verbose --bin create_snapshot
+RUN cargo build --verbose --bin create_snapshot
 
-# RUN ls -lah target/debug
+RUN ls -lah target/debug
 
-# COPY --from=v8env v8env/dist v8env/dist
+COPY --from=v8env v8env/dist v8env/dist
 
-# RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
+RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
-# RUN cargo build --release
+RUN cargo build --release
 
-# RUN ls -lah target/release.
+RUN ls -lah target/release.
 
-# FROM liuchong/rustup:1.29.1 as bin
-# COPY --from=builder /usr/src/myapp/target/release/server /app/server
-# COPY --from=builder /usr/src/myapp/target/release/dns /app/dns
+FROM liuchong/rustup:1.29.1 as bin
+COPY --from=builder /usr/src/myapp/target/release/server /app/server
+COPY --from=builder /usr/src/myapp/target/release/dns /app/dns

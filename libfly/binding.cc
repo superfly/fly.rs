@@ -402,7 +402,7 @@ extern "C"
 
     rt->cb = cb;
     rt->print_cb = print_cb;
-    rt->allocator = new LimitedAllocator(10240 * 1024 * 1024);
+    rt->allocator = new LimitedAllocator(128 * 1024 * 1024);
     v8::Isolate::CreateParams params;
 
     params.array_buffer_allocator = rt->allocator;
@@ -470,7 +470,7 @@ extern "C"
     }
 
     auto args_len = raw.data_len > 0 ? 2 : 1;
-    v8::Local<v8::Value> args[args_len];
+    auto *args = new v8::Local<v8::Value>[args_len];
 
     args[0] = ImportBuf(rt, buf);
     free_fly_buf(buf);
@@ -481,6 +481,8 @@ extern "C"
     }
 
     recv->Call(context->Global(), args_len, args);
+
+    delete[] args;
 
     if (try_catch.HasCaught())
     {

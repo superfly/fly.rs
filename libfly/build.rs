@@ -37,7 +37,7 @@ fn main() {
     .include(Path::new("third_party/v8/include/"))
     .cpp(true)
     .extra_warnings(false)
-    .flag("--std=c++11")
+    .flag("--std=c++14")
     .compile("libfly.a");
 
   // DEBUG
