@@ -22,7 +22,7 @@ FROM liuchong/rustup:1.29.1 as builder
 RUN apt-get update -qq \
   && apt-get install -y --no-install-recommends \
   ca-certificates build-essential pkg-config git curl python libxml2 libxml2-dev \
-  clang-3.8 libc++-dev libc++abi-dev \
+  clang-3.8 libc++-dev libc++abi-dev llvm \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/myapp
@@ -40,7 +40,7 @@ RUN cargo build --release --bin create_snapshot
 
 RUN ls -lah target/release
 
-COPY --from=v8env v8env/dist v8env/dist
+COPY --from=v8env v8env/ v8env/
 
 RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 

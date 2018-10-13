@@ -61,10 +61,10 @@ fn main() {
   );
   println!("cargo:rustc-link-lib=static=v8_monolith");
 
-  if cfg!(any(target_os = "macos", target_os = "freebsd")) {
-    println!("cargo:rustc-link-lib=dylib=c++");
-  } else {
-    println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
-    println!("cargo:rustc-link-lib=static=c++");
-  }
+  // if cfg!(any(target_os = "macos", target_os = "freebsd")) {
+  println!("cargo:rustc-link-lib=c++");
+  // } else {
+  //   println!("cargo:rustc-link-search=native=/usr/lib/x86_64-linux-gnu");
+  //   println!("cargo:rustc-link-lib=static=c++");
+  // }
 }
