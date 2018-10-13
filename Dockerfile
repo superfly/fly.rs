@@ -35,14 +35,14 @@ COPY . .
 
 RUN ls -l third_party/flatbuffers
 
-# RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
-RUN cargo build --debug --bin create_snapshot
+RUN touch v8env.bin && mkdir -p v8env/dist && touch v8env/dist/v8env.js.map
+RUN cargo build --release --bin create_snapshot
 
-RUN ls -lah target/debug
+RUN ls -lah target/release
 
 COPY --from=v8env v8env/dist v8env/dist
 
-RUN target/debug/create_snapshot v8env/dist/v8env.js v8env.bin
+RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
 RUN cargo build --release
 
