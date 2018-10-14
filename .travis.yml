@@ -1,7 +1,12 @@
+sudo: required
+dist: trusty
+
 language: rust
 
 rust:
   - stable
+
+compiler: clang
 
 git:
   submodules: false
@@ -36,5 +41,6 @@ install:
   - |
     cd libfly/third_party
     wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-linux-x64.tar.gz | tar xvz
+    mv v8/out.gn/lib v8/out.gn/x64.release
     cd $TRAVIS_BUILD_DIR
   - ls -lah libfly/third_party/v8/out.gn
