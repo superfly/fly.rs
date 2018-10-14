@@ -44,3 +44,7 @@ install:
     mv v8/out.gn/lib v8/out.gn/x64.release
     cd $TRAVIS_BUILD_DIR
   - ls -lah libfly/third_party/v8/out.gn
+  - sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-3.9 100
+  - sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-3.9 100
+  - export CC=/usr/bin/clang
+  - export CXX=/usr/bin/clang++
