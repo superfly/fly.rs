@@ -38,6 +38,7 @@ fn main() {
     .cpp(true)
     .extra_warnings(false)
     .flag("--std=c++14")
+    .cpp_set_stdlib("c++")
     .compile("libfly.a");
 
   // DEBUG
