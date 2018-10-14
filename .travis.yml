@@ -15,7 +15,7 @@ cache:
 
 install:
   - |
-    git submodule update --init flatbuffers
+    git submodule update --init third_party/flatbuffers
     cd third_party/flatbuffers
     cmake -G "Unix Makefiles"
     make
