@@ -3,6 +3,9 @@ language: rust
 rust:
   - stable
 
+git:
+  submodules: false
+
 cache:
   cargo: true
   yarn: true
@@ -11,10 +14,24 @@ cache:
     - v8env/node_modules
 
 install:
-  - nvm install 10
-  - npm i -g yarn
-  - yarn install
-  - cd v8env && yarn install && node_modules/.bin/rollup -c && cd ..
+  - |
+    git submodule update --init flatbuffers
+    cd third_party/flatbuffers
+    cmake -G "Unix Makefiles"
+    make
+    cd $TRAVIS_BUILD_DIR
+  - |
+    ls -lah third_party/flatbuffers
+    export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/Debug
+    flatc --ts -o src --no-fb-import --gen-mutable msg.fbs
+  - |
+    nvm install 10
+    npm i -g yarn
+    yarn install
+    cd v8env
+    yarn install
+    node_modules/.bin/rollup -c
+    cd $TRAVIS_BUILD_DIR
   - ls -lah v8env/dist
   - wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-linux-x64.tar.gz | tar  -C libfly/third_party xvz
   - ls -lah libfly/third_party/v8/out.gn
