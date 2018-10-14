@@ -68,7 +68,6 @@ before_deploy:
 - ls -lah target/release
 - target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 - cargo build --release
-- ldd target/release/server
 - strip target/release/server && strip target/release/dns
 - tar czf ${RELEASE_ARCHIVE_NAME} -C target/release server dns
 
