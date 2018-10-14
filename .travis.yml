@@ -21,7 +21,7 @@ cache:
   - node_modules
   - v8env/node_modules
 before_install:
-- sudo apt-get install -y clang-3.9 libc++-dev libc++abi-dev
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y clang-3.9 libc++-dev libc++abi-dev; fi
 addons:
   apt:
     update: true
