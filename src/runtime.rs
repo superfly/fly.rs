@@ -73,6 +73,7 @@ extern crate tokio_codec;
 use self::tokio_codec::{BytesCodec, FramedRead};
 
 extern crate trust_dns as dns;
+extern crate trust_dns_proto as dns_proto;
 use self::dns::client::ClientHandle; // necessary for trait to be in scope
 
 #[derive(Debug)]
@@ -273,23 +274,21 @@ lazy_static! {
     let pool = r2d2::Pool::builder().build(manager).unwrap();
     Arc::new(pool)
   };
-  static ref DNS_RESOLVER: Mutex<dns::client::BasicClientHandle> = {
+  static ref DNS_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
     let (stream, handle) = dns::udp::UdpClientStream::new(([8, 8, 8, 8], 53).into());
-    let client = dns::client::ClientFuture::new(stream, handle, None);
-    let (tx, rx) = oneshot::channel::<dns::client::BasicClientHandle>();
+    let (bg, mut client) = dns::client::ClientFuture::new(stream, handle, None);
     unsafe {
-      EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(
-        client
-          .map_err(|e| println!("error getting dns client: {}", e))
-          .and_then(move |client| {
-            println!("got a client from the spawned future :D");
-            tx.send(client);
-            Ok(())
-          }),
-      )
+      EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(bg)
+      //   bg.map_err(|e| println!("error getting dns client: {}", e))
+      //     .and_then(move |client| {
+      //       println!("got a client from the spawned future :D");
+      //       tx.send(client);
+      //       Ok(())
+      //     }),
+      // )
     };
-    println!("spawned, waiting for a client");
-    Mutex::new(rx.wait().unwrap())
+    Mutex::new(client)
+    // Mutex::new(rx.wait().unwrap())
   };
   static ref SM_CHAN: Mutex<
     stdmspc::Sender<(
