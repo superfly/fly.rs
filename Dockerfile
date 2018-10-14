@@ -30,7 +30,7 @@ WORKDIR /usr/src/myapp
 COPY --from=neomantra/flatbuffers:20180924 /usr/local/bin/flatc /usr/local/bin/flatc
 
 COPY libfly libfly
-COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/x64.release/obj
+COPY --from=v8 /v8/lib libfly/third_party/v8/out.gn/lib/obj
 COPY . .
 
 RUN ls -l third_party/flatbuffers
