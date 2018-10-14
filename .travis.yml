@@ -9,8 +9,6 @@ matrix:
       dist: trusty
     - os: osx
 
-git:
-  submodules: false
 env:
   global:
     - RELEASE_ARCHIVE_NAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
@@ -34,7 +32,6 @@ install:
     export CXX=/usr/bin/clang++-3.9
   fi;
 - |
-  git submodule update --init third_party/flatbuffers
   cd third_party/flatbuffers
   cmake -G "Unix Makefiles"
   make flatc
