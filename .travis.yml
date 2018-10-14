@@ -1,9 +1,20 @@
-language: c++
+language: rust
+
+rust:
+  - stable
 
 cache:
-  ccache: true
+  cargo: true
+  yarn: true
   directories:
-    - third_party/v8/build/linux/debian_sid_amd64-sysroot/
+    - node_modules
+    - v8env/node_modules
 
-before_script:
-  - ccache -s
+install:
+  - nvm install 10
+  - npm i -g yarn
+  - yarn install
+  - cd v8env && yarn install && node_modules/.bin/rollup -c && cd ..
+  - ls -lah v8env/dist
+  - wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-linux-x64.tar.gz | tar  -C libfly/third_party xvz
+  - ls -lah libfly/third_party/v8/out.gn

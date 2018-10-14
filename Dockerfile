@@ -50,6 +50,8 @@ RUN ls -lah target/release
 
 RUN ldd target/release/server
 
+RUN strip target/release/server && strip target/release/dns
+
 FROM liuchong/rustup:1.29.1 as bin
 COPY --from=builder /usr/src/myapp/target/release/server /app/server
 COPY --from=builder /usr/src/myapp/target/release/dns /app/dns
