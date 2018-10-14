@@ -1,9 +1,83 @@
-language: c++
+language: rust
+rust:
+- stable
 
+matrix:
+  include:
+    - os: linux
+      sudo: required
+      dist: trusty
+    - os: osx
+
+git:
+  submodules: false
+env:
+  global:
+    - RELEASE_ARCHIVE_NAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
 cache:
-  ccache: true
+  cargo: true
+  yarn: true
   directories:
-    - third_party/v8/build/linux/debian_sid_amd64-sysroot/
+  - node_modules
+  - v8env/node_modules
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y clang-3.9 libc++-dev libc++abi-dev; fi
+addons:
+  apt:
+    update: true
+install:
+- |
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.9 100
+    sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.9 100
+    export CC=/usr/bin/clang-3.9
+    export CXX=/usr/bin/clang++-3.9
+  fi;
+- |
+  git submodule update --init third_party/flatbuffers
+  cd third_party/flatbuffers
+  cmake -G "Unix Makefiles"
+  make flatc
+  cd $TRAVIS_BUILD_DIR
+- |
+  ls -lah third_party/flatbuffers
+  export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
+  flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fbs
+- |
+  nvm install 10
+  npm i -g yarn
+  yarn install
+  cd v8env
+  yarn install
+  node_modules/.bin/rollup -c
+  cd $TRAVIS_BUILD_DIR
+- ls -lah v8env/dist
+- |
+  cd libfly/third_party
+  wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-$TRAVIS_OS_NAME-x64.tar.gz | tar xvz
+  mv v8/out.gn/lib v8/out.gn/x64.release
+  cd $TRAVIS_BUILD_DIR
+- ls -lah libfly/third_party/v8/out.gn
+- touch v8env.bin
 
-before_script:
-  - ccache -s
+script:
+  - echo "skipping"
+
+before_deploy:
+- cargo build --release --bin create_snapshot
+- ls -lah target/release
+- target/release/create_snapshot v8env/dist/v8env.js v8env.bin
+- cargo build --release
+- strip target/release/server && strip target/release/dns
+- tar czf ${RELEASE_ARCHIVE_NAME} -C target/release server dns
+
+deploy:
+  provider: releases
+  overwrite: true
+  api_key:
+    secure: VsCHyGpPc02F3LiK+nqMDSPSEKmzgKyAhwVJQJ2mLjso74N1NGRsCDgKIQAOoLzcJRVNZFrpnlbOxKoyTGg1x8b6MnpPmqR8j/LVdKoud6Nhp8Ufw1I/9XwPpyjAhSNKnQq+1h1DpbWbob4bS5BR23PRbIySPUx570W3G8y3IritqorvpM4Qn12fyetWoZxRxWt9QAnrEV2Pj8ULR1C2jBtQPNAVLKm5FcDPBxzQcqXRZjARQtdjNU5tOB1bEm4zg8QNl/hDHi+5WZ/FQ/gZR28cAdhAb8GTC8UU7hTP5TTt2G1UimI27RPxyAyc/eJ9JU2ixRGzjDPvv6hk+KkGGjvuJccKHqR+bgHJ8lS8gPPmpvRMM9uVTAsI/pPA51OgveaHknMCCefiDYGgMq2cIW3UmUMHaB1m9SmBrIqCfEOwPp8f4KEtO55B9myuvqOYvlL4pJrcSUucjNGkm7guqCR4u3L3D0cIkTyk3fTbZyaeAxkSlcYvcff8BpRuFI8YiTybtLxqy0+KoDNoXr/d34/dwFyQNeRPN7H4EWGkzFeHpbfm+aCXGtqF8fMj/tOT7yrOAwy2rvD9/Gx8nzdY7j+DMIXB9HAR3y5Xrpiba0nedV4jww2s1dKuf96Iac3CZrO1qOXvNMKPCVSrp/rmQ5r6REfTQDe6NBONPvjjTX0=
+  file: ${RELEASE_ARCHIVE_NAME}
+  skip_cleanup: true
+  on:
+    repo: superfly/fly.rs
+    tags: true

@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate futures;
 use futures::future;
 
@@ -8,13 +7,19 @@ extern crate tokio_udp;
 use tokio_udp::UdpSocket;
 
 extern crate trust_dns as dns;
+extern crate trust_dns_proto;
 extern crate trust_dns_server;
 
-use dns::op::{Message, MessageType, OpCode, ResponseCode};
-use dns::rr::{RData, Record};
+use trust_dns_server::authority::{AuthLookup, MessageResponseBuilder};
+
+use trust_dns_proto::op::header::Header;
+use trust_dns_proto::rr::{Record, RrsetRecords};
+use trust_dns_server::authority::authority::LookupRecords;
+
+// use dns::rr::{LowerName, Name};
 
 use futures::sync::oneshot;
-use std::sync::mpsc::RecvError;
+// use std::sync::mpsc::RecvError;
 
 use std::io;
 use trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
@@ -50,10 +55,9 @@ use env_logger::Env;
 extern crate lazy_static;
 extern crate num_cpus;
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 
 lazy_static! {
   static ref NCPUS: usize = num_cpus::get();
@@ -108,7 +112,7 @@ fn main() {
   let task = Interval::new_interval(Duration::from_secs(5))
     .for_each(move |_| {
         match RUNTIMES.read() {
-            Ok(rts) => {
+            Ok(_rts) => {
                 // for (key, rt) in rts.iter() {
                 //     let stats = rt.heap_statistics();
                 //     info!(
@@ -161,7 +165,7 @@ impl RequestHandler for DnsHandler {
       .iter()
       .map(|q| {
         println!("query: {:?}", q);
-        use self::dns::rr::{DNSClass, LowerName, Name, RecordType};
+        use self::dns::rr::{DNSClass, Name, RecordType};
         let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
         let rr_type = match q.query_type() {
           RecordType::A => msg::DnsRecordType::A,
@@ -244,32 +248,47 @@ impl RequestHandler for DnsHandler {
 
     {
       let rtptr = rtptr.clone();
-      rt.rt.lock().unwrap().spawn(future::lazy(move || {
-        unsafe { libfly::js_send(rtptr.0, to_send, null_buf()) };
-        Ok(())
-      }));
+      rt.rt
+        .lock()
+        .unwrap()
+        .spawn(future::lazy(move || {
+          unsafe { libfly::js_send(rtptr.0, to_send, null_buf()) };
+          Ok(())
+        })).unwrap();
     }
 
     let dns_res: JsDnsResponse = c.wait().unwrap();
-    let mut msg = Message::new();
+    let answers: Vec<Record> = dns_res
+      .answers
+      .iter()
+      .map(|ans| {
+        Record::from_rdata(
+          ans.name.clone(),
+          ans.ttl,
+          ans.rdata.to_record_type(),
+          ans.rdata.to_owned(),
+        )
+      }).collect();
+    let mut msg = MessageResponseBuilder::new(Some(req.message.raw_queries()));
 
-    for ans in dns_res.answers {
-      msg.add_answer(Record::from_rdata(
-        ans.name,
-        ans.ttl,
-        ans.rdata.to_record_type(),
-        ans.rdata,
-      ));
-    }
+    let msg = {
+      msg.answers(AuthLookup::Records(LookupRecords::RecordsIter(
+        RrsetRecords::RecordsOnly(answers.iter()),
+      )));
 
-    msg
-      .set_id(req.message.id())
-      .set_op_code(dns_res.op_code)
-      .set_message_type(dns_res.message_type)
-      .set_response_code(dns_res.response_code)
-      .set_authoritative(dns_res.authoritative)
-      .set_truncated(dns_res.truncated);
+      let mut header = Header::new();
 
-    res.send(msg)
+      header
+        .set_id(req.message.id())
+        .set_op_code(dns_res.op_code)
+        .set_message_type(dns_res.message_type)
+        .set_response_code(dns_res.response_code)
+        .set_authoritative(dns_res.authoritative)
+        .set_truncated(dns_res.truncated);
+
+      msg.build(header)
+    };
+
+    res.send_response(msg)
   }
 }

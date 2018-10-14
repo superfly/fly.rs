@@ -13,7 +13,7 @@ use std::thread::sleep;
 use std::time::Duration;
 
 const ROLLUP_BROWSER: &'static [u8] =
-  include_bytes!("../../../node_modules/rollup/dist/rollup.browser.js");
+  include_bytes!("../../../v8env/node_modules/rollup/dist/rollup.browser.js");
 const BUILDER_CODE: &'static [u8] = include_bytes!("./builder.js");
 
 fn main() {

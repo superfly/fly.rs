@@ -34,9 +34,9 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
   - go get coffee for about 30 minutes while your laptop flies off
   - `cd ../../../`
 - `cd third_party/flatbuffers`
-  - `cmake -G "Xcode" -DCMAKE_BUILD_TYPE=Release`
-  - `cmakexbuild`
-  - ensure `./third_party/flatbuffers/Debug` is in `$PATH`
+  - `cmake -G "Unix Makefiles"`
+  - `make flatc`
+  - ensure `./third_party/flatbuffers` is in `$PATH`
   - `cd ../../`
 - `cd v8env`
   - `yarn install`
@@ -71,8 +71,8 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [ ] TypeScript support
   - [ ] HTTP imports!
 - [ ] CI builds + releases
-  - [ ] Mac
-  - [ ] Linux
+  - [x] Mac
+  - [x] Linux
   - [ ] Windows
 - HTTP
   - [ ] Actually use the config hostnames and correct app
