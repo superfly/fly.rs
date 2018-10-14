@@ -17,7 +17,7 @@ install:
   - |
     git submodule update --init third_party/flatbuffers
     cd third_party/flatbuffers
-    cmake -G "Unix Makefiles" --target flatc
+    cmake -G "Unix Makefiles"
     make
     cd $TRAVIS_BUILD_DIR
   - |
