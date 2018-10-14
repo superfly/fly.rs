@@ -59,13 +59,14 @@ before_deploy:
 - cargo build --release
 - ldd target/release/server
 - strip target/release/server && strip target/release/dns
+- tar czf ${RELEASE_ARCHIVE_NAME} -C target/release server dns
 
 deploy:
   provider: releases
   overwrite: true
   api_key:
     secure: VsCHyGpPc02F3LiK+nqMDSPSEKmzgKyAhwVJQJ2mLjso74N1NGRsCDgKIQAOoLzcJRVNZFrpnlbOxKoyTGg1x8b6MnpPmqR8j/LVdKoud6Nhp8Ufw1I/9XwPpyjAhSNKnQq+1h1DpbWbob4bS5BR23PRbIySPUx570W3G8y3IritqorvpM4Qn12fyetWoZxRxWt9QAnrEV2Pj8ULR1C2jBtQPNAVLKm5FcDPBxzQcqXRZjARQtdjNU5tOB1bEm4zg8QNl/hDHi+5WZ/FQ/gZR28cAdhAb8GTC8UU7hTP5TTt2G1UimI27RPxyAyc/eJ9JU2ixRGzjDPvv6hk+KkGGjvuJccKHqR+bgHJ8lS8gPPmpvRMM9uVTAsI/pPA51OgveaHknMCCefiDYGgMq2cIW3UmUMHaB1m9SmBrIqCfEOwPp8f4KEtO55B9myuvqOYvlL4pJrcSUucjNGkm7guqCR4u3L3D0cIkTyk3fTbZyaeAxkSlcYvcff8BpRuFI8YiTybtLxqy0+KoDNoXr/d34/dwFyQNeRPN7H4EWGkzFeHpbfm+aCXGtqF8fMj/tOT7yrOAwy2rvD9/Gx8nzdY7j+DMIXB9HAR3y5Xrpiba0nedV4jww2s1dKuf96Iac3CZrO1qOXvNMKPCVSrp/rmQ5r6REfTQDe6NBONPvjjTX0=
-  file: ${V8_ARCHIVE_NAME}
+  file: ${RELEASE_ARCHIVE_NAME}
   skip_cleanup: true
   on:
     repo: superfly/fly.rs
