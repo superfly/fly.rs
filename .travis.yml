@@ -33,5 +33,8 @@ install:
     node_modules/.bin/rollup -c
     cd $TRAVIS_BUILD_DIR
   - ls -lah v8env/dist
-  - wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-linux-x64.tar.gz | tar  -C libfly/third_party xvz
+  - |
+    cd libfly/third_party
+    wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-linux-x64.tar.gz | tar xvz
+    cd $TRAVIS_BUILD_DIR
   - ls -lah libfly/third_party/v8/out.gn
