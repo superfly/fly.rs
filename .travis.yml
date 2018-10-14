@@ -19,7 +19,7 @@ cache:
     - v8env/node_modules
 
 before_install:
-  - sudo apt-get install -y clang-3.9
+  - sudo apt-get install -y clang-3.9 libc++-dev libc++abi-dev
 addons:
   apt:
     update: true
