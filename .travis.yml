@@ -17,12 +17,12 @@ install:
   - |
     git submodule update --init third_party/flatbuffers
     cd third_party/flatbuffers
-    cmake -G "Unix Makefiles"
+    cmake -G "Unix Makefiles" --target flatc
     make
     cd $TRAVIS_BUILD_DIR
   - |
     ls -lah third_party/flatbuffers
-    export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/Debug
+    export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers
     flatc --ts -o src --no-fb-import --gen-mutable msg.fbs
   - |
     nvm install 10
