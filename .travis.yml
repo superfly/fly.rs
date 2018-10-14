@@ -36,17 +36,12 @@ install:
 - |
   git submodule update --init third_party/flatbuffers
   cd third_party/flatbuffers
-  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    cmake -G "Unix Makefiles"
-  fi
-  if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-    cmake -G "Xcode"
-  fi
+  cmake -G "Unix Makefiles"
   make flatc
   cd $TRAVIS_BUILD_DIR
 - |
   ls -lah third_party/flatbuffers
-  export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers
+  export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
   flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fbs
 - |
   nvm install 10
