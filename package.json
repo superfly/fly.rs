@@ -1,6 +1,12 @@
 {
   "name": "fly",
   "devDependencies": {
+    "@types/chai": "^4.1.6",
+    "@types/expect": "^1.20.3",
+    "@types/mocha": "^5.2.5",
+    "chai": "^4.2.0",
+    "expect": "^23.6.0",
+    "mocha": "^5.2.0",
     "rollup": "^0.63.2",
     "rollup-plugin-alias": "^1.4.0",
     "rollup-plugin-analyzer": "^2.1.0",

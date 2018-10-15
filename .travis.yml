@@ -9,8 +9,6 @@ matrix:
       dist: trusty
     - os: osx
 
-git:
-  submodules: false
 env:
   global:
     - RELEASE_ARCHIVE_NAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
@@ -34,13 +32,11 @@ install:
     export CXX=/usr/bin/clang++-3.9
   fi;
 - |
-  git submodule update --init third_party/flatbuffers
   cd third_party/flatbuffers
   cmake -G "Unix Makefiles"
   make flatc
   cd $TRAVIS_BUILD_DIR
 - |
-  ls -lah third_party/flatbuffers
   export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
   flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fbs
 - |
@@ -51,13 +47,7 @@ install:
   yarn install
   node_modules/.bin/rollup -c
   cd $TRAVIS_BUILD_DIR
-- ls -lah v8env/dist
-- |
-  cd libfly/third_party
-  wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-$TRAVIS_OS_NAME-x64.tar.gz | tar xvz
-  mv v8/out.gn/lib v8/out.gn/x64.release
-  cd $TRAVIS_BUILD_DIR
-- ls -lah libfly/third_party/v8/out.gn
+- wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-$TRAVIS_OS_NAME-x64.tar.gz | tar xvz -C libfly
 - touch v8env.bin
 
 script:
