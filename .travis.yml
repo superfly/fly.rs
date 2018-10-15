@@ -27,12 +27,16 @@ addons:
     packages:
       - gcc-5
       - g++-5
+      - binutils-2.26
 
 before_install:
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
       export CXX="g++-5" CC="gcc-5"
       sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
+      sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-5 100
+      sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-5 100
+      export PATH=/usr/lib/binutils-2.26/bin:${PATH}
     fi
 
 install:
