@@ -38,8 +38,8 @@ fn main() {
     .cpp(true)
     .static_flag(true)
     .extra_warnings(false)
-    .flag("--std=c++14")
-    .cpp_set_stdlib("c++")
+    .flag("--std=c++11")
+    // .cpp_set_stdlib("c++")
     .compile("libfly.a");
 
   println!(

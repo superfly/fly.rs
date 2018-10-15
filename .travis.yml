@@ -24,13 +24,13 @@ addons:
   apt:
     update: true
 install:
-- |
-  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.9 100
-    sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.9 100
-    export CC=/usr/bin/clang-3.9
-    export CXX=/usr/bin/clang++-3.9
-  fi;
+# - |
+#   if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+#     sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-3.9 100
+#     sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-3.9 100
+#     export CC=/usr/bin/clang-3.9
+#     export CXX=/usr/bin/clang++-3.9
+#   fi;
 - |
   cd third_party/flatbuffers
   cmake -G "Unix Makefiles"
