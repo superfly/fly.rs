@@ -59,7 +59,10 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [ ] Actually use the config hostnames and correct app
   - [x] Spawn multiple runtime instances for the same app (n cpus? configurable?)
   - [ ] Add `Server` header for Fly and current version (maybe?)
+- [ ] Observability
+  - [ ] Exception reporting (via Sentry probably)
+  - [ ] Metrics (prometheus)
 - Stability / Resilience
   - [ ] do not use `unwrap` (that will panic and exit the process). Solution is to handle them and return or print proper errors
-  - [ ] Get rid of all warnings
+  - [x] Get rid of all warnings
   - [ ] Tests!
