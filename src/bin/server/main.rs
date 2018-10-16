@@ -153,9 +153,6 @@ impl Service for FlyServer {
         let idx = {
             let map = REQ_PER_APP.read().unwrap();
             let counter = map.values().next().unwrap();
-            // let counter = map
-            //     .entry("hello-world".to_string())
-            //     .or_insert(ATOMIC_USIZE_INIT);
             counter.fetch_add(1, Ordering::Relaxed) % *NCPUS
         };
 
@@ -309,7 +306,15 @@ fn main() {
 
     main_el.spawn(task);
 
-    let addr = ([127, 0, 0, 1], conf.port.unwrap()).into();
+    let bind = match conf.bind {
+        Some(b) => b,
+        None => "127.0.0.1".to_string(),
+    };
+    let port = match conf.port {
+        Some(p) => p,
+        None => 8080,
+    };
+    let addr = format!("{}:{}", bind, port).parse().unwrap(); // ([127, 0, 0, 1], conf.port.unwrap()).into();
 
     let server = Server::bind(&addr)
         .serve(move || service_fn(move |req| FlyServer {}.call(req)))
