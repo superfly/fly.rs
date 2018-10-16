@@ -50,10 +50,9 @@ static A: System = System;
 extern crate lazy_static;
 extern crate num_cpus;
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 
 lazy_static! {
     static ref NCPUS: usize = num_cpus::get();
@@ -178,14 +177,17 @@ impl Service for FlyServer {
 
         {
             let rtptr = rtptr.clone();
-            rt.rt.lock().unwrap().spawn(future::lazy(move || {
-                unsafe { libfly::js_send(rtptr.0, to_send, null_buf()) };
+            let spawnres = rt.rt.lock().unwrap().spawn(future::lazy(move || {
+                rtptr.send(to_send, None);
                 Ok(())
             }));
+            if let Err(err) = spawnres {
+                error!("error spawning: {}", err);
+            }
         }
 
         if !body.is_end_stream() {
-            rt.rt.lock().unwrap().spawn(
+            let spawnres = rt.rt.lock().unwrap().spawn(
                 poll_fn(move || {
                     while let Some(chunk) = try_ready!(body.poll_data()) {
                         let mut bytes = chunk.into_bytes();
@@ -226,6 +228,9 @@ impl Service for FlyServer {
                     Ok(Async::Ready(()))
                 }).map_err(|e: hyper::Error| println!("hyper server error: {}", e)),
             );
+            if let Err(err) = spawnres {
+                error!("error spawning: {}", err);
+            }
         }
 
         Box::new(c.and_then(|res: JsHttpResponse| {
@@ -245,7 +250,7 @@ impl Service for FlyServer {
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
 
-    println!("V8 version: {}", libfly::version());
+    info!("V8 version: {}", libfly::version());
 
     env_logger::init_from_env(env);
 
@@ -259,7 +264,7 @@ fn main() {
     file.read_to_string(&mut contents).unwrap();
     let conf: Config = toml::from_str(&contents).unwrap();
 
-    println!("toml: {:?}", conf);
+    debug!("toml: {:?}", conf);
 
     for (name, app) in conf.apps.unwrap().iter() {
         {
@@ -268,7 +273,6 @@ fn main() {
             let filename = app.filename.as_str();
             for _i in 0..*NCPUS {
                 let rt = Runtime::new(Some(name.to_string()));
-                info!("inited rt");
                 rt.eval_file(filename);
                 rtsv.push(rt);
             }
@@ -283,7 +287,7 @@ fn main() {
     let task = Interval::new_interval(Duration::from_secs(5))
         .for_each(move |_| {
             match RUNTIMES.read() {
-                Ok(rtsv) => {
+                Ok(_rtsv) => {
                     // for (key, rts) in rtsv.iter() {
                     //     for rt in rts.iter() {
                     //     let stats = rt.heap_statistics();
@@ -315,6 +319,7 @@ fn main() {
         None => 8080,
     };
     let addr = format!("{}:{}", bind, port).parse().unwrap(); // ([127, 0, 0, 1], conf.port.unwrap()).into();
+    info!("Listening on {}", addr);
 
     let server = Server::bind(&addr)
         .serve(move || service_fn(move |req| FlyServer {}.call(req)))

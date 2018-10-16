@@ -42,6 +42,12 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
     - [ ] TTL (get ttl)
     - [ ] Tags / purge
     - [ ] global.purgeTag / del
+  - [ ] Testing
+- [ ] Runtime
+  - [ ] Lifecycle management
+    - [ ] Gracefully "replace" if running out of heap
+  - [ ] Handle promise rejection (trash the runtime? just log?)
+  - [ ] Handle uncaught error
 - [ ] Builder
   - [ ] TypeScript support
   - [ ] HTTP imports!
@@ -52,7 +58,7 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
 - HTTP
   - [ ] Actually use the config hostnames and correct app
   - [x] Spawn multiple runtime instances for the same app (n cpus? configurable?)
-  - [ ] Add `Server` header for Fly and current version
+  - [ ] Add `Server` header for Fly and current version (maybe?)
 - Stability / Resilience
   - [ ] do not use `unwrap` (that will panic and exit the process). Solution is to handle them and return or print proper errors
   - [ ] Get rid of all warnings

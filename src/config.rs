@@ -10,4 +10,5 @@ pub struct Config {
 #[derive(Debug, Deserialize)]
 pub struct App {
   pub filename: String,
+  pub scale: Option<u32>,
 }
