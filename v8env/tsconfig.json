@@ -4,7 +4,7 @@
     "src/**/*"
   ],
   "compilerOptions": {
-    "composite": true,
+    // "composite": true,
     "rootDir": "./src",
     "outDir": "./lib",
     // "lib": [

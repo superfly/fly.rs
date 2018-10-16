@@ -25,6 +25,8 @@ union Any {
   DnsQuery,
   DnsRequest,
   DnsResponse,
+  ResolveModuleRequest,
+  ResolveModuleResponse,
 }
 
 enum ErrorKind: byte {
@@ -364,6 +366,14 @@ table DnsResponse {
   response_code: DnsResponseCode;
   answers: [DnsRecord];
   queries: [DnsQuery];
+}
+
+table ResolveModuleRequest {
+  module_specifier: string;
+}
+
+table ResolveModuleResponse {
+  source_code: string;
 }
 
 root_type Base;

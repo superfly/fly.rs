@@ -371,6 +371,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::DataDropCollection => handle_data_drop_coll,
     msg::Any::DnsQuery => handle_dns_query,
     msg::Any::DnsResponse => handle_dns_response,
+    msg::Any::ResolveModuleRequest => handle_resolve_module,
     _ => unimplemented!(),
   };
 
@@ -2018,4 +2019,60 @@ fn create_collection(con: &rusqlite::Connection, name: &String) -> rusqlite::Res
     ).as_str(),
     &[],
   )
+}
+
+fn handle_resolve_module(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  println!("HELLLLLLOOOOOOO handle_resolve_module");
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_resolve_module_request().unwrap();
+  let module_id = msg.module_specifier().unwrap().to_string();
+
+  println!("handle_resolve_module {}", module_id);
+
+  // let meta = match fs::metadata(module_id.clone()) {
+  //   Ok(m) => m,
+  //   Err(e) => return odd_future(e.into()),
+  // };
+
+  let f = File::open(&module_id); //.expect("file not found");
+
+  let mut f = match f {
+    Ok(f) => f,
+    Err(err) => {
+      return odd_future(format!("module load error: {}", err).into());
+    }
+  };
+
+  let mut source_code = String::new();
+  match f.read_to_string(&mut source_code) {
+    Ok(data) => data,
+    Err(e) => {
+      return odd_future(format!("module read error: {}", e).into());
+    }
+  };
+
+  // let source = "console.log('hello js!');";
+
+  // return odd_future(format!("{}", "module not found!").into());
+
+  Box::new(future::lazy(move || -> FlyResult<Buf> {
+    let builder = &mut FlatBufferBuilder::new();
+    let source = builder.create_string(&source_code);
+    let msg = msg::ResolveModuleResponse::create(
+      builder,
+      &msg::ResolveModuleResponseArgs {
+        source_code: Some(source),
+        ..Default::default()
+      },
+    );
+    Ok(serialize_response(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        msg: Some(msg.as_union_value()),
+        msg_type: msg::Any::ResolveModuleResponse,
+        ..Default::default()
+      },
+    ))
+  }))
 }

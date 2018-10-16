@@ -9,7 +9,7 @@ import * as errors from "./errors";
 import * as util from "./util";
 import FlyBody from "./body_mixin";
 import { FlyRequest } from "./request";
-import { Response, ResponseInit } from "./dom_types";
+// import { Response, ResponseInit } from "./dom_types";
 import { FlyResponse } from "./response";
 import { ReadableStream, ReadableStreamSource, StreamStrategy } from "@stardazed/streams";
 import { DNSRequest, DNSQuery, DNSResponse } from './dns';
