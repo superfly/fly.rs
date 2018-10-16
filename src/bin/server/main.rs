@@ -141,7 +141,7 @@ impl Service for FlyServer {
                 method: req_method,
                 url: Some(req_url),
                 headers: Some(req_headers),
-                body: !body.is_end_stream(),
+                has_body: !body.is_end_stream(),
                 ..Default::default()
             },
         );

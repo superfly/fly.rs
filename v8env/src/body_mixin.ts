@@ -4,12 +4,12 @@ import { parse as queryParse } from 'query-string'
 import { Blob, FormData, Body, ReadableStream, ReadableStreamReader, BodyInit } from './dom_types';
 import { FlyBlob } from './blob';
 import FlyFormData from './form_data';
-import { ReadableStream as WhatWGReadableStream } from "@stardazed/streams";
+import { ReadableStream as WhatWGReadableStream, ReadableStreamDefaultController } from "@stardazed/streams";
 
-interface ReadableStreamController {
-  enqueue(chunk: string | ArrayBuffer): void
-  close(): void
-}
+// interface ReadableStreamController {
+//   enqueue(chunk: string | ArrayBuffer): void
+//   close(): void
+// }
 
 export type BodySource = Blob | BufferSource |
   FormData | URLSearchParams |
@@ -32,12 +32,11 @@ export default class FlyBody implements Body {
     if (this.bodySource instanceof WhatWGReadableStream) {
       this.stream = this.bodySource
     }
-    if (typeof this.bodySource === "string") {
+    if (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array) {
       const bodySource = this.bodySource
       this.stream = new WhatWGReadableStream({
-        start(controller: ReadableStreamController) {
+        start(controller: ReadableStreamDefaultController) {
           controller.enqueue(bodySource)
-          console.debug("enqueued bodySource:", bodySource)
           controller.close()
         }
       })

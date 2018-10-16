@@ -59,6 +59,7 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [ ] Actually use the config hostnames and correct app
   - [x] Spawn multiple runtime instances for the same app (n cpus? configurable?)
   - [ ] Add `Server` header for Fly and current version (maybe?)
+  - [ ] Fetch request bodies
 - [ ] Observability
   - [ ] Exception reporting (via Sentry probably)
   - [ ] Metrics (prometheus)

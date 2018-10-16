@@ -338,9 +338,9 @@ pub type Buf = Option<Box<[u8]>>;
 
 // JS promises in Deno map onto a specific Future
 // which yields either a DenoError or a byte array.
-type Op = Future<Item = Buf, Error = FlyError> + Send;
+pub type Op = Future<Item = Buf, Error = FlyError> + Send;
 
-type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
+pub type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 
 use std::slice;
 
@@ -352,22 +352,22 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
   let cmd_id = base.cmd_id();
   // println!("msg id {}", cmd_id);
   let handler: Handler = match msg_type {
-    msg::Any::TimerStart => handle_timer_start,
-    msg::Any::TimerClear => handle_timer_clear,
-    msg::Any::HttpRequest => handle_http_request,
-    msg::Any::HttpResponse => handle_http_response,
-    msg::Any::StreamChunk => handle_stream_chunk,
-    msg::Any::CacheGet => handle_cache_get,
-    msg::Any::CacheSet => handle_cache_set,
-    msg::Any::CryptoDigest => handle_crypto_digest,
-    msg::Any::CryptoRandomValues => handle_crypto_random_values,
-    msg::Any::SourceMap => handle_source_map,
-    msg::Any::DataPut => handle_data_put,
-    msg::Any::DataGet => handle_data_get,
-    msg::Any::DataDel => handle_data_del,
-    msg::Any::DataDropCollection => handle_data_drop_coll,
-    msg::Any::DnsQuery => handle_dns_query,
-    msg::Any::DnsResponse => handle_dns_response,
+    msg::Any::TimerStart => op_timer_start,
+    msg::Any::TimerClear => op_timer_clear,
+    msg::Any::HttpRequest => op_http_request,
+    msg::Any::HttpResponse => op_http_response,
+    msg::Any::StreamChunk => op_stream_chunk,
+    msg::Any::CacheGet => op_cache_get,
+    msg::Any::CacheSet => op_cache_set,
+    msg::Any::CryptoDigest => op_crypto_digest,
+    msg::Any::CryptoRandomValues => op_crypto_random_values,
+    msg::Any::SourceMap => op_source_map,
+    msg::Any::DataPut => op_data_put,
+    msg::Any::DataGet => op_data_get,
+    msg::Any::DataDel => op_data_del,
+    msg::Any::DataDropCollection => op_data_drop_coll,
+    msg::Any::DnsQuery => op_dns_query,
+    msg::Any::DnsResponse => op_dns_response,
     _ => unimplemented!(),
   };
 
@@ -478,8 +478,8 @@ pub extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *const lib
   log!(lvl, "console/{}: {}", &rt.name, &msg);
 }
 
-fn handle_timer_start(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  println!("handle_timer_start");
+fn op_timer_start(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  println!("op_timer_start");
   let msg = base.msg_as_timer_start().unwrap();
   let cmd_id = base.cmd_id();
   let timer_id = msg.id();
@@ -542,14 +542,14 @@ fn remove_timer(ptr: JsRuntime, timer_id: u32) {
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
-fn handle_timer_clear(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_timer_clear(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_timer_clear().unwrap();
-  println!("handle_timer_clear");
+  println!("op_timer_clear");
   remove_timer(rt.ptr, msg.id());
   ok_future(None)
 }
 
-fn handle_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_source_map().unwrap();
 
@@ -629,7 +629,7 @@ fn handle_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   )
 }
 
-fn handle_crypto_random_values(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_crypto_random_values(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_crypto_random_values().unwrap();
 
@@ -661,7 +661,7 @@ fn handle_crypto_random_values(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -
   ))
 }
 
-fn handle_crypto_digest(_rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn op_crypto_digest(_rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_crypto_digest().unwrap();
 
@@ -709,7 +709,7 @@ use super::NEXT_EVENT_ID;
 use std::str;
 
 use std::ops::Deref;
-fn handle_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("CACHE SET");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_set().unwrap();
@@ -767,7 +767,7 @@ fn handle_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   ))
 }
 
-fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_get().unwrap();
 
@@ -914,7 +914,7 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   // ))
 }
 
-fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
+fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
@@ -1180,7 +1180,7 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
           id: req_id,
           headers: Some(res_headers),
           status: res.status.as_u16(),
-          body: res.bytes.is_some(),
+          has_body: res.bytes.is_some(),
           ..Default::default()
         },
       );
@@ -1209,7 +1209,7 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   Box::new(fut2)
 }
 
-fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("handle dns");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
@@ -1453,20 +1453,20 @@ fn handle_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   )
 }
 
-fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_http_request().unwrap();
 
   let url = msg.url().unwrap();
   if url.starts_with("file://") {
-    return handle_file_request(rt, cmd_id, url);
+    return op_file_request(rt, cmd_id, url);
   }
 
   let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
   let rtptr = rt.ptr;
 
   let req_body: Body;
-  if msg.body() {
+  if msg.has_body() {
     unimplemented!();
   } else {
     req_body = Body::empty();
@@ -1616,7 +1616,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
           id: req_id,
           headers: Some(res_headers),
           status: res.status.as_u16(),
-          body: res.bytes.is_some(),
+          has_body: res.bytes.is_some(),
           ..Default::default()
         },
       );
@@ -1650,7 +1650,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
   // ))
 }
 
-fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   debug!("handling http response");
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
@@ -1673,7 +1673,7 @@ fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op
   }
 
   let mut chunk_recver: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
-  if msg.body() {
+  if msg.has_body() {
     debug!("http response will have a body");
     let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
     {
@@ -1700,7 +1700,7 @@ fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op
   ok_future(None)
 }
 
-fn handle_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_dns_response().unwrap();
   let req_id = msg.id();
 
@@ -1874,7 +1874,7 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
   ok_future(None)
 }
 
-fn handle_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn op_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   debug!("handle stream chunk {:?}", raw);
   let msg = base.msg_as_stream_chunk().unwrap();
   let stream_id = msg.id();
@@ -1917,7 +1917,7 @@ where
   (delay_task, cancel_tx)
 }
 
-fn handle_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_put().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
@@ -1942,7 +1942,7 @@ fn handle_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn handle_data_get(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_get(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_data_get().unwrap();
   let coll = msg.collection().unwrap().to_string();
@@ -1987,7 +1987,7 @@ fn handle_data_get(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn handle_data_del(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_del(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_del().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
@@ -2008,7 +2008,7 @@ fn handle_data_del(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn handle_data_drop_coll(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_drop_coll(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_del().unwrap();
   let coll = msg.collection().unwrap().to_string();
 

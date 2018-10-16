@@ -1,13 +1,19 @@
+const helloWorldStr = "Hello World";
+const helloWorld = new TextEncoder().encode(helloWorldStr);
+
 addEventListener("fetch", function (event) {
   const req = event.request;
   // console.log("req url:", event.request.url);
   let url = new URL(req.url)
   if (url.pathname.endsWith("echo"))
     event.respondWith(new Response(req.body, { headers: { foo: "bar" } }))
+
   else if (url.pathname.endsWith("null"))
     event.respondWith(new Response(null, { headers: {} }))
+
   else if (url.pathname.endsWith("hello-world"))
-    event.respondWith(new Response("Hello World"))
+    event.respondWith(new Response(helloWorld))
+
   else if (url.pathname == "/kitchensink") {
     const coll = flyData.collection("testing")
     coll.put("id", { foo: "bar" }).then(b => {

@@ -59,7 +59,7 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 			sendAsync(fbb, fbs.Any.HttpRequest, fbs.HttpRequest.endHttpRequest(fbb)).then((base) => {
 				let msg = new fbs.FetchHttpResponse();
 				base.msg(msg);
-				const body = msg.body() ?
+				const body = msg.hasBody() ?
 					new ReadableStream({
 						start(controller) {
 							streams.set(msg.id(), (chunkMsg: fbs.StreamChunk, raw: Uint8Array) => {

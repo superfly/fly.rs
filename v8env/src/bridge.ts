@@ -89,7 +89,7 @@ export function addEventListener(name: string, fn: Function) {
         let req = new FlyRequest(msg.url(), {
           method: fbs.HttpMethod[msg.method()].toUpperCase(),
           headers: headersInit,
-          body: msg.body() ?
+          body: msg.hasBody() ?
             new ReadableStream({
               start(controller) {
                 streams.set(id, (chunkMsg: fbs.StreamChunk, raw: Uint8Array) => {
@@ -225,7 +225,7 @@ function handleError(id: number, err: Error) {
 
   fbs.HttpResponse.startHttpResponse(fbb);
   fbs.HttpResponse.addId(fbb, id);
-  fbs.HttpResponse.addBody(fbb, true)
+  fbs.HttpResponse.addHasBody(fbb, true)
   fbs.HttpResponse.addStatus(fbb, 500)
 
   const resMsg = fbs.HttpResponse.endHttpResponse(fbb);
@@ -295,7 +295,7 @@ async function handleRes(id: number, res: FlyResponse) {
     fbs.HttpResponse.addHeaders(fbb, resHeaders);
     fbs.HttpResponse.addStatus(fbb, res.status);
     let resBody = res.body;
-    fbs.HttpResponse.addBody(fbb, resBody != null)
+    fbs.HttpResponse.addHasBody(fbb, resBody != null)
 
     const resMsg = fbs.HttpResponse.endHttpResponse(fbb);
     sendSync(fbb, fbs.Any.HttpResponse, resMsg); // sync so we can send body chunks when it's ready!

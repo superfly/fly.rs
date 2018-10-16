@@ -122,14 +122,14 @@ table HttpRequest {
   method: HttpMethod;
   url: string;
   headers: [HttpHeader];
-  body: bool;
+  has_body: bool;
 }
 
 table HttpResponse {
   id: uint;
   headers: [HttpHeader];
   status: ushort;
-  body: bool;
+  has_body: bool;
 }
 
 table HttpRequestStart {
@@ -140,7 +140,7 @@ table FetchHttpResponse {
   id: uint;
   headers: [HttpHeader];
   status: ushort;
-  body: bool;
+  has_body: bool;
 }
 
 table CacheGet {
