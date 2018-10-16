@@ -234,11 +234,22 @@ function handleError(id: number, err: Error) {
 }
 
 export async function sendStreamChunks(id: number, stream: ReadableStream) {
+  console.debug("send stream chunk");
   let reader = stream.getReader();
   let cur = await reader.read()
   let done = false
   while (!done) {
-    sendStreamChunk(id, cur.done, cur.value);
+    console.debug("done?", cur.done, "value:", cur.value);
+    let value: ArrayBufferView;
+    if (typeof cur.value === 'string')
+      value = new TextEncoder().encode(cur.value)
+    else if (cur.value instanceof Uint8Array)
+      value = cur.value
+    else if (typeof cur.value === 'undefined')
+      value = undefined
+    else
+      throw new TypeError("wrong body type")
+    sendStreamChunk(id, cur.done, value);
     if (cur.done)
       done = true
     else
@@ -246,7 +257,7 @@ export async function sendStreamChunks(id: number, stream: ReadableStream) {
   }
 }
 
-export function sendStreamChunk(id: number, done: boolean, value: any) {
+export function sendStreamChunk(id: number, done: boolean, value?: ArrayBufferView) {
   const fbb = new flatbuffers.Builder()
   fbs.StreamChunk.startStreamChunk(fbb)
   fbs.StreamChunk.addId(fbb, id);

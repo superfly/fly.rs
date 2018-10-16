@@ -170,10 +170,8 @@ impl Runtime {
       )).spawn(move || {
         let mut l = current_thread::Runtime::new().unwrap();
         let task = Interval::new_interval(Duration::from_secs(5))
-          .for_each(move |_| {
-            // println!("keepalive");
-            Ok(())
-          }).map_err(|e| panic!("interval errored; err={:?}", e));
+          .for_each(move |_| Ok(()))
+          .map_err(|e| panic!("interval errored; err={:?}", e));
         l.spawn(task);
         match c.send(l.handle()) {
           Ok(_) => {}
@@ -286,18 +284,8 @@ lazy_static! {
   static ref DNS_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
     let (stream, handle) = dns::udp::UdpClientStream::new(([8, 8, 8, 8], 53).into());
     let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
-    unsafe {
-      EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(bg)
-      //   bg.map_err(|e| println!("error getting dns client: {}", e))
-      //     .and_then(move |client| {
-      //       println!("got a client from the spawned future :D");
-      //       tx.send(client);
-      //       Ok(())
-      //     }),
-      // )
-    };
+    unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(bg) };
     Mutex::new(client)
-    // Mutex::new(rx.wait().unwrap())
   };
   static ref SM_CHAN: Mutex<
     stdmspc::Sender<(
@@ -422,7 +410,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
           )
         }
       };
-      unsafe { js_send(ptr.0, buf, null_buf()) };
+      ptr.send(buf, None);
       Ok(())
     });
     if let Err(err) = rt.rt.lock().unwrap().spawn(fut) {
@@ -571,7 +559,7 @@ fn handle_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   for i in 0..msg_frames.len() {
     let f = msg_frames.get(i);
 
-    println!(
+    debug!(
       "got frame: {:?} {:?} {:?} {:?}",
       f.name(),
       f.filename(),
@@ -883,23 +871,20 @@ fn handle_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             ..Default::default()
           },
         );
-        unsafe {
-          js_send(
-            rtptr.0,
-            fly_buf_from(
-              serialize_response(
-                0,
-                builder,
-                msg::BaseArgs {
-                  msg: Some(chunk_msg.as_union_value()),
-                  msg_type: msg::Any::StreamChunk,
-                  ..Default::default()
-                },
-              ).unwrap(),
-            ),
-            null_buf(),
-          )
-        };
+        rtptr.send(
+          fly_buf_from(
+            serialize_response(
+              0,
+              builder,
+              msg::BaseArgs {
+                msg: Some(chunk_msg.as_union_value()),
+                msg_type: msg::Any::StreamChunk,
+                ..Default::default()
+              },
+            ).unwrap(),
+          ),
+          None,
+        );
         Ok(())
       });
     if let Err(err) = rt.rt.lock().unwrap().spawn(fut) {
@@ -987,28 +972,25 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
                       done: false,
                     },
                   );
-                  unsafe {
-                    js_send(
-                      rtptr.0,
-                      fly_buf_from(
-                        serialize_response(
-                          0,
-                          builder,
-                          msg::BaseArgs {
-                            msg: Some(chunk_msg.as_union_value()),
-                            msg_type: msg::Any::StreamChunk,
-                            ..Default::default()
-                          },
-                        ).unwrap(),
-                      ),
-                      fly_buf {
-                        alloc_ptr: 0 as *mut u8,
-                        alloc_len: 0,
-                        data_ptr: chunk.as_mut_ptr(),
-                        data_len: chunk.len(),
-                      },
-                    )
-                  };
+                  rtptr.send(
+                    fly_buf_from(
+                      serialize_response(
+                        0,
+                        builder,
+                        msg::BaseArgs {
+                          msg: Some(chunk_msg.as_union_value()),
+                          msg_type: msg::Any::StreamChunk,
+                          ..Default::default()
+                        },
+                      ).unwrap(),
+                    ),
+                    Some(fly_buf {
+                      alloc_ptr: 0 as *mut u8,
+                      alloc_len: 0,
+                      data_ptr: chunk.as_mut_ptr(),
+                      data_len: chunk.len(),
+                    }),
+                  );
                   Ok(())
                 }).and_then(move |_| {
                   let builder = &mut FlatBufferBuilder::new();
@@ -1669,6 +1651,7 @@ fn handle_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 }
 
 fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  debug!("handling http response");
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
 
@@ -1691,6 +1674,7 @@ fn handle_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op
 
   let mut chunk_recver: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
   if msg.body() {
+    debug!("http response will have a body");
     let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
     {
       let mut bytes = rt.bytes.lock().unwrap();
@@ -1891,6 +1875,7 @@ fn handle_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 }
 
 fn handle_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  debug!("handle stream chunk {:?}", raw);
   let msg = base.msg_as_stream_chunk().unwrap();
   let stream_id = msg.id();
 
@@ -1900,8 +1885,8 @@ fn handle_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
       Some(sender) => {
         let bytes = unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec();
         match sender.unbounded_send(bytes.to_vec()) {
-          Err(e) => println!("error sending chunk: {}", e),
-          _ => {}
+          Err(e) => error!("error sending chunk: {}", e),
+          _ => debug!("chunk streamed"),
         }
       }
       _ => unimplemented!(),

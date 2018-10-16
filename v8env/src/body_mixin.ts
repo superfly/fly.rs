@@ -33,9 +33,11 @@ export default class FlyBody implements Body {
       this.stream = this.bodySource
     }
     if (typeof this.bodySource === "string") {
+      const bodySource = this.bodySource
       this.stream = new WhatWGReadableStream({
         start(controller: ReadableStreamController) {
-          controller.enqueue(this.bodySource)
+          controller.enqueue(bodySource)
+          console.debug("enqueued bodySource:", bodySource)
           controller.close()
         }
       })
