@@ -6,6 +6,8 @@ addEventListener("fetch", function (event) {
     event.respondWith(new Response(req.body, { headers: { foo: "bar" } }))
   else if (url.pathname.endsWith("null"))
     event.respondWith(new Response(null, { headers: {} }))
+  else if (url.pathname.endsWith("hello-world"))
+    event.respondWith(new Response("Hello World"))
   else if (url.pathname == "/kitchensink") {
     const coll = flyData.collection("testing")
     coll.put("id", { foo: "bar" }).then(b => {

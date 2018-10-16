@@ -189,14 +189,6 @@ void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
 
 static v8::Local<v8::Value> ImportBuf(const js_runtime *rt, fly_buf buf)
 {
-  // char buffer[17];
-  // for (int j = 0; j < 30; j++)
-  //   sprintf(&buffer[2 * j], "%02X", buf.data_ptr[j]);
-  // printf("import\n");
-  // for (size_t i = 0; i < 30; i++)
-  //   printf("%02X ", buf.data_ptr[i]);
-  // printf("\n");
-
   if (buf.alloc_ptr == nullptr)
   {
     // If alloc_ptr isn't set, we memcpy.
@@ -244,7 +236,6 @@ bool ExecuteV8StringSource(v8::Local<v8::Context> context,
                            const char *filename,
                            const char *code)
 {
-  printf("evaluating: %s\n", filename);
   auto *isolate = context->GetIsolate();
   v8::Isolate::Scope isolate_scope(isolate);
   v8::HandleScope handle_scope(isolate);
@@ -409,7 +400,6 @@ extern "C"
 
     // if (snapshot.len > 0)
     // {
-    printf("SNAPSHOT LEN: %i\n", snapshot.len);
     auto *blob = new v8::StartupData;
     blob->data = snapshot.ptr;
     blob->raw_size = static_cast<int>(snapshot.len);

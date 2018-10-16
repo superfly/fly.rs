@@ -45,8 +45,8 @@ fn main() {
 
   let mut patterns: Vec<String> = args[1..].to_vec();
 
-  println!("args: {:?}", &args);
-  println!("patterns: {:?}", &patterns);
+  debug!("args: {:?}", &args);
+  debug!("patterns: {:?}", &patterns);
 
   if patterns.len() == 0 {
     patterns.push(String::from("./**/*[._]spec.js"));
@@ -55,7 +55,7 @@ fn main() {
 
   for pattern in patterns {
     for path in glob(&pattern).unwrap().filter_map(Result::ok) {
-      println!("{}", path.display());
+      debug!("{}", path.display());
       rt.eval_file(path.to_str().expect("invalid path"));
     }
   }
