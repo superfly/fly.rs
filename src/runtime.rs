@@ -1700,7 +1700,8 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
 
   if raw.data_len > 0 {
     let rtptr = rt.ptr;
-    rt.rt
+    let spawnres = rt
+      .rt
       .lock()
       .unwrap()
       .spawn(future::lazy(move || -> Result<(), ()> {
@@ -1719,6 +1720,9 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
 
         Ok(())
       }));
+    if let Err(err) = spawnres {
+      return odd_future("error using static body".to_string().into());
+    }
   }
 
   ok_future(None)
