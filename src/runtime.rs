@@ -193,12 +193,14 @@ impl Runtime {
     });
 
     (*rt_box).ptr.0 = unsafe {
-      let ptr = js_runtime_new(
-        *FLY_SNAPSHOT,
-        rt_box.as_ref() as *const _ as *mut libc::c_void,
-        msg_from_js,
-        print_from_js,
-      );
+      let ptr = js_runtime_new(js_runtime_options {
+        snapshot: *FLY_SNAPSHOT,
+        data: rt_box.as_ref() as *const _ as *mut libc::c_void,
+        recv_cb: msg_from_js,
+        print_cb: print_from_js,
+        soft_memory_limit: 128,
+        hard_memory_limit: 256,
+      });
       js_eval(
         ptr,
         CString::new("fly_main.js").unwrap().as_ptr(),
@@ -1720,7 +1722,7 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
 
         Ok(())
       }));
-    if let Err(err) = spawnres {
+    if let Err(_err) = spawnres {
       return odd_future("error using static body".to_string().into());
     }
   }

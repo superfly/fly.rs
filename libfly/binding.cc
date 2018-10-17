@@ -314,7 +314,7 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   }
 
   rt->current_args = &args;
-  rt->cb(rt, buf, raw);
+  rt->recv_cb(rt, buf, raw);
   rt->current_args = nullptr;
 }
 
@@ -387,13 +387,13 @@ extern "C"
     return;
   }
 
-  const js_runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb, fly_print_cb print_cb)
+  const js_runtime *js_runtime_new(js_runtime_options options)
   {
     js_runtime *rt = new js_runtime;
 
-    rt->cb = cb;
-    rt->print_cb = print_cb;
-    rt->allocator = new LimitedAllocator(128 * 1024 * 1024);
+    rt->recv_cb = options.recv_cb;
+    rt->print_cb = options.print_cb;
+    rt->allocator = new LimitedAllocator(options.soft_memory_limit * 1024 * 1024, options.hard_memory_limit * 1024 * 1024);
     v8::Isolate::CreateParams params;
 
     params.array_buffer_allocator = rt->allocator;
@@ -401,14 +401,14 @@ extern "C"
     // if (snapshot.len > 0)
     // {
     auto *blob = new v8::StartupData;
-    blob->data = snapshot.ptr;
-    blob->raw_size = static_cast<int>(snapshot.len);
+    blob->data = options.snapshot.ptr;
+    blob->raw_size = static_cast<int>(options.snapshot.len);
     params.snapshot_blob = blob;
     params.external_references = ext_refs;
     // }
 
     v8::ResourceConstraints rc;
-    rc.set_max_old_space_size(128);
+    rc.set_max_old_space_size(options.soft_memory_limit);
 
     params.constraints = rc;
 
@@ -427,7 +427,7 @@ extern "C"
       rt->context.Reset(rt->isolate, context);
     }
 
-    rt->data = data;
+    rt->data = options.data;
 
     delete blob;
 

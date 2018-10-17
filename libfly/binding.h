@@ -42,6 +42,16 @@ typedef void (*fly_recv_cb)(runtime *rt, fly_buf control_buf,
                             fly_buf data_buf);
 typedef void (*fly_print_cb)(runtime *rt, int8_t lvl, const char *msg);
 
+struct js_runtime_options
+{
+  fly_simple_buf snapshot;
+  void *data;
+  fly_recv_cb recv_cb;
+  fly_print_cb print_cb;
+  size_t soft_memory_limit;
+  size_t hard_memory_limit;
+};
+
 extern "C"
 {
   extern fly_simple_buf js_create_snapshot(const char *filename, const char *code);
@@ -56,7 +66,7 @@ extern "C"
 
   extern js_heap_stats js_runtime_heap_statistics(const runtime *rt);
 
-  extern const runtime *js_runtime_new(fly_simple_buf snapshot, void *data, fly_recv_cb cb, fly_print_cb print_cb);
+  extern const runtime *js_runtime_new(js_runtime_options);
 
   extern int js_send(const runtime *rt, fly_buf buf, fly_buf raw);
 

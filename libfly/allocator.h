@@ -8,7 +8,8 @@ using namespace v8;
 class LimitedAllocator : public ArrayBuffer::Allocator
 {
 private:
-  size_t limit;
+  size_t soft_limit;
+  size_t hard_limit;
   size_t v8_heap;
   size_t next_check;
   int failures = 0;
@@ -16,7 +17,7 @@ private:
 public:
   std::atomic<std::size_t> allocated;
   bool Check(size_t length);
-  explicit LimitedAllocator(size_t limit);
+  explicit LimitedAllocator(size_t soft_limit, size_t hard_limit);
   void *Allocate(size_t length) final;
   void *AllocateUninitialized(size_t length) final;
   void Free(void *data, size_t length) final;
@@ -39,23 +40,23 @@ bool LimitedAllocator::Check(const size_t length)
     Isolate *isolate = Isolate::GetCurrent();
     isolate->GetHeapStatistics(&heap_statistics);
     v8_heap = heap_statistics.total_heap_size();
-    if (v8_heap + allocated + length > limit)
+    if (v8_heap + allocated + length > soft_limit)
     {
       // This is might be dangerous but the tests pass soooo..
       isolate->LowMemoryNotification();
       isolate->GetHeapStatistics(&heap_statistics);
       v8_heap = heap_statistics.total_heap_size();
-      if (v8_heap + allocated + length > limit)
+      if (v8_heap + allocated + length > hard_limit)
       {
         return false;
       }
     }
     next_check = v8_heap + allocated + length + 1024 * 1024;
   }
-  return v8_heap + allocated + length <= limit;
+  return v8_heap + allocated + length <= hard_limit;
 }
 
-LimitedAllocator::LimitedAllocator(size_t limit) : limit(limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024)
+LimitedAllocator::LimitedAllocator(size_t soft_limit, size_t hard_limit) : soft_limit(soft_limit), hard_limit(hard_limit), v8_heap(1024 * 1024 * 4), next_check(1024 * 1024)
 {
   allocated = 0;
 }

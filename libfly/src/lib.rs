@@ -24,6 +24,16 @@ unsafe impl Send for fly_buf {}
 unsafe impl Sync for fly_buf {}
 
 #[repr(C)]
+pub struct js_runtime_options {
+    pub snapshot: fly_simple_buf,
+    pub data: *mut c_void,
+    pub recv_cb: RecvCb,
+    pub print_cb: PrintCb,
+    pub soft_memory_limit: size_t,
+    pub hard_memory_limit: size_t,
+}
+
+#[repr(C)]
 pub struct js_runtime {
     _unused: [u8; 0],
 }
@@ -65,12 +75,7 @@ type PrintCb = unsafe extern "C" fn(rt: *const js_runtime, lvl: i8, msg: *const 
 extern "C" {
     pub fn js_init();
     pub fn js_version() -> *const c_char;
-    pub fn js_runtime_new(
-        snapshot: fly_simple_buf,
-        data: *mut c_void,
-        cb: RecvCb,
-        print: PrintCb,
-    ) -> *const js_runtime;
+    pub fn js_runtime_new(options: js_runtime_options) -> *const js_runtime;
     pub fn js_get_data(rt: *const js_runtime) -> *const c_void;
     pub fn js_set_response(rt: *const js_runtime, buf: fly_buf);
     pub fn js_send(rt: *const js_runtime, buf: fly_buf, raw: fly_buf) -> c_int;
