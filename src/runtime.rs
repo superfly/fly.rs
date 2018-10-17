@@ -1650,7 +1650,7 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   // ))
 }
 
-fn op_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   debug!("handling http response");
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
@@ -1673,7 +1673,8 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }
 
   let mut chunk_recver: Option<mpsc::UnboundedReceiver<Vec<u8>>> = None;
-  if msg.has_body() {
+  let has_body = msg.has_body();
+  if has_body {
     debug!("http response will have a body");
     let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
     {
@@ -1696,6 +1697,29 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     }
     None => return odd_future("no response receiver!".to_string().into()),
   };
+
+  if raw.data_len > 0 {
+    let rtptr = rt.ptr;
+    rt.rt
+      .lock()
+      .unwrap()
+      .spawn(future::lazy(move || -> Result<(), ()> {
+        let mut bytes = rtptr.to_runtime().bytes.lock().unwrap();
+        match bytes.remove(&req_id) {
+          Some(sender) => {
+            debug!("sending raw bytes! {}", raw.data_len);
+            let v = unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec();
+
+            if let Err(err) = sender.unbounded_send(v) {
+              error!("could not send body: {}", err);
+            }
+          }
+          None => error!("no bytes sender for req id: {}", req_id),
+        };
+
+        Ok(())
+      }));
+  }
 
   ok_future(None)
 }

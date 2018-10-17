@@ -298,9 +298,13 @@ async function handleRes(id: number, res: FlyResponse) {
     fbs.HttpResponse.addHasBody(fbb, resBody != null)
 
     const resMsg = fbs.HttpResponse.endHttpResponse(fbb);
-    sendSync(fbb, fbs.Any.HttpResponse, resMsg); // sync so we can send body chunks when it's ready!
 
-    if (!resBody)
+    let staticBody: ArrayBufferView;
+    if (res.isStatic)
+      staticBody = res.staticBody
+    sendSync(fbb, fbs.Any.HttpResponse, resMsg, staticBody); // sync so we can send body chunks when it's ready!
+
+    if (staticBody || !resBody)
       return
 
     await sendStreamChunks(id, resBody);

@@ -44,6 +44,19 @@ export default class FlyBody implements Body {
     return this.stream
   }
 
+  get isStatic(): boolean {
+    return (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array)
+  }
+
+  get staticBody(): Uint8Array {
+    if (this.bodySource instanceof Uint8Array)
+      return this.bodySource
+    else if (typeof this.bodySource === "string")
+      return new TextEncoder().encode(this.bodySource)
+    else
+      throw new TypeError("body is not static")
+  }
+
   set body(value: WhatWGReadableStream) {
     this.stream = value
   }
