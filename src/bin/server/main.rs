@@ -238,8 +238,11 @@ impl Service for FlyServer {
             parts.headers = res.headers;
             parts.status = res.status;
 
-            if let Some(bytes) = res.bytes {
-                body = Body::wrap_stream(bytes.map_err(|_| RecvError {}));
+            if let Some(js_body) = res.body {
+                body = match js_body {
+                    JsHttpResponseBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
+                    JsHttpResponseBody::Static(b) => Body::from(b),
+                };
             }
 
             future::ok(Response::from_parts(parts, body))
