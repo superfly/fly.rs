@@ -1641,20 +1641,6 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(fut) };
 
   Box::new(fut2)
-  // }
-
-  // let builder = &mut FlatBufferBuilder::new();
-  // let req_start_msg =
-  //   msg::HttpRequestStart::create(builder, &msg::HttpRequestStartArgs { id: req_id });
-  // ok_future(serialize_response(
-  //   cmd_id,
-  //   builder,
-  //   msg::BaseArgs {
-  //     msg: Some(req_start_msg.as_union_value()),
-  //     msg_type: msg::Any::HttpRequestStart,
-  //     ..Default::default()
-  //   },
-  // ))
 }
 
 fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
@@ -1710,33 +1696,6 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     }
     None => return odd_future("no response receiver!".to_string().into()),
   };
-
-  // if raw.data_len > 0 {
-  //   let rtptr = rt.ptr;
-  //   let spawnres = rt
-  //     .rt
-  //     .lock()
-  //     .unwrap()
-  //     .spawn(future::lazy(move || -> Result<(), ()> {
-  //       let mut streams = rtptr.to_runtime().streams.lock().unwrap();
-  //       match streams.remove(&req_id) {
-  //         Some(sender) => {
-  //           debug!("sending raw bytes! {}", raw.data_len);
-  //           let v = ;
-
-  //           if let Err(err) = sender.unbounded_send(v) {
-  //             error!("could not send body: {}", err);
-  //           }
-  //         }
-  //         None => error!("no bytes sender for req id: {}", req_id),
-  //       };
-
-  //       Ok(())
-  //     }));
-  //   if let Err(_err) = spawnres {
-  //     return odd_future("error using static body".to_string().into());
-  //   }
-  // }
 
   ok_future(None)
 }
