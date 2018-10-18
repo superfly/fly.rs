@@ -11,7 +11,7 @@ import { sendAsync, sendSync, streams } from './bridge';
 import * as fbs from "./msg_generated";
 import * as errors from "./errors";
 import * as util from "./util";
-import { flatbuffers } from "flatbuffers"
+import * as flatbuffers from "./flatbuffers"
 import { ReadableStream } from '@stardazed/streams';
 
 
@@ -36,7 +36,7 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 			const req = new FlyRequest(info, init)
 			const url = req.url
 
-			const fbb = new flatbuffers.Builder();
+			const fbb = flatbuffers.createBuilder();
 			const urlStr = fbb.createString(url);
 
 			let headersArr = Array.from(req.headers[Symbol.iterator]());

@@ -1,7 +1,7 @@
 import { CallSite } from "./types";
 import { sendSync } from "./bridge";
 import * as fbs from './msg_generated';
-import { flatbuffers } from 'flatbuffers';
+import * as flatbuffers from './flatbuffers';
 
 export function install() {
   Error.prepareStackTrace = prepareStackTraceWrapper
@@ -25,7 +25,7 @@ export function prepareStackTraceWrapper(
 
 // @internal
 export function prepareStackTrace(error: Error, stack: CallSite[]): string {
-  const fbb = new flatbuffers.Builder();
+  const fbb = flatbuffers.createBuilder();
   const offsets: number[] = stack.map((frame: CallSite) => {
     const filename = fbb.createString(frame.getFileName());
     const fnName = frame.getFunctionName();

@@ -1,7 +1,7 @@
 import { assert } from "./util";
 import * as util from "./util";
 import * as fbs from "./msg_generated";
-import { flatbuffers } from "flatbuffers";
+import * as flatbuffers from "./flatbuffers";
 import { sendSync, sendAsync } from "./bridge";
 
 /**
@@ -15,7 +15,7 @@ import { sendSync, sendAsync } from "./bridge";
 export const crypto = {
   subtle: {
     digest(algo: string, data: ArrayBufferView | ArrayBuffer): Promise<ArrayBufferLike> {
-      const fbb = new flatbuffers.Builder();
+      const fbb = flatbuffers.createBuilder();
       let algoidx = fbb.createString(algo);
       fbs.CryptoDigest.startCryptoDigest(fbb);
       fbs.CryptoDigest.addAlgo(fbb, algoidx);
@@ -33,7 +33,7 @@ export const crypto = {
     if (!(typedArray instanceof Uint8Array)) {
       throw new Error("Only Uint8Array are supported at present")
     }
-    const fbb = new flatbuffers.Builder();
+    const fbb = flatbuffers.createBuilder();
     fbs.CryptoRandomValues.startCryptoRandomValues(fbb);
     fbs.CryptoRandomValues.addLen(fbb, typedArray.length);
     const baseRes = sendSync(fbb, fbs.Any.CryptoRandomValues, fbs.CryptoRandomValues.endCryptoRandomValues(fbb));

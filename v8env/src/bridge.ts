@@ -3,7 +3,7 @@
  * @private
  */
 import { libfly } from "./libfly";
-import { flatbuffers } from "flatbuffers";
+import * as flatbuffers from "./flatbuffers";
 import * as fbs from "./msg_generated";
 import * as errors from "./errors";
 import * as util from "./util";
@@ -163,7 +163,7 @@ export function addEventListener(name: string, fn: Function) {
 
 function handleDNSError(id: number, err: Error) {
   console.error("dns error:", err.stack);
-  const fbb = new flatbuffers.Builder();
+  const fbb = flatbuffers.createBuilder();
 
   fbs.DnsResponse.startDnsResponse(fbb);
   fbs.DnsResponse.addId(fbb, id);
@@ -176,7 +176,7 @@ function handleDNSError(id: number, err: Error) {
 }
 
 function handleDNSRes(id: number, res: DNSResponse) {
-  const fbb = new flatbuffers.Builder();
+  const fbb = flatbuffers.createBuilder();
 
   let answers: number[] = []
   for (let i = 0; i < res.answers.length; i++) {
@@ -221,7 +221,7 @@ function handleDNSRes(id: number, res: DNSResponse) {
 
 function handleError(id: number, err: Error) {
   console.error(err.stack);
-  const fbb = new flatbuffers.Builder();
+  const fbb = flatbuffers.createBuilder();
 
   fbs.HttpResponse.startHttpResponse(fbb);
   fbs.HttpResponse.addId(fbb, id);
@@ -258,7 +258,7 @@ export async function sendStreamChunks(id: number, stream: ReadableStream) {
 }
 
 export function sendStreamChunk(id: number, done: boolean, value?: ArrayBufferView) {
-  const fbb = new flatbuffers.Builder()
+  const fbb = flatbuffers.createBuilder()
   fbs.StreamChunk.startStreamChunk(fbb)
   fbs.StreamChunk.addId(fbb, id);
   fbs.StreamChunk.addDone(fbb, done);
@@ -270,7 +270,7 @@ async function handleRes(id: number, res: FlyResponse) {
     throw new Error("BODY HAS BEEN USED, NO PUEDO!")
   // console.log("respond with!", res);
 
-  const fbb = new flatbuffers.Builder();
+  const fbb = flatbuffers.createBuilder();
 
   let headersArr = Array.from(res.headers[Symbol.iterator]());
   const headersLength = headersArr.length;
@@ -364,5 +364,7 @@ function sendInternal(
   fbs.Base.addCmdId(fbb, cmdId);
   fbb.finish(fbs.Base.endBase(fbb));
 
-  return [cmdId, libfly.send(fbb.asUint8Array(), raw)];
+  const res = libfly.send(fbb.asUint8Array(), raw);
+  fbb.inUse = false;
+  return [cmdId, res];
 }

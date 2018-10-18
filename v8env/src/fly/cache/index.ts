@@ -20,7 +20,7 @@
 /** */
 import { sendSync, sendAsync, streams, sendStreamChunks, sendStreamChunk } from '../../bridge'
 import * as fbs from "../../msg_generated";
-import { flatbuffers } from "flatbuffers";
+import * as flatbuffers from "../../flatbuffers";
 
 export interface CacheSetOptions {
   ttl?: number;
@@ -42,7 +42,7 @@ export function get(key: string): Promise<ArrayBufferLike | null> {
 }
 
 export function getStream(key: string): Promise<ReadableStream | null> {
-  const fbb = new flatbuffers.Builder()
+  const fbb = flatbuffers.createBuilder()
   const keyFbs = fbb.createString(key);
   fbs.CacheGet.startCacheGet(fbb);
   fbs.CacheGet.addKey(fbb, keyFbs);
@@ -121,7 +121,7 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
   //   throw new Error("Cache values must be either a string or array buffer")
   // }
 
-  const fbb = new flatbuffers.Builder()
+  const fbb = flatbuffers.createBuilder()
   const keyFbb = fbb.createString(key)
   fbs.CacheSet.startCacheSet(fbb);
   fbs.CacheSet.addKey(fbb, keyFbb);

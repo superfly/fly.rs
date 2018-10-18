@@ -1,7 +1,7 @@
 import * as fbs from "./msg_generated";
 import * as errors from "./errors";
 import * as util from "./util";
-import { flatbuffers } from "flatbuffers"
+import * as flatbuffers from "./flatbuffers"
 import { sendAsync } from "./bridge";
 import { DNSQuery, DNSResponse, DNSRecord, DNSRecordData } from "./dns";
 
@@ -13,7 +13,7 @@ export function resolv(req: DNSQuery | string): Promise<DNSResponse> {
   } : req
 
   return new Promise(function resolvPromise(resolve, reject) {
-    const fbb = new flatbuffers.Builder();
+    const fbb = flatbuffers.createBuilder();
     const nameStr = fbb.createString(query.name)
     fbs.DnsQuery.startDnsQuery(fbb);
     fbs.DnsQuery.addName(fbb, nameStr);

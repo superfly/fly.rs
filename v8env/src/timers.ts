@@ -1,7 +1,7 @@
 import { assert } from "./util";
 import * as util from "./util";
 import * as fbs from "./msg_generated";
-import { flatbuffers } from "flatbuffers";
+import * as flatbuffers from "./flatbuffers";
 import { sendSync, sendAsync } from "./bridge";
 
 let nextTimerId = 1;
@@ -36,7 +36,7 @@ function startTimer(
   util.log("timers.ts startTimer");
 
   // Send TimerStart message
-  const builder = new flatbuffers.Builder();
+  const builder = flatbuffers.createBuilder();
   fbs.TimerStart.startTimerStart(builder);
   fbs.TimerStart.addId(builder, timer.id);
   fbs.TimerStart.addDelay(builder, timer.delay);
@@ -92,7 +92,7 @@ export function setImmediate(cb: TimerCallback, ...args: any[]): number {
 }
 
 export function clearTimer(id: number) {
-  const builder = new flatbuffers.Builder();
+  const builder = flatbuffers.createBuilder();
   fbs.TimerClear.startTimerClear(builder);
   fbs.TimerClear.addId(builder, id);
   const msg = fbs.TimerClear.endTimerClear(builder);

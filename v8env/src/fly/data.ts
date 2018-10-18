@@ -8,7 +8,7 @@
 import { assert } from "../util";
 import * as util from "../util";
 import * as fbs from "../msg_generated";
-import { flatbuffers } from "flatbuffers";
+import * as flatbuffers from "../flatbuffers";
 import { sendSync, sendAsync } from "../bridge";
 
 /**
@@ -31,7 +31,7 @@ export class Collection {
    * @param obj value to store
    */
   put(key: string, obj: string): Promise<boolean> {
-    const fbb = new flatbuffers.Builder();
+    const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     const fbbKey = fbb.createString(key);
     const fbbObj = fbb.createString(JSON.stringify(obj));
@@ -49,7 +49,7 @@ export class Collection {
    * @param key key to retrieve
    */
   get(key: string): Promise<any> {
-    const fbb = new flatbuffers.Builder();
+    const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     const fbbKey = fbb.createString(key);
     fbs.DataGet.startDataGet(fbb);
@@ -69,7 +69,7 @@ export class Collection {
    * @param key key to delete
    */
   del(key: string): Promise<boolean> {
-    const fbb = new flatbuffers.Builder();
+    const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     const fbbKey = fbb.createString(key);
     fbs.DataDel.startDataDel(fbb);
@@ -86,7 +86,7 @@ const data = {
     return new Collection(name)
   },
   dropCollection(name: string): Promise<boolean> {
-    const fbb = new flatbuffers.Builder();
+    const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     fbs.DataDropCollection.startDataDropCollection(fbb);
     fbs.DataDropCollection.addCollection(fbb, fbbColl);
