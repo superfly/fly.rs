@@ -179,7 +179,7 @@ impl Service for FlyServer {
 
         {
             let rtptr = rtptr.clone();
-            let spawnres = rt.rt.lock().unwrap().spawn(future::lazy(move || {
+            let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
                 rtptr.send(to_send, None);
                 Ok(())
             }));
@@ -189,7 +189,7 @@ impl Service for FlyServer {
         }
 
         if !body.is_end_stream() {
-            let spawnres = rt.rt.lock().unwrap().spawn(
+            let spawnres = rt.event_loop.lock().unwrap().spawn(
                 poll_fn(move || {
                     while let Some(chunk) = try_ready!(body.poll_data()) {
                         let mut bytes = chunk.into_bytes();

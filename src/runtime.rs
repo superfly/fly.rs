@@ -152,7 +152,7 @@ impl JsRuntime {
 
 pub struct Runtime {
   pub ptr: JsRuntime,
-  pub rt: Mutex<tokio::runtime::current_thread::Handle>,
+  pub event_loop: Mutex<tokio::runtime::current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<JsDnsResponse>>>,
@@ -187,9 +187,9 @@ impl Runtime {
         l.run()
       }).unwrap();
 
-    let mut rt_box = Box::new(Runtime {
+    let mut rt = Box::new(Runtime {
       ptr: JsRuntime(0 as *const js_runtime),
-      rt: Mutex::new(p.wait().unwrap()),
+      event_loop: Mutex::new(p.wait().unwrap()),
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
       dns_responses: Mutex::new(HashMap::new()),
@@ -198,10 +198,10 @@ impl Runtime {
       name: name.unwrap_or("v8".to_string()),
     });
 
-    (*rt_box).ptr.0 = unsafe {
+    (*rt).ptr.0 = unsafe {
       let ptr = js_runtime_new(js_runtime_options {
         snapshot: *FLY_SNAPSHOT,
-        data: rt_box.as_ref() as *const _ as *mut libc::c_void,
+        data: rt.as_ref() as *const _ as *mut libc::c_void,
         recv_cb: msg_from_js,
         print_cb: print_from_js,
         soft_memory_limit: 128,
@@ -215,7 +215,7 @@ impl Runtime {
       ptr
     };
 
-    rt_box
+    rt
   }
 
   pub fn eval(&self, filename: &str, code: &str) {
@@ -420,7 +420,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
       ptr.send(buf, None);
       Ok(())
     });
-    if let Err(err) = rt.rt.lock().unwrap().spawn(fut) {
+    if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
       ptr.send_error(cmd_id, format!("{}", err).into());
     }
   }
@@ -733,7 +733,7 @@ fn op_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let pool = Arc::clone(&redis_stream::REDIS_CACHE_POOL);
     let con = pool.get().unwrap(); // TODO: no unwrap
     let offset: AtomicUsize = ATOMIC_USIZE_INIT;
-    let spawnres = rt.rt.lock().unwrap().spawn(
+    let spawnres = rt.event_loop.lock().unwrap().spawn(
       recver
         .map_err(|_| println!("error cache set stream!"))
         .for_each(move |b| {
@@ -828,7 +828,7 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       Ok(())
     });
 
-    if let Err(err) = rt.rt.lock().unwrap().spawn(fut) {
+    if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
       return odd_future(format!("{}", err).into());
     }
   }
@@ -894,7 +894,7 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         );
         Ok(())
       });
-    if let Err(err) = rt.rt.lock().unwrap().spawn(fut) {
+    if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
       return odd_future(format!("{}", err).into());
     }
   }
@@ -965,7 +965,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
           }
 
           let rt = from_c(rtptr.0); // like a clone
-          let spawnres = rt.rt.lock().unwrap().spawn(future::lazy(move || {
+          let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
             let innerfut = Box::new(
               FramedRead::new(file, BytesCodec::new())
                 .map_err(|e| println!("error reading file chunk! {}", e))
@@ -1072,7 +1072,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
         .map_err(|e| println!("error read_dir stream: {}", e))
         .for_each(move |entry| {
           let rt = from_c(rtptr.0); // like a clone
-          let spawnres = rt.rt.lock().unwrap().spawn(future::lazy(move || {
+          let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
             let entrypath = entry.path();
             let pathstr = format!("{}\n", entrypath.to_str().unwrap());
             let pathbytes = pathstr.as_bytes();
@@ -1111,7 +1111,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
           Ok(())
         }).and_then(move |_| {
           let rt = from_c(rtptr.0); // like a clone
-          let spawnres = rt.rt.lock().unwrap().spawn(future::lazy(move || {
+          let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
             let builder = &mut FlatBufferBuilder::new();
             let chunk_msg = msg::StreamChunk::create(
               builder,
@@ -1207,7 +1207,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   //       elh.spawn(fut);
   //     }
   //     None => {
-  //       rt.rt.lock().unwrap().spawn(fut);
+  //       rt.event_loop.lock().unwrap().spawn(fut);
   //     }
   //   }
   // };
@@ -1542,7 +1542,7 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
       if !body.is_end_stream() {
         let rt = from_c(rtptr.0); // like a clone
-        let spawnres = rt.rt.lock().unwrap().spawn(
+        let spawnres = rt.event_loop.lock().unwrap().spawn(
           poll_fn(move || {
             while let Some(chunk) = try_ready!(body.poll_data()) {
               let mut bytes = chunk.into_bytes();

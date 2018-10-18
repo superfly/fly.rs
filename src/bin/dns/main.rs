@@ -148,7 +148,7 @@ impl RequestHandler for DnsHandler {
     req: &'q Request,
     res: R,
   ) -> io::Result<()> {
-    println!(
+    debug!(
       "dns(req): {:?} {}: {:?}",
       req.message.message_type(),
       req.src,
@@ -164,7 +164,7 @@ impl RequestHandler for DnsHandler {
       .queries()
       .iter()
       .map(|q| {
-        println!("query: {:?}", q);
+        debug!("query: {:?}", q);
         use self::dns::rr::{DNSClass, Name, RecordType};
         let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
         let rr_type = match q.query_type() {
@@ -248,7 +248,7 @@ impl RequestHandler for DnsHandler {
 
     {
       let rtptr = rtptr.clone();
-      rt.rt
+      rt.event_loop
         .lock()
         .unwrap()
         .spawn(future::lazy(move || {
