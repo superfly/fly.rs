@@ -142,11 +142,8 @@ impl JsRuntime {
     self.send(fly_buf_from(buf), None);
   }
 
-  pub fn to_runtime(&self) -> &mut Runtime {
-    let ptr = unsafe { js_get_data(self.0) };
-    let rt_ptr = ptr as *mut Runtime;
-    let rt_box = unsafe { Box::from_raw(rt_ptr) };
-    Box::leak(rt_box)
+  pub fn to_runtime<'a>(&self) -> &'a mut Runtime {
+    Runtime::from_raw(self.0)
   }
 }
 
@@ -239,13 +236,13 @@ impl Runtime {
   pub fn heap_statistics(&self) -> js_heap_stats {
     unsafe { js_runtime_heap_statistics(self.ptr.0) }
   }
-}
 
-pub fn from_c<'a>(rt: *const js_runtime) -> &'a mut Runtime {
-  let ptr = unsafe { js_get_data(rt) };
-  let rt_ptr = ptr as *mut Runtime;
-  let rt_box = unsafe { Box::from_raw(rt_ptr) };
-  Box::leak(rt_box)
+  pub fn from_raw<'a>(raw: *const js_runtime) -> &'a mut Self {
+    let ptr = unsafe { js_get_data(raw) };
+    let rt_ptr = ptr as *mut Runtime;
+    let rt_box = unsafe { Box::from_raw(rt_ptr) };
+    Box::leak(rt_box)
+  }
 }
 
 extern crate tokio_io_pool;
@@ -347,7 +344,7 @@ pub type Buf = Option<Box<[u8]>>;
 // which yields either a DenoError or a byte array.
 pub type Op = Future<Item = Buf, Error = FlyError> + Send;
 
-pub type Handler = fn(rt: &Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
+pub type Handler = fn(ptr: JsRuntime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 
 use std::slice;
 
@@ -378,10 +375,9 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     _ => unimplemented!(),
   };
 
-  let rt = from_c(raw);
-  let ptr = rt.ptr;
+  let ptr = JsRuntime(raw);
 
-  let fut = handler(rt, &base, raw_buf);
+  let fut = handler(ptr, &base, raw_buf);
   let fut = fut.or_else(move |err| {
     error!("error in {:?}: {:?}", msg_type, err);
     Ok(build_error(cmd_id, err))
@@ -420,6 +416,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
       ptr.send(buf, None);
       Ok(())
     });
+    let rt = ptr.to_runtime();
     if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
       ptr.send_error(cmd_id, format!("{}", err).into());
     }
@@ -470,7 +467,7 @@ pub fn fly_buf_from(x: Box<[u8]>) -> fly_buf {
 }
 
 pub extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *const libc::c_char) {
-  let rt = from_c(raw);
+  let rt = Runtime::from_raw(raw);
   let msg = unsafe { CStr::from_ptr(msg).to_string_lossy().into_owned() };
 
   let lvl = match lvl {
@@ -485,15 +482,16 @@ pub extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *const lib
   log!(lvl, "console/{}: {}", &rt.name, &msg);
 }
 
-fn op_timer_start(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  println!("op_timer_start");
+fn op_timer_start(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  debug!("op_timer_start");
   let msg = base.msg_as_timer_start().unwrap();
   let cmd_id = base.cmd_id();
   let timer_id = msg.id();
   let delay = msg.delay();
 
+  let rt = ptr.to_runtime();
+
   let timers = &rt.timers;
-  let ptr = rt.ptr;
 
   let fut = {
     let (delay_task, cancel_delay) = set_timeout(
@@ -545,18 +543,18 @@ pub fn serialize_response(
 }
 
 fn remove_timer(ptr: JsRuntime, timer_id: u32) {
-  let rt = from_c(ptr.0);
+  let rt = Runtime::from_raw(ptr.0);
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
-fn op_timer_clear(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_timer_clear(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_timer_clear().unwrap();
-  println!("op_timer_clear");
-  remove_timer(rt.ptr, msg.id());
+  debug!("op_timer_clear");
+  remove_timer(ptr, msg.id());
   ok_future(None)
 }
 
-fn op_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_source_map(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_source_map().unwrap();
 
@@ -636,7 +634,7 @@ fn op_source_map(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   )
 }
 
-fn op_crypto_random_values(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_crypto_random_values(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_crypto_random_values().unwrap();
 
@@ -668,7 +666,7 @@ fn op_crypto_random_values(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Bo
   ))
 }
 
-fn op_crypto_digest(_rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn op_crypto_digest(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_crypto_digest().unwrap();
 
@@ -716,13 +714,15 @@ use super::NEXT_EVENT_ID;
 use std::str;
 
 use std::ops::Deref;
-fn op_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("CACHE SET");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_set().unwrap();
   let key = msg.key().unwrap().to_string();
 
   let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+
+  let rt = ptr.to_runtime();
 
   let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
   {
@@ -774,13 +774,11 @@ fn op_cache_set(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   ))
 }
 
-fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_get().unwrap();
 
   let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-
-  let rtptr = rt.ptr;
 
   let key = msg.key().unwrap().to_string();
 
@@ -799,6 +797,8 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     }
   };
 
+  let rt = ptr.to_runtime();
+
   {
     // need to hijack the order here.
     let fut = future::lazy(move || {
@@ -811,7 +811,7 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
           ..Default::default()
         },
       );
-      rtptr.send(
+      ptr.send(
         fly_buf_from(
           serialize_response(
             cmd_id,
@@ -848,7 +848,7 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             ..Default::default()
           },
         );
-        rtptr.send(
+        ptr.send(
           fly_buf_from(
             serialize_response(
               0,
@@ -878,7 +878,7 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             ..Default::default()
           },
         );
-        rtptr.send(
+        ptr.send(
           fly_buf_from(
             serialize_response(
               0,
@@ -921,13 +921,10 @@ fn op_cache_get(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   // ))
 }
 
-fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
+fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
   let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-  let rtptr = rt.ptr;
 
   let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
-
-  let rtptr2 = rtptr.clone();
 
   let path: String = url.chars().skip(7).collect();
 
@@ -952,7 +949,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
           let file = fileerr.unwrap(); // should be safe.
 
           let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-          let mut stream = from_c(rtptr2.0).streams.lock().unwrap();
+          let mut stream = ptr.to_runtime().streams.lock().unwrap();
           stream.insert(req_id, tx);
 
           if let Err(_) = p.send(Ok(JsHttpResponse {
@@ -964,7 +961,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
             return Ok(());
           }
 
-          let rt = from_c(rtptr.0); // like a clone
+          let rt = ptr.to_runtime(); // like a clone
           let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
             let innerfut = Box::new(
               FramedRead::new(file, BytesCodec::new())
@@ -978,7 +975,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
                       done: false,
                     },
                   );
-                  rtptr.send(
+                  ptr.send(
                     fly_buf_from(
                       serialize_response(
                         0,
@@ -1007,7 +1004,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
                       done: true,
                     },
                   );
-                  rtptr.send(
+                  ptr.send(
                     fly_buf_from(
                       serialize_response(
                         0,
@@ -1056,7 +1053,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
       }
       let read_dir = read_dir_err.unwrap();
       let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-      let mut streams = from_c(rtptr2.0).streams.lock().unwrap();
+      let mut streams = ptr.to_runtime().streams.lock().unwrap();
       streams.insert(req_id, tx);
 
       if let Err(_) = p.send(Ok(JsHttpResponse {
@@ -1071,7 +1068,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
       let fut = read_dir
         .map_err(|e| println!("error read_dir stream: {}", e))
         .for_each(move |entry| {
-          let rt = from_c(rtptr.0); // like a clone
+          let rt = ptr.to_runtime(); // like a clone
           let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
             let entrypath = entry.path();
             let pathstr = format!("{}\n", entrypath.to_str().unwrap());
@@ -1084,7 +1081,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
                 done: false,
               },
             );
-            rtptr.send(
+            ptr.send(
               fly_buf_from(
                 serialize_response(
                   0,
@@ -1110,7 +1107,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
           }
           Ok(())
         }).and_then(move |_| {
-          let rt = from_c(rtptr.0); // like a clone
+          let rt = ptr.to_runtime(); // like a clone
           let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
             let builder = &mut FlatBufferBuilder::new();
             let chunk_msg = msg::StreamChunk::create(
@@ -1121,7 +1118,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
                 ..Default::default()
               },
             );
-            rtptr.send(
+            ptr.send(
               fly_buf_from(
                 serialize_response(
                   0,
@@ -1215,7 +1212,7 @@ fn op_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
   Box::new(fut2)
 }
 
-fn op_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   println!("handle dns");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
@@ -1459,17 +1456,16 @@ fn op_dns_query(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   )
 }
 
-fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_http_request().unwrap();
 
   let url = msg.url().unwrap();
   if url.starts_with("file://") {
-    return op_file_request(rt, cmd_id, url);
+    return op_file_request(ptr, cmd_id, url);
   }
 
   let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-  let rtptr = rt.ptr;
 
   let req_body: Body;
   if msg.has_body() {
@@ -1501,9 +1497,9 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     }
   }
 
-  let rtptr2 = rtptr.clone();
-
   let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
+
+  let rt = ptr.to_runtime();
 
   let fut = rt
     .http_client
@@ -1527,7 +1523,7 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       if !body.is_end_stream() {
         let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
         stream_rx = Some(JsHttpResponseBody::Stream(rx));
-        let mut streams = from_c(rtptr2.0).streams.lock().unwrap();
+        let mut streams = ptr.to_runtime().streams.lock().unwrap();
         streams.insert(req_id, tx);
       }
 
@@ -1541,7 +1537,7 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       }
 
       if !body.is_end_stream() {
-        let rt = from_c(rtptr.0); // like a clone
+        let rt = ptr.to_runtime(); // like a clone
         let spawnres = rt.event_loop.lock().unwrap().spawn(
           poll_fn(move || {
             while let Some(chunk) = try_ready!(body.poll_data()) {
@@ -1554,7 +1550,7 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                   done: body.is_end_stream(),
                 },
               );
-              rtptr.send(
+              ptr.send(
                   fly_buf_from(
                     serialize_response(
                       0,
@@ -1642,7 +1638,7 @@ fn op_http_request(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   Box::new(fut2)
 }
 
-fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   debug!("handling http response");
   let msg = base.msg_as_http_response().unwrap();
   let req_id = msg.id();
@@ -1663,6 +1659,8 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
       );
     }
   }
+
+  let rt = ptr.to_runtime();
 
   let mut body: Option<JsHttpResponseBody> = None;
   let has_body = msg.has_body();
@@ -1699,7 +1697,7 @@ fn op_http_response(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   ok_future(None)
 }
 
-fn op_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_dns_response().unwrap();
   let req_id = msg.id();
 
@@ -1852,6 +1850,8 @@ fn op_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     vec![]
   };
 
+  let rt = ptr.to_runtime();
+
   let mut responses = rt.dns_responses.lock().unwrap();
   match responses.remove(&req_id) {
     Some(sender) => {
@@ -1873,10 +1873,12 @@ fn op_dns_response(rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   ok_future(None)
 }
 
-fn op_stream_chunk(rt: &Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn op_stream_chunk(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   debug!("handle stream chunk {:?}", raw);
   let msg = base.msg_as_stream_chunk().unwrap();
   let stream_id = msg.id();
+
+  let rt = ptr.to_runtime();
 
   let mut streams = rt.streams.lock().unwrap();
   if raw.data_len > 0 {
@@ -1916,7 +1918,7 @@ where
   (delay_task, cancel_tx)
 }
 
-fn op_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_put(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_put().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
@@ -1941,7 +1943,7 @@ fn op_data_put(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn op_data_get(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_get(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_data_get().unwrap();
   let coll = msg.collection().unwrap().to_string();
@@ -1986,7 +1988,7 @@ fn op_data_get(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn op_data_del(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_del(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_del().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
@@ -2007,7 +2009,7 @@ fn op_data_del(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }))
 }
 
-fn op_data_drop_coll(_rt: &Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_drop_coll(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_del().unwrap();
   let coll = msg.collection().unwrap().to_string();
 

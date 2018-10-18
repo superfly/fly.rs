@@ -51,6 +51,8 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
 - [ ] Builder
   - [ ] TypeScript support
   - [ ] HTTP imports!
+  - [ ] Source maps
+    - [ ] Handle source maps in the rust hook
 - [ ] CI builds + releases
   - [x] Mac
   - [x] Linux
