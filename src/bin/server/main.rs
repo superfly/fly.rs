@@ -38,11 +38,10 @@ use env_logger::Env;
 use config::*;
 use fly::config;
 
-use std::alloc::System;
-
 extern crate flatbuffers;
 use flatbuffers::FlatBufferBuilder;
 
+use std::alloc::System;
 #[global_allocator]
 static A: System = System;
 
