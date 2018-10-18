@@ -57,6 +57,8 @@ use std::sync::RwLock;
 lazy_static! {
     static ref NCPUS: usize = num_cpus::get();
     static ref REQ_PER_APP: RwLock<HashMap<String, AtomicUsize>> = RwLock::new(HashMap::new());
+    pub static ref RUNTIMES: RwLock<HashMap<String, Vec<Box<Runtime>>>> =
+        RwLock::new(HashMap::new());
 }
 
 pub struct FlyServer {

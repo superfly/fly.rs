@@ -6,7 +6,7 @@ use tokio::prelude::*;
 use std::io;
 
 use std::ffi::{CStr, CString};
-use std::sync::{Arc, Mutex, Once, RwLock};
+use std::sync::{Arc, Mutex, Once};
 
 use self::fs::File;
 use std::fs;
@@ -279,7 +279,6 @@ use self::sourcemap::SourceMap;
 pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
 
 lazy_static! {
-  pub static ref RUNTIMES: RwLock<HashMap<String, Vec<Box<Runtime>>>> = RwLock::new(HashMap::new());
   static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
     ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
     len: V8ENV_SNAPSHOT.len() as i32
