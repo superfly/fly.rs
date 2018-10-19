@@ -47,7 +47,9 @@ use fly::config::Config;
 
 use fly::msg;
 
+use fly::ops::dns::*;
 use fly::runtime::*;
+use fly::utils::*;
 
 use env_logger::Env;
 

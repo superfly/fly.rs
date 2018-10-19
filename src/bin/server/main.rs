@@ -32,6 +32,7 @@ use tokio::timer::Interval;
 use std::time::Duration;
 
 use fly::runtime::*;
+use fly::utils::*;
 
 use env_logger::Env;
 

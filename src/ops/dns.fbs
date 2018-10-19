@@ -1,0 +1,154 @@
+enum DnsRecordType: byte {
+  A = 0,
+  AAAA,
+  ANY,
+  AXFR,
+  CAA,
+  CNAME,
+  IXFR,
+  MX,
+  NS,
+  NULL,
+  OPT,
+  PTR,
+  SOA,
+  SRV,
+  TLSA,
+  TXT,
+}
+
+enum DnsResponseCode: byte {
+  NoError = 0,
+  FormErr,
+  ServFail,
+  NXDomain,
+  NotImp,
+  Refused,
+  YXDomain,
+  YXRRSet,
+  NXRRSet,
+  NotAuth,
+  NotZone,
+  BADVERS,
+  BADSIG,
+  BADKEY,
+  BADTIME,
+  BADMODE,
+  BADNAME,
+  BADALG,
+  BADTRUNC,
+  BADCOOKIE,
+}
+
+enum DnsOpCode: byte {
+  Query = 0,
+  Status,
+  Notify,
+  Update,
+}
+
+enum DnsMessageType: byte {
+  Query = 0,
+  Response,
+}
+
+enum DnsClass: byte {
+  IN = 0,
+  CH,
+  HS,
+  NONE,
+  ANY,
+  // OPT(u16) ?
+}
+
+union DnsRecordData {
+  DnsA,
+  DnsAaaa,
+  // DnsCAA,
+  DnsCname,
+  DnsMx,
+  // DnsNULL,
+  DnsNs,
+  // DnsOPT,
+  DnsPtr,
+  DnsSoa,
+  DnsSrv,
+  // DnsTLSA,
+  DnsTxt,
+  // TODO: more.
+}
+
+table DnsA {
+  ip: string;
+}
+table DnsAaaa {
+  ip: string;
+}
+
+table DnsCname {
+  name: string;
+}
+table DnsMx {
+  preference: ushort;
+  exchange: string;
+}
+table DnsNs {
+  name: string;
+}
+table DnsPtr {
+  name: string;
+}
+table DnsSoa {
+  mname: string;
+  rname: string;
+  serial: uint;
+  refresh: int;
+  retry: int;
+  expire: int;
+  minimum: uint;
+}
+table DnsSrv {
+  priority: ushort;
+  weight: ushort;
+  port: ushort;
+  target: string;
+}
+
+table DnsTxtData {
+  data: [ubyte];
+}
+
+table DnsTxt {
+  data: [DnsTxtData];
+}
+
+table DnsRequest {
+  id: uint;
+  message_type: DnsMessageType;
+  queries: [DnsQuery];
+}
+
+table DnsQuery {
+  name: string;
+  rr_type: DnsRecordType;
+  dns_class: DnsClass;
+}
+
+table DnsRecord {
+  name: string;
+  rr_type: DnsRecordType;
+  rdata: DnsRecordData;
+  dns_class: DnsClass;
+  ttl: uint;
+}
+
+table DnsResponse {
+  id: uint;
+  op_code: DnsOpCode;
+  message_type: DnsMessageType;
+  authoritative: bool;
+  truncated: bool;
+  response_code: DnsResponseCode;
+  answers: [DnsRecord];
+  queries: [DnsQuery];
+}
