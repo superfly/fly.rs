@@ -47,7 +47,7 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [ ] Lifecycle management
     - [ ] Gracefully "replace" if running out of heap
   - [ ] Handle promise rejection (trash the runtime? just log?)
-  - [ ] Handle uncaught error
+  - [ ] Handle uncaught error    (trash? log?)
 - [ ] Builder
   - [ ] TypeScript support
   - [ ] HTTP imports!
@@ -62,6 +62,25 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [x] Spawn multiple runtime instances for the same app (n cpus? configurable?)
   - [ ] Add `Server` header for Fly and current version (maybe?)
   - [ ] Fetch request bodies
+- [ ] TLS
+  - [ ] Explore handling TLS handshakes and responding
+    - [ ] JS API
+    - [ ] Rust serialization
+- [ ] TCP
+  - [ ] Explore handling raw TCP packets (decrypted) and responding
+    - [ ] JS API
+    - [ ] Rust serialization
+- [ ] UDP
+  - [ ] Explore handling UDP packets and responding
+    - [ ] JS API
+    - [ ] Rust serialization
+- [x] DNS
+  - [x] Explore handling DNS requests and responding
+    - [x] JS API
+    - [x] Rust server
+    - [x] Rust serialization
+  - [ ] DNSSEC
+  - [ ] DNS over TLS
 - [ ] Observability
   - [ ] Exception reporting (via Sentry probably)
   - [ ] Metrics (prometheus)
@@ -69,3 +88,6 @@ The Fly runtime was originally derived from [deno](denoland/deno) and shares som
   - [ ] do not use `unwrap` (that will panic and exit the process). Solution is to handle them and return or print proper errors
   - [x] Get rid of all warnings
   - [ ] Tests!
+- [ ] Optimizations
+  - [ ] Flatbuffers can be build without allocations, by using `addX` like we do in javascript
+  - [ ] Reuse ArrayBuffer in certain cases
