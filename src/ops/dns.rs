@@ -5,7 +5,7 @@ extern crate trust_dns as dns;
 extern crate trust_dns_proto as dns_proto;
 use self::dns::client::ClientHandle; // necessary for trait to be in scope
 
-use std::sync::{Mutex, RwLock};
+use std::sync::Mutex;
 
 use libfly::*;
 use runtime::{JsRuntime, Op, EVENT_LOOP_HANDLE};

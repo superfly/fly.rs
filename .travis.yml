@@ -54,7 +54,7 @@ install:
   cd $TRAVIS_BUILD_DIR
 - |
   export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
-  flatc --ts -o v8env/src --no-fb-import --gen-mutable msg.fbs
+  ./scripts/fbs.sh
 - |
   nvm install 10
   npm i -g yarn
