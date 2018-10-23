@@ -17,6 +17,7 @@ libc = "*"
 flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 serde = "*"
 serde_derive = "1.0"
+serde_json = "1.0.32"
 hyper = "0.12"
 hyper-tls = "0.3"
 http = "0.1"

@@ -957,9 +957,7 @@ fn handle_file_request(rt: &Runtime, cmd_id: u32, url: &str) -> Box<Op> {
             }
             return Ok(());
           }
-
           let file = fileerr.unwrap(); // should be safe.
-
           let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
           let bytes_rx = Some(rx);
           let mut bytes = from_c(rtptr2.0).bytes.lock().unwrap();

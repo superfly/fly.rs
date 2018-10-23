@@ -17,8 +17,11 @@ use std::str;
 use std::thread::sleep;
 use std::time::Duration;
 
-const ROLLUP_BROWSER: &'static [u8] =
-  include_bytes!("../../../v8env/node_modules/rollup/dist/rollup.browser.js");
+extern crate serde_json;
+// use serialize::json;
+
+// const ROLLUP_BROWSER: &'static [u8] =
+//   include_bytes!("../../../v8env/node_modules/rollup/dist/rollup.browser.js");
 // const BUILDER_CODE: &'static [u8] = include_bytes!("./builder.js");
 
 fn main() {
@@ -26,7 +29,12 @@ fn main() {
   env_logger::init_from_env(env);
 
   let rt = Runtime::new(None);
-  rt.eval("rollup.browser.js", str::from_utf8(ROLLUP_BROWSER).unwrap());
+  // load rollup
+  rt.eval_file("./v8env/node_modules/rollup/dist/rollup.browser.js");
+  rt.eval_file("./loader.js");
+  // load systemjs
+  // rt.eval_file("./v8env/node_modules/systemjs/dist/system.js");
+  // rt.eval("rollup.browser.js", str::from_utf8(ROLLUP_BROWSER).unwrap());
   rt.eval_file("./v8env/dist/build.js");
   // rt.eval("<na>", "console.log('hello from builder main!')");
   // rt.eval("build.js", str::from_utf8(BUILDER_CODE).unwrap());
@@ -36,12 +44,25 @@ fn main() {
   unsafe {
     EVENT_LOOP_HANDLE = Some(main_el.executor());
   };
+
+  // str::
+  // intertools::joi
+  // &args[1..]
+
+  // String.
+  // &args[1..].
   // rt.eval("<na>", "console.log('after event loop!')");
-  rt.eval("entry", format!("run('{}', '/')", &args[1]).as_str());
+
+  let run_args = serde_json::to_string(&args[1..]).unwrap();
+
+  // let filesJson = json::encode(&);
+
+  rt.eval("entry", format!("run({}, '/')", run_args).as_str());
+  // rt.eval("entry", format!("run('{}', '/')", &args[2]).as_str());
 
   main_el
     .block_on(future::lazy(|| -> Result<(), ()> {
-      sleep(Duration::from_secs(5));
+      sleep(Duration::from_secs(1));
       Ok(())
     })).unwrap();
   main_el.shutdown_on_idle();

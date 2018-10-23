@@ -65,6 +65,8 @@ declare global {
 // A reference to the global object.
 export const window = globalEval("this");
 window.window = window;
+window.global = window
+window.self = window
 
 window.libfly = null;
 

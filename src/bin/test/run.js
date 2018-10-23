@@ -1,2 +1,5 @@
 // mocha.checkLeaks();
-mocha.run();
+setTimeout(() => {
+  mocha.run();
+}, 2000)
+  
