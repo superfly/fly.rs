@@ -34,16 +34,8 @@ extern crate log;
 extern crate env_logger;
 extern crate fly;
 extern crate libfly;
-extern crate toml;
 
 use tokio::prelude::*;
-use tokio::timer::Interval;
-
-use std::time::Duration;
-
-use std::fs::File;
-
-use fly::config::Config;
 
 use fly::msg;
 
@@ -53,96 +45,63 @@ use fly::utils::*;
 
 use env_logger::Env;
 
-#[macro_use]
-extern crate lazy_static;
-extern crate num_cpus;
+use std::sync::atomic::Ordering;
 
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::sync::RwLock;
-
-lazy_static! {
-  static ref NCPUS: usize = num_cpus::get();
-  static ref REQ_PER_APP: RwLock<HashMap<String, AtomicUsize>> = RwLock::new(HashMap::new());
-  pub static ref RUNTIMES: RwLock<HashMap<String, Vec<Box<Runtime>>>> = RwLock::new(HashMap::new());
-}
+extern crate clap;
 
 fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
+  env_logger::init_from_env(env);
 
-  let handler = DnsHandler {};
-  let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8053);
+  let matches = clap::App::new("fly-dns")
+    .version("0.0.1-alpha")
+    .about("Fly DNS server")
+    .arg(
+      clap::Arg::with_name("port")
+        .short("p")
+        .long("port")
+        .takes_value(true),
+    ).arg(
+      clap::Arg::with_name("INPUT")
+        .help("Sets the input file to use")
+        .required(true)
+        .index(1),
+    ).get_matches();
+
+  let runtime = {
+    let rt = Runtime::new(None);
+    rt.eval_file(matches.value_of("INPUT").unwrap());
+    rt
+  };
+
+  let handler = DnsHandler { runtime };
+
+  let port: u16 = match matches.value_of("port") {
+    Some(pstr) => pstr.parse::<u16>().unwrap(),
+    None => 8053,
+  };
+
+  let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
   let server = ServerFuture::new(handler);
 
   let udp_socket = UdpSocket::bind(&addr).expect(&format!("udp bind failed: {}", addr));
   info!("listening for udp on {:?}", udp_socket);
-
   info!("V8 version: {}", libfly::version());
 
-  env_logger::init_from_env(env);
-
-  let mut main_el = tokio::runtime::Runtime::new().unwrap();
+  let main_el = tokio::runtime::Runtime::new().unwrap();
   unsafe {
     EVENT_LOOP_HANDLE = Some(main_el.executor());
   };
 
-  let mut file = File::open("fly.toml").unwrap();
-  let mut contents = String::new();
-  file.read_to_string(&mut contents).unwrap();
-  let conf: Config = toml::from_str(&contents).unwrap();
-
-  debug!("toml: {:?}", conf);
-
-  for (name, app) in conf.apps.unwrap().iter() {
-    {
-      let mut rts = RUNTIMES.write().unwrap();
-      let mut rtsv: Vec<Box<Runtime>> = vec![];
-      let filename = app.filename.as_str();
-      for _i in 0..*NCPUS {
-        let rt = Runtime::new(Some(name.to_string()));
-        rt.eval_file(filename);
-        rtsv.push(rt);
-      }
-      rts.insert(name.to_string(), rtsv);
-      REQ_PER_APP
-        .write()
-        .unwrap()
-        .insert(name.to_string(), ATOMIC_USIZE_INIT);
-    };
-  }
-
-  let task = Interval::new_interval(Duration::from_secs(5))
-    .for_each(move |_| {
-        match RUNTIMES.read() {
-            Ok(_rts) => {
-                // for (key, rt) in rts.iter() {
-                //     let stats = rt.heap_statistics();
-                //     info!(
-                //         "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
-                //         key,
-                //         stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
-                //         stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
-                //         stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
-                //         stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
-                //         stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
-                //     );
-                // }
-            }
-            Err(e) => error!("error locking runtimes: {}", e),
-        };
-        Ok(())
-    }).map_err(|e| panic!("interval errored; err={:?}", e));
-
-  main_el.spawn(task);
   let _ = main_el.block_on_all(future::lazy(move || -> Result<(), ()> {
     server.register_socket(udp_socket);
     Ok(())
   }));
-
-  // main_el.shutdown_on_idle();
 }
 
-pub struct DnsHandler;
+pub struct DnsHandler {
+  runtime: Box<Runtime>,
+}
 
 impl RequestHandler for DnsHandler {
   fn handle_request<'q, 'a, R: ResponseHandler + 'static>(
@@ -219,16 +178,16 @@ impl RequestHandler for DnsHandler {
       },
     );
 
-    let guard = RUNTIMES.read().unwrap();
-    let rtsv = guard.values().next().unwrap();
+    // let guard = RUNTIMES.read().unwrap();
+    // let rtsv = guard.values().next().unwrap();
 
-    let idx = {
-      let map = REQ_PER_APP.read().unwrap();
-      let counter = map.values().next().unwrap();
-      counter.fetch_add(1, Ordering::Relaxed) % rtsv.len()
-    };
+    // let idx = {
+    //   let map = REQ_PER_APP.read().unwrap();
+    //   let counter = map.values().next().unwrap();
+    //   counter.fetch_add(1, Ordering::Relaxed) % rtsv.len()
+    // };
 
-    let rt = &rtsv[idx];
+    let rt = &self.runtime;
     let rtptr = rt.ptr;
 
     let to_send = fly_buf_from(
