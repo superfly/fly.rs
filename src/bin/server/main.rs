@@ -1,13 +1,11 @@
 #[macro_use]
 extern crate log;
 
-// #[macro_use]
-// extern crate lazy_static;
+extern crate clap;
 
 extern crate env_logger;
 extern crate fly;
 extern crate tokio;
-extern crate toml;
 
 extern crate libfly;
 
@@ -23,21 +21,12 @@ extern crate futures;
 use futures::sync::oneshot;
 use std::sync::mpsc::RecvError;
 
-use std::fs::File;
-use std::io::Read;
-
 use tokio::prelude::*;
-use tokio::timer::Interval;
-
-use std::time::Duration;
 
 use fly::runtime::*;
 use fly::utils::*;
 
 use env_logger::Env;
-
-use config::*;
-use fly::config;
 
 extern crate flatbuffers;
 use flatbuffers::FlatBufferBuilder;
@@ -46,24 +35,11 @@ use std::alloc::System;
 #[global_allocator]
 static A: System = System;
 
-#[macro_use]
-extern crate lazy_static;
-extern crate num_cpus;
+use std::sync::atomic::Ordering;
 
-use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use std::sync::RwLock;
+pub static mut RUNTIME: Option<Box<Runtime>> = None;
 
-lazy_static! {
-    static ref NCPUS: usize = num_cpus::get();
-    static ref REQ_PER_APP: RwLock<HashMap<String, AtomicUsize>> = RwLock::new(HashMap::new());
-    pub static ref RUNTIMES: RwLock<HashMap<String, Vec<Box<Runtime>>>> =
-        RwLock::new(HashMap::new());
-}
-
-pub struct FlyServer {
-    // config: Config,
-}
+pub struct FlyServer;
 
 extern crate libc;
 
@@ -148,16 +124,7 @@ impl Service for FlyServer {
             },
         );
 
-        let guard = RUNTIMES.read().unwrap();
-        let rtsv = guard.values().next().unwrap();
-
-        let idx = {
-            let map = REQ_PER_APP.read().unwrap();
-            let counter = map.values().next().unwrap();
-            counter.fetch_add(1, Ordering::Relaxed) % *NCPUS
-        };
-
-        let rt = &rtsv[idx];
+        let rt = unsafe { RUNTIME.as_ref().unwrap() };
         let rtptr = rt.ptr;
 
         let to_send = fly_buf_from(
@@ -255,75 +222,53 @@ impl Service for FlyServer {
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
 
-    info!("V8 version: {}", libfly::version());
-
     env_logger::init_from_env(env);
+
+    let matches = clap::App::new("fly-http")
+        .version("0.0.1-alpha")
+        .about("Fly HTTP server")
+        .arg(
+            clap::Arg::with_name("port")
+                .short("p")
+                .long("port")
+                .takes_value(true),
+        ).arg(
+            clap::Arg::with_name("bind")
+                .short("b")
+                .long("bind")
+                .takes_value(true),
+        ).arg(
+            clap::Arg::with_name("input")
+                .help("Sets the input file to use")
+                .required(true)
+                .index(1),
+        ).get_matches();
+
+    info!("V8 version: {}", libfly::version());
 
     let mut main_el = tokio::runtime::Runtime::new().unwrap();
     unsafe {
         EVENT_LOOP_HANDLE = Some(main_el.executor());
     };
 
-    let mut file = File::open("fly.toml").unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let conf: Config = toml::from_str(&contents).unwrap();
-
-    debug!("toml: {:?}", conf);
-
-    for (name, app) in conf.apps.unwrap().iter() {
-        {
-            let mut rts = RUNTIMES.write().unwrap();
-            let mut rtsv: Vec<Box<Runtime>> = vec![];
-            let filename = app.filename.as_str();
-            for _i in 0..*NCPUS {
-                let rt = Runtime::new(Some(name.to_string()));
-                rt.eval_file(filename);
-                rtsv.push(rt);
-            }
-            rts.insert(name.to_string(), rtsv);
-            REQ_PER_APP
-                .write()
-                .unwrap()
-                .insert(name.to_string(), ATOMIC_USIZE_INIT);
-        };
-    }
-
-    let task = Interval::new_interval(Duration::from_secs(5))
-        .for_each(move |_| {
-            match RUNTIMES.read() {
-                Ok(_rtsv) => {
-                    // for (key, rts) in rtsv.iter() {
-                    //     for rt in rts.iter() {
-                    //     let stats = rt.heap_statistics();
-                    //     info!(
-                    //         "[heap stats for {0}] used: {1:.2}MB | total: {2:.2}MB | alloc: {3:.2}MB | malloc: {4:.2}MB | peak malloc: {5:.2}MB",
-                    //         key,
-                    //         stats.used_heap_size as f64 / (1024_f64 * 1024_f64),
-                    //         stats.total_heap_size as f64 / (1024_f64 * 1024_f64),
-                    //         stats.externally_allocated as f64 / (1024_f64 * 1024_f64),
-                    //         stats.malloced_memory as f64 / (1024_f64 * 1024_f64),
-                    //         stats.peak_malloced_memory as f64 / (1024_f64 * 1024_f64),
-                    //     );
-                    // }
-                    // }
-                }
-                Err(e) => error!("error locking runtimes: {}", e),
-            };
-            Ok(())
-        }).map_err(|e| panic!("interval errored; err={:?}", e));
-
-    main_el.spawn(task);
-
-    let bind = match conf.bind {
-        Some(b) => b,
-        None => "127.0.0.1".to_string(),
+    let runtime = {
+        let rt = Runtime::new(None);
+        rt.eval_file(matches.value_of("input").unwrap());
+        rt
     };
-    let port = match conf.port {
-        Some(p) => p,
+    unsafe {
+        RUNTIME = Some(runtime);
+    };
+
+    let bind = match matches.value_of("bind") {
+        Some(b) => b,
+        None => "127.0.0.1",
+    };
+    let port: u16 = match matches.value_of("port") {
+        Some(pstr) => pstr.parse::<u16>().unwrap(),
         None => 8080,
     };
-    let addr = format!("{}:{}", bind, port).parse().unwrap(); // ([127, 0, 0, 1], conf.port.unwrap()).into();
+    let addr = format!("{}:{}", bind, port).parse().unwrap();
     info!("Listening on {}", addr);
 
     let server = Server::bind(&addr)

@@ -1,10 +1,69 @@
-# Fly Edge Runtime
+# Fly DNS Apps
 
-## A multi-tenant, v8 based runtime for building Edge Apps
+## Handling DNS requests with JavaScript
 
-This is the next generation version of [fly](superfly/fly), and replaces the Node / isolated-vm portions of the runtime with a native Rust + v8 binary. It's much faster. And much more concurrent. Plus it's Rust so it's more fun.
+This is a programmable DNS server. You can write JavaScript to handle DNS queries any way you want.
 
 ## Installation
+
+### MacOS and Linux
+
+[Download the latest release](/superfly/fly.rs/releases) for your platform, ungzip and put the binary somewhere
+
+### Windows
+
+Unavailable. Relevant issue: [#9](/superfly/fly.rs/issues/9)
+
+## Usage
+
+```
+fly-dns --port 8053 relative/path/to/file.js
+```
+
+## Examples
+
+### Simple proxy
+
+```javascript
+// Handle an event for a DNS request
+addEventListener("resolv", event => {
+  event.respondWith( // this function responds to the DNS request event
+    resolv( // the resolv function resolves DNS queries
+      event.request.queries[0] // picks the first DNSQuery in the request
+    )
+  )
+})
+```
+
+### Static response
+
+```javascript
+addEventListener("resolv", event => {
+  event.respondWith(function () { // can respond with a function
+    return {
+      authoritative: true, // hopefully you know what you're doing
+      answers: [ // list of DNS answers
+        {
+          name: event.request.queries[0].name, // name of the DNS entry
+          rrType: DNSRecordType.A, // record type
+          ttl: 300, // time-to-live for the client
+          data: "127.0.0.1" // data for the record
+        }
+      ]
+    }
+  })
+})
+```
+
+## Fly & Deno
+
+The Fly runtime was originally derived from [deno](denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
+
+There's an issue: [#5](/superfly/fly.rs/issues/5)
+
+## Development
+
+### Setup
 
 - `wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-osx-x64.tar.gz | tar xvz -C libfly`
 - `git submodule update --init`
@@ -17,77 +76,10 @@ This is the next generation version of [fly](superfly/fly), and replaces the Nod
   - `yarn install`
   - `rollup -c`
   - `cd ..`
-- `cargo run --bin server`
+- `cargo run --bin dns`
 
-## Running v8env tests
+### Running v8env tests
 
 ```
 cargo run --bin test "v8env/tests/**/*.spec.js"
 ```
-
-## Fly & Deno
-
-The Fly runtime was originally derived from [deno](denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
-
-## TODO
-
-- [x] Send `print` (all `console.x` calls) back into Rust to handle in various ways
-  - [x] Send errors to stderr
-  - [x] Use envlogger (`debug!`, `info!`, etc. macros) for messages
-  - [ ] Allow sending to graylog or something external
-- [ ] Feature-parity
-  - [ ] Image API
-  - [ ] Cache
-    - [ ] Expire (set ttl)
-    - [ ] TTL (get ttl)
-    - [ ] Tags / purge
-    - [ ] global.purgeTag / del
-  - [ ] Testing
-- [ ] Runtime
-  - [ ] Lifecycle management
-    - [ ] Gracefully "replace" if running out of heap
-  - [ ] Handle promise rejection (trash the runtime? just log?)
-  - [ ] Handle uncaught error    (trash? log?)
-- [ ] Builder
-  - [ ] TypeScript support
-  - [ ] HTTP imports!
-  - [ ] Source maps
-    - [ ] Handle source maps in the rust hook
-- [ ] CI builds + releases
-  - [x] Mac
-  - [x] Linux
-  - [ ] Windows
-- HTTP
-  - [ ] Actually use the config hostnames and correct app
-  - [x] Spawn multiple runtime instances for the same app (n cpus? configurable?)
-  - [ ] Add `Server` header for Fly and current version (maybe?)
-  - [ ] Fetch request bodies
-- [ ] TLS
-  - [ ] Explore handling TLS handshakes and responding
-    - [ ] JS API
-    - [ ] Rust serialization
-- [ ] TCP
-  - [ ] Explore handling raw TCP packets (decrypted) and responding
-    - [ ] JS API
-    - [ ] Rust serialization
-- [ ] UDP
-  - [ ] Explore handling UDP packets and responding
-    - [ ] JS API
-    - [ ] Rust serialization
-- [x] DNS
-  - [x] Explore handling DNS requests and responding
-    - [x] JS API
-    - [x] Rust server
-    - [x] Rust serialization
-  - [ ] DNSSEC
-  - [ ] DNS over TLS
-- [ ] Observability
-  - [ ] Exception reporting (via Sentry probably)
-  - [ ] Metrics (prometheus)
-- Stability / Resilience
-  - [ ] do not use `unwrap` (that will panic and exit the process). Solution is to handle them and return or print proper errors
-  - [x] Get rid of all warnings
-  - [ ] Tests!
-- [ ] Optimizations
-  - [ ] Flatbuffers can be build without allocations, by using `addX` like we do in javascript
-  - [ ] Reuse ArrayBuffer in certain cases

@@ -16,10 +16,7 @@ use trust_dns_proto::op::header::Header;
 use trust_dns_proto::rr::{Record, RrsetRecords};
 use trust_dns_server::authority::authority::LookupRecords;
 
-// use dns::rr::{LowerName, Name};
-
 use futures::sync::oneshot;
-// use std::sync::mpsc::RecvError;
 
 use std::io;
 use trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
@@ -52,6 +49,7 @@ extern crate clap;
 fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
   env_logger::init_from_env(env);
+  debug!("V8 version: {}", libfly::version());
 
   let matches = clap::App::new("fly-dns")
     .version("0.0.1-alpha")
@@ -62,7 +60,7 @@ fn main() {
         .long("port")
         .takes_value(true),
     ).arg(
-      clap::Arg::with_name("INPUT")
+      clap::Arg::with_name("input")
         .help("Sets the input file to use")
         .required(true)
         .index(1),
@@ -70,7 +68,7 @@ fn main() {
 
   let runtime = {
     let rt = Runtime::new(None);
-    rt.eval_file(matches.value_of("INPUT").unwrap());
+    rt.eval_file(matches.value_of("input").unwrap());
     rt
   };
 
@@ -85,8 +83,7 @@ fn main() {
   let server = ServerFuture::new(handler);
 
   let udp_socket = UdpSocket::bind(&addr).expect(&format!("udp bind failed: {}", addr));
-  info!("listening for udp on {:?}", udp_socket);
-  info!("V8 version: {}", libfly::version());
+  info!("Listener bound on address: {}", addr);
 
   let main_el = tokio::runtime::Runtime::new().unwrap();
   unsafe {
@@ -177,15 +174,6 @@ impl RequestHandler for DnsHandler {
         ..Default::default()
       },
     );
-
-    // let guard = RUNTIMES.read().unwrap();
-    // let rtsv = guard.values().next().unwrap();
-
-    // let idx = {
-    //   let map = REQ_PER_APP.read().unwrap();
-    //   let counter = map.values().next().unwrap();
-    //   counter.fetch_add(1, Ordering::Relaxed) % rtsv.len()
-    // };
 
     let rt = &self.runtime;
     let rtptr = rt.ptr;
