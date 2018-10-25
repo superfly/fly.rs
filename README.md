@@ -8,11 +8,11 @@ This is a programmable DNS server. You can write JavaScript to handle DNS querie
 
 ### MacOS and Linux
 
-[Download the latest release](/superfly/fly.rs/releases) for your platform, ungzip and put the binary somewhere
+[Download the latest release](https://github.com/superfly/fly.rs/releases) for your platform, ungzip and put the binary somewhere
 
 ### Windows
 
-Unavailable. Relevant issue: [#9](/superfly/fly.rs/issues/9)
+Not yet done. Relevant issue: #9
 
 ## Usage
 
@@ -59,7 +59,7 @@ addEventListener("resolv", event => {
 
 The Fly runtime was originally derived from [deno](/denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
 
-There's an issue: [#5](/superfly/fly.rs/issues/5)
+There's an issue: #5
 
 ## Development
 
