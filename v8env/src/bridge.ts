@@ -12,7 +12,7 @@ import { FlyRequest } from "./request";
 import { Response, ResponseInit } from "./dom_types";
 import { FlyResponse } from "./response";
 import { ReadableStream, ReadableStreamSource, StreamStrategy } from "@stardazed/streams";
-import { DNSRequest, DNSQuery, DNSResponse } from './dns';
+import { DNSRequest, DNSQuery, DNSResponse, DNSDataA, DNSDataAAAA, DNSDataCNAME, DNSDataMX, DNSDataNS, DNSDataPTR, DNSDataSOA, DNSDataSRV, DNSDataTXT } from './dns';
 
 let nextCmdId = 1; // 0 is for events
 const promiseTable = new Map<number, util.Resolvable<fbs.Base>>();
@@ -186,10 +186,94 @@ function handleDNSRes(id: number, res: DNSResponse) {
     switch (ans.rrType) {
       case fbs.DnsRecordType.A: {
         rdataType = fbs.DnsRecordData.DnsA
-        const ip = fbb.createString(ans.data)
+        const ip = fbb.createString((<DNSDataA>ans.data).ip)
         fbs.DnsA.startDnsA(fbb)
         fbs.DnsA.addIp(fbb, ip)
         rdata = fbs.DnsA.endDnsA(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.AAAA: {
+        rdataType = fbs.DnsRecordData.DnsAaaa
+        const ip = fbb.createString((<DNSDataAAAA>ans.data).ip)
+        fbs.DnsAaaa.startDnsAaaa(fbb)
+        fbs.DnsAaaa.addIp(fbb, ip)
+        rdata = fbs.DnsAaaa.endDnsAaaa(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.CNAME: {
+        rdataType = fbs.DnsRecordData.DnsCname
+        const name = fbb.createString((<DNSDataCNAME>ans.data).name)
+        fbs.DnsCname.startDnsCname(fbb)
+        fbs.DnsCname.addName(fbb, name)
+        rdata = fbs.DnsCname.endDnsCname(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.MX: {
+        rdataType = fbs.DnsRecordData.DnsMx
+        const data = <DNSDataMX>ans.data
+        const ex = fbb.createString(data.exchange)
+        fbs.DnsMx.startDnsMx(fbb)
+        fbs.DnsMx.addPreference(fbb, data.preference)
+        fbs.DnsMx.addExchange(fbb, ex)
+        rdata = fbs.DnsMx.endDnsMx(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.NS: {
+        rdataType = fbs.DnsRecordData.DnsNs
+        const name = fbb.createString((<DNSDataNS>ans.data).name)
+        fbs.DnsNs.startDnsNs(fbb)
+        fbs.DnsNs.addName(fbb, name)
+        rdata = fbs.DnsNs.endDnsNs(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.PTR: {
+        rdataType = fbs.DnsRecordData.DnsPtr
+        const name = fbb.createString((<DNSDataPTR>ans.data).name)
+        fbs.DnsPtr.startDnsPtr(fbb)
+        fbs.DnsPtr.addName(fbb, name)
+        rdata = fbs.DnsPtr.endDnsPtr(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.SOA: {
+        rdataType = fbs.DnsRecordData.DnsSoa
+        const data = <DNSDataSOA>ans.data
+        const mname = fbb.createString(data.mname)
+        const rname = fbb.createString(data.rname)
+        fbs.DnsSoa.startDnsSoa(fbb)
+        fbs.DnsSoa.addMname(fbb, mname)
+        fbs.DnsSoa.addRname(fbb, rname)
+        fbs.DnsSoa.addSerial(fbb, data.serial)
+        fbs.DnsSoa.addRefresh(fbb, data.refresh)
+        fbs.DnsSoa.addRetry(fbb, data.retry)
+        fbs.DnsSoa.addExpire(fbb, data.expire)
+        fbs.DnsSoa.addMinimum(fbb, data.minimum)
+        rdata = fbs.DnsSoa.endDnsSoa(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.SRV: {
+        rdataType = fbs.DnsRecordData.DnsSrv
+        const data = <DNSDataSRV>ans.data
+        const target = fbb.createString(data.target)
+        fbs.DnsSrv.startDnsSrv(fbb)
+        fbs.DnsSrv.addPriority(fbb, data.priority)
+        fbs.DnsSrv.addWeight(fbb, data.weight)
+        fbs.DnsSrv.addPort(fbb, data.port)
+        fbs.DnsSrv.addTarget(fbb, target)
+        rdata = fbs.DnsSrv.endDnsSrv(fbb)
+        break;
+      }
+      case fbs.DnsRecordType.TXT: {
+        rdataType = fbs.DnsRecordData.DnsTxt
+        const data = <DNSDataTXT>ans.data
+        const txtData = fbs.DnsTxt.createDataVector(fbb, data.data.map(bytes => {
+          const txtDataInner = fbs.DnsTxtData.createDataVector(fbb, bytes)
+          fbs.DnsTxtData.startDnsTxtData(fbb)
+          fbs.DnsTxtData.addData(fbb, txtDataInner)
+          return fbs.DnsTxtData.endDnsTxtData(fbb)
+        }))
+        fbs.DnsTxt.startDnsTxt(fbb)
+        fbs.DnsTxt.addData(fbb, txtData)
+        rdata = fbs.DnsTxt.endDnsTxt(fbb)
         break;
       }
       default:

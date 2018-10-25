@@ -79,7 +79,46 @@ export interface DNSMessage {
   answers: DNSRecord[],
 }
 
-export type DNSRecordData = string
+export interface DNSDataA {
+  ip: string
+}
+export interface DNSDataAAAA {
+  ip: string
+}
+export interface DNSDataCNAME {
+  name: string
+}
+export interface DNSDataMX {
+  preference: number
+  exchange: string
+}
+export interface DNSDataNS {
+  name: string
+}
+export interface DNSDataPTR {
+  name: string
+}
+export interface DNSDataSOA {
+  mname: string;
+  rname: string;
+  serial: number;
+  refresh: number;
+  retry: number;
+  expire: number;
+  minimum: number;
+}
+export interface DNSDataSRV {
+  priority: number
+  weight: number
+  port: number
+  target: string
+}
+
+export interface DNSDataTXT {
+  data: Uint8Array[]
+}
+
+export type DNSRecordData = DNSDataA | DNSDataAAAA | DNSDataCNAME | DNSDataMX | DNSDataNS | DNSDataPTR | DNSDataSOA | DNSDataSRV | DNSDataTXT
 
 export interface DNSRecord {
   name: string,

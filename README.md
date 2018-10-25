@@ -57,7 +57,7 @@ addEventListener("resolv", event => {
 
 ## Fly & Deno
 
-The Fly runtime was originally derived from [deno](denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
+The Fly runtime was originally derived from [deno](/denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
 
 There's an issue: [#5](/superfly/fly.rs/issues/5)
 

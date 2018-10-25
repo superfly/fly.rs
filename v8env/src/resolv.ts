@@ -32,19 +32,19 @@ export function resolv(req: DNSQuery | string): Promise<DNSResponse> {
           case fbs.DnsRecordData.DnsA: {
             const d = new fbs.DnsA()
             ans.rdata(d);
-            data = d.ip();
+            data = { ip: d.ip() };
             break;
           }
           case fbs.DnsRecordData.DnsAaaa: {
             const d = new fbs.DnsAaaa()
             ans.rdata(d);
-            data = d.ip();
+            data = { ip: d.ip() };
             break;
           }
           case fbs.DnsRecordData.DnsNs: {
             const d = new fbs.DnsNs()
             ans.rdata(d)
-            data = d.name()
+            data = { name: d.name() }
             break;
           }
           default:
