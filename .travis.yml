@@ -11,7 +11,7 @@ matrix:
 
 env:
   global:
-    - DNS_RELEASE_FILENAME=fly-dns-${TRAVIS_OS_NAME}-x64.gz
+    - DNS_RELEASE_FILENAME=fly-dns-${TRAVIS_OS_NAME}-x64.tar.gz
 cache:
   cargo: true
   yarn: true
@@ -66,7 +66,7 @@ script:
 before_deploy:
 - strip target/release/dns
 - cp target/release/dns fly-dns
-- gzip -c fly-dns > ${DNS_RELEASE_FILENAME}
+- tar czf ${DNS_RELEASE_FILENAME} fly-dns
 
 deploy:
   provider: releases
