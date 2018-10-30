@@ -194,6 +194,9 @@ mod tests {
   extern crate chrono;
   use self::chrono::{DateTime, Utc};
 
+  use std::thread::sleep;
+  use std::time::Duration;
+
   fn setup() {
     {
       CONFIG
@@ -204,6 +207,29 @@ mod tests {
     };
   }
 
+  fn set_value(
+    key: &str,
+    value: &[u8],
+    ttl: Option<u32>,
+    maybe_el: Option<&mut tokio::runtime::Runtime>,
+  ) {
+    let setfut = {
+      let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
+      let setfut = set(key.to_string(), ttl, Box::new(recver));
+      sender.unbounded_send(value.to_vec()).unwrap();
+      setfut
+    };
+
+    let res = match maybe_el {
+      Some(el) => el.block_on(setfut).unwrap(),
+      None => tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(setfut)
+        .unwrap(),
+    };
+    assert_eq!(res, ());
+  }
+
   #[test]
   fn test_set() {
     setup();
@@ -211,16 +237,7 @@ mod tests {
     let v: [u8; 1000000] = [1; 1000000];
     let key = "test";
 
-    let setfut = {
-      let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
-      let setfut = set(key.to_string(), None, Box::new(recver));
-      sender.unbounded_send(v.to_vec()).unwrap();
-      setfut
-    };
-
-    let mut el = tokio::runtime::Runtime::new().unwrap();
-    let res = el.block_on(setfut).unwrap();
-    assert_eq!(res, ());
+    set_value(key, &v, None, None);
 
     let pool = Arc::clone(&SQLITE_CACHE_POOL);
     let conn = pool.get().unwrap(); // TODO: no unwrap
@@ -248,16 +265,7 @@ mod tests {
     let v: [u8; 1000000] = [1; 1000000];
     let key = "test:ttl";
 
-    let setfut = {
-      let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
-      let setfut = set(key.to_string(), Some(500), Box::new(recver));
-      sender.unbounded_send(v.to_vec()).unwrap();
-      setfut
-    };
-
-    let mut el = tokio::runtime::Runtime::new().unwrap();
-    let res = el.block_on(setfut).unwrap();
-    assert_eq!(res, ());
+    set_value(key, &v, Some(500), None);
 
     let pool = Arc::clone(&SQLITE_CACHE_POOL);
     let conn = pool.get().unwrap(); // TODO: no unwrap
@@ -276,5 +284,51 @@ mod tests {
     assert_eq!(gotkey, key);
     assert_eq!(gotv, v.to_vec());
     assert!(gotex > Utc::now() && gotex < Utc::now() + chrono::FixedOffset::east(500));
+  }
+
+  #[test]
+  fn test_get() {
+    setup();
+    let v: [u8; 1000000] = [1; 1000000];
+    let key = "test:get";
+
+    let mut el = tokio::runtime::Runtime::new().unwrap();
+    set_value(key, &v, None, Some(&mut el));
+
+    let got = el
+      .block_on(get(key.to_string()).unwrap().unwrap().concat2())
+      .unwrap();
+
+    assert_eq!(got, v.to_vec());
+  }
+
+  #[test]
+  fn test_get_ttl() {
+    setup();
+    let v: [u8; 1000000] = [1; 1000000];
+    let key = "test:get:ttl";
+
+    let mut el = tokio::runtime::Runtime::new().unwrap();
+    set_value(key, &v, Some(10), Some(&mut el));
+
+    let got = el
+      .block_on(get(key.to_string()).unwrap().unwrap().concat2())
+      .unwrap();
+
+    assert_eq!(got, v.to_vec());
+  }
+
+  #[test]
+  fn test_get_expired() {
+    setup();
+    let v: [u8; 1000000] = [1; 1000000];
+    let key = "test:get:expired";
+    set_value(key, &v, Some(1), None);
+
+    sleep(Duration::from_secs(2)); // inefficient, but these are just tests
+
+    let stream = get(key.to_string()).unwrap();
+
+    assert!(stream.is_none());
   }
 }
