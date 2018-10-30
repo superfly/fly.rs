@@ -380,9 +380,9 @@ dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2_redis 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "r2d2_sqlite 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "r2d2_sqlite 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusqlite 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha-1 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sha2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "sourcemap 2.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -392,9 +392,9 @@ dependencies = [
  "tokio-io-pool 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-signal 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-udp 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "trust-dns 0.15.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "trust-dns-proto 0.5.0-alpha.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "trust-dns-server 0.15.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns 0.15.0-alpha.2 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)",
+ "trust-dns-proto 0.5.0-alpha.5 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)",
+ "trust-dns-server 0.15.0-alpha.2 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)",
  "url 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -634,7 +634,7 @@ dependencies = [
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.9.3"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -962,11 +962,11 @@ dependencies = [
 
 [[package]]
 name = "r2d2_sqlite"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "r2d2 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusqlite 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1085,11 +1085,11 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "libsqlite3-sys 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libsqlite3-sys 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lru-cache 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1642,7 +1642,7 @@ dependencies = [
 [[package]]
 name = "trust-dns"
 version = "0.15.0-alpha.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1#dc133e91c4d1461aece3ddcb9525dce824d2baa1"
 dependencies = [
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "data-encoding 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1655,13 +1655,13 @@ dependencies = [
  "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-tcp 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "trust-dns-proto 0.5.0-alpha.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns-proto 0.5.0-alpha.5 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)",
 ]
 
 [[package]]
 name = "trust-dns-proto"
-version = "0.5.0-alpha.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.5.0-alpha.5"
+source = "git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1#dc133e91c4d1461aece3ddcb9525dce824d2baa1"
 dependencies = [
  "byteorder 1.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "data-encoding 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1685,7 +1685,7 @@ dependencies = [
 [[package]]
 name = "trust-dns-server"
 version = "0.15.0-alpha.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1#dc133e91c4d1461aece3ddcb9525dce824d2baa1"
 dependencies = [
  "backtrace 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytes 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1697,7 +1697,7 @@ dependencies = [
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rusqlite 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1710,8 +1710,8 @@ dependencies = [
  "tokio-timer 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-udp 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "trust-dns 0.15.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "trust-dns-proto 0.5.0-alpha.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns 0.15.0-alpha.2 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)",
+ "trust-dns-proto 0.5.0-alpha.5 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)",
 ]
 
 [[package]]
@@ -1967,7 +1967,7 @@ dependencies = [
 "checksum lazycell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ddba4c30a78328befecec92fc94970e53b3ae385827d28620f0f5bb2493081e0"
 "checksum libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)" = "76e3a3ef172f1a0b9a9ff0dd1491ae5e6c948b94479a3021819ba7d860c8645d"
 "checksum libloading 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9c3ad660d7cb8c5822cd83d10897b0f1f1526792737a179e73896152f85b88c2"
-"checksum libsqlite3-sys 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d3711dfd91a1081d2458ad2d06ea30a8755256e74038be2ad927d94e1c955ca8"
+"checksum libsqlite3-sys 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "742b695cbfb89e549dca6960a55e6802f67d352e33e97859ee46dee835211b0f"
 "checksum linked-hash-map 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7860ec297f7008ff7a1e3382d7f7e1dcd69efc94751a2284bafc3d013c2aa939"
 "checksum lock_api 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "775751a3e69bde4df9b38dd00a1b5d6ac13791e4223d4a0506577f0dd27cfb7a"
 "checksum log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)" = "d4fcce5fa49cc693c312001daf1d13411c4a5283796bac1084299ea3e567113f"
@@ -2007,7 +2007,7 @@ dependencies = [
 "checksum quote 0.6.8 (registry+https://github.com/rust-lang/crates.io-index)" = "dd636425967c33af890042c483632d33fa7a18f19ad1d7ea72e8998c6ef8dea5"
 "checksum r2d2 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f9078ca6a8a5568ed142083bb2f7dc9295b69d16f867ddcc9849e51b17d8db46"
 "checksum r2d2_redis 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "98318a90bb5f4990e084cd54e875aedb794f73dcef8668287cc74e875955b9db"
-"checksum r2d2_sqlite 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7353e4cee1aef402161e78c9a17367c018d47157625dd9e01f9651aafd098426"
+"checksum r2d2_sqlite 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ce466d46abbb1b52280818d3fdb300f456f7cc90a899e1ab4f6890aa3aeae909"
 "checksum radix_trie 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "03d0d770481e8af620ca61d3d304bf014f965d7f78e923dc58545e6a545070a9"
 "checksum rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)" = "e464cd887e869cddcae8792a4ee31d23c7edd516700695608f5b98c67ee0131c"
 "checksum rand_core 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "edecf0f94da5551fc9b492093e30b041a891657db7940ee221f9d2f66e82eef2"
@@ -2020,7 +2020,7 @@ dependencies = [
 "checksum regex-syntax 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "747ba3b235651f6e2f67dfa8bcdcd073ddb7c243cb21c442fc12395dfcac212d"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum ring 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dbe642b9dd1ba0038d78c4a3999d1ee56178b4d415c1e1fbaba83b06dce012f0"
-"checksum rusqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c9d9118f1ce84d8d0b67f9779936432fb42bb620cef2122409d786892cce9a3c"
+"checksum rusqlite 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "39bae767eb27866f5c0be918635ae54af705bc09db11be2c43a3c6b361cf3462"
 "checksum rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "bcfe5b13211b4d78e5c2cadfebd7769197d95c639c35a50057eb4c05de811395"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum rustls 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8b7891791343c75b73ed9a18cadcafd8c8563d11a88ebe2d87f5b8a3182654d9"
@@ -2078,9 +2078,9 @@ dependencies = [
 "checksum tokio-udp 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "da941144b816d0dcda4db3a1ba87596e4df5e860a72b70783fe435891f80601c"
 "checksum tokio-uds 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "424c1ed15a0132251813ccea50640b224c809d6ceafb88154c1a8775873a0e89"
 "checksum toml 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b7e7d59d55f36979a9dd86d71ae54657a5e9c7fdb4fa2212f4064e2d32f9dcda"
-"checksum trust-dns 0.15.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)" = "033df9f62cc40509a24ee6b6c8aa0905c0d644d2d2baa758297267f46138c151"
-"checksum trust-dns-proto 0.5.0-alpha.3 (registry+https://github.com/rust-lang/crates.io-index)" = "3fabc184ed90d027afee46386e6418b9c953b7be527f62cc37724a1720e07d68"
-"checksum trust-dns-server 0.15.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)" = "338c2177ded0a4ef05518ba0674a3c518a29bdfbf39ad49b6561a463a920c04f"
+"checksum trust-dns 0.15.0-alpha.2 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)" = "<none>"
+"checksum trust-dns-proto 0.5.0-alpha.5 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)" = "<none>"
+"checksum trust-dns-server 0.15.0-alpha.2 (git+https://github.com/bluejekyll/trust-dns?rev=dc133e91c4d1461aece3ddcb9525dce824d2baa1)" = "<none>"
 "checksum try-lock 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e604eb7b43c06650e854be16a2a03155743d3752dd1c943f6829e26b7a36e382"
 "checksum typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "612d636f949607bdf9b123b4a6f6d966dedf3ff669f7f045890d3a4a73948169"
 "checksum ucd-util 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fd2be2d6639d0f8fe6cdda291ad456e23629558d466e2789d2c3e9892bda285d"

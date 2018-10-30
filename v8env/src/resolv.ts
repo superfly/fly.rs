@@ -20,7 +20,6 @@ export function resolv(req: DNSQuery | string): Promise<DNSResponse> {
     fbs.DnsQuery.addDnsClass(fbb, query.dnsClass);
     fbs.DnsQuery.addRrType(fbb, query.rrType);
     sendAsync(fbb, fbs.Any.DnsQuery, fbs.DnsQuery.endDnsQuery(fbb)).then(baseRes => {
-      console.log("hello from resolv response")
       let msg = new fbs.DnsResponse()
       baseRes.msg(msg);
       const answers: DNSRecord[] = [];

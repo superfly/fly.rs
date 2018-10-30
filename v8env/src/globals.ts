@@ -17,7 +17,8 @@ import cache_ from "./cache";
 
 import * as url from './url';
 import { FlyRequest } from "./request";
-import data from './fly/data';
+import flyData from './fly/data';
+import flyCache from './fly/cache';
 
 declare global {
   interface Window {
@@ -51,8 +52,12 @@ declare global {
   let crypto: typeof crypto_.crypto;
   let cache: typeof cache_;
 
+  interface Fly {
+    cache: typeof flyCache
+    data: typeof flyData
+  }
   // TODO: remove
-  let flyData: typeof data;
+  const fly: Fly
 
   const resolv: typeof resolv_.resolv;
   const DNSClass: typeof dns.DNSClass;
@@ -89,7 +94,10 @@ window.resolv = resolv_.resolv;
 window.crypto = crypto_.crypto;
 window.cache = cache_;
 
-window.flyData = data;
+window.fly = {
+  cache: flyCache,
+  data: flyData
+}
 
 window.DNSClass = dns.DNSClass;
 window.DNSRecordType = dns.DNSRecordType;

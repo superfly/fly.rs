@@ -24,4 +24,5 @@ pub mod msg;
 pub mod ops;
 pub mod redis_stream;
 pub mod runtime;
+mod sqlite_cache;
 pub mod utils;

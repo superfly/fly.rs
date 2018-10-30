@@ -15,7 +15,7 @@ addEventListener("fetch", function (event) {
     event.respondWith(new Response(helloWorld))
 
   else if (url.pathname == "/kitchensink") {
-    const coll = flyData.collection("testing")
+    const coll = fly.data.collection("testing")
     coll.put("id", { foo: "bar" }).then(b => {
       console.log("put returned:", b);
       coll.get("id").then(d => {

@@ -4,7 +4,6 @@
  * @private
  */
 
-declare var fly;
 let fetchEventBound = false
 let flyFetchHandler = null
 
@@ -43,7 +42,7 @@ function handleFetch(event) {
  * @param {Object} [params] The parameters (if any) extracted from the route pattern
  * @returns {Response} An HTTP response generated for the request
  */
-module.exports = {
+export default {
   /**
    * Registers an HTTP handler functions. This handler is matched when no routes are set, or no routes match a given request.
    * @public

@@ -17,9 +17,9 @@ flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 hyper = "0.12"
 hyper-tls = "0.3"
 http = "0.1"
-rusqlite = {version="0.14", features=["bundled"]}
+rusqlite = {version="0.15", features=["bundled","blob"]}
 r2d2 = "0.8"
-r2d2_sqlite = "0.6"
+r2d2_sqlite = "0.7"
 r2d2_redis = "0.8"
 sha2 = "0.7"
 sha-1 = "0.7"
@@ -28,9 +28,9 @@ sourcemap = "2.2"
 rand = "0.5"
 libfly = { path = "libfly" }
 tokio-udp = "0.1"
-trust-dns-server = "0.15.0-alpha.2"
-trust-dns = "0.15.0-alpha.2"
-trust-dns-proto = "0.5.0-alpha.3"
+trust-dns-server = { git = "https://github.com/bluejekyll/trust-dns", rev = "dc133e91c4d1461aece3ddcb9525dce824d2baa1" }
+trust-dns = { git = "https://github.com/bluejekyll/trust-dns", rev = "dc133e91c4d1461aece3ddcb9525dce824d2baa1" }
+trust-dns-proto = { git = "https://github.com/bluejekyll/trust-dns", rev = "dc133e91c4d1461aece3ddcb9525dce824d2baa1" }
 tokio-fs = "0.1"
 tokio-codec = "0.1"
 glob = "0.2"

@@ -47,7 +47,7 @@ addEventListener("resolv", event => {
           name: event.request.queries[0].name, // name of the DNS entry
           rrType: DNSRecordType.A, // record type
           ttl: 300, // time-to-live for the client
-          data: "127.0.0.1" // data for the record
+          data: {ip: "127.0.0.1"} // data for the record
         }
       ]
     }

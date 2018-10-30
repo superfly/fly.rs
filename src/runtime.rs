@@ -45,7 +45,6 @@ extern crate r2d2;
 extern crate r2d2_redis;
 extern crate r2d2_sqlite;
 extern crate rusqlite;
-use self::r2d2_redis::redis;
 use self::r2d2_sqlite::SqliteConnectionManager;
 
 use self::hyper::body::Payload;
@@ -63,8 +62,6 @@ use msg;
 
 use errors::{FlyError, FlyResult};
 
-use redis_stream;
-
 extern crate log;
 
 extern crate rand;
@@ -77,6 +74,8 @@ use self::tokio_codec::{BytesCodec, FramedRead};
 
 use ops; // src/ops/
 use utils::*;
+
+use sqlite_cache;
 
 #[derive(Debug)]
 pub enum JsHttpResponseBody {
@@ -624,9 +623,7 @@ fn op_crypto_digest(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
 use super::NEXT_EVENT_ID;
 use std::str;
 
-use std::ops::Deref;
 fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  println!("CACHE SET");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_set().unwrap();
   let key = msg.key().unwrap().to_string();
@@ -640,30 +637,15 @@ fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     rt.streams.lock().unwrap().insert(stream_id, sender);
   }
 
-  {
-    let pool = Arc::clone(&redis_stream::REDIS_CACHE_POOL);
-    let con = pool.get().unwrap(); // TODO: no unwrap
-    let offset: AtomicUsize = ATOMIC_USIZE_INIT;
-    let spawnres = rt.event_loop.lock().unwrap().spawn(
-      recver
-        .map_err(|_| println!("error cache set stream!"))
-        .for_each(move |b| {
-          let start = offset.fetch_add(b.len(), Ordering::SeqCst);
-          match redis::cmd("SETRANGE")
-            .arg(key.clone())
-            .arg(start)
-            .arg(b)
-            .query::<usize>(con.deref())
-          {
-            Ok(_r) => {}
-            Err(e) => println!("error in redis.. {}", e),
-          }
-          Ok(())
-        }),
-    );
-    if let Err(err) = spawnres {
-      return odd_future(format!("{}", err).into());
-    }
+  let fut = sqlite_cache::set(key, None, Box::new(recver));
+
+  let spawnres = rt.event_loop.lock().unwrap().spawn(
+    fut
+      .map_err(|e| println!("error cache set stream! {:?}", e))
+      .and_then(move |_b| Ok(())),
+  );
+  if let Err(err) = spawnres {
+    return odd_future(format!("{}", err).into());
   }
 
   let builder = &mut FlatBufferBuilder::new();
@@ -693,22 +675,18 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let key = msg.key().unwrap().to_string();
 
-  let got = {
-    let pool = Arc::clone(&redis_stream::REDIS_CACHE_POOL);
-    let con = pool.get().unwrap(); // TODO: no unwrap
-    match redis::cmd("EXISTS")
-      .arg(key.clone())
-      .query::<bool>(con.deref())
-    {
-      Ok(b) => b,
-      Err(e) => {
-        println!("redis exists err: {}", e);
-        false
-      }
-    }
+  let maybe_stream = match sqlite_cache::get(key) {
+    Ok(s) => s,
+    Err(e) => match e {
+      sqlite_cache::CacheError::IoErr(ioe) => return odd_future(ioe.into()),
+      sqlite_cache::CacheError::Unknown => return odd_future("unknown error".to_string().into()),
+      sqlite_cache::CacheError::RusqliteErr(e) => return odd_future(format!("{}", e).into()),
+    },
   };
 
   let rt = ptr.to_runtime();
+
+  let got = maybe_stream.is_some();
 
   {
     // need to hijack the order here.
@@ -744,11 +722,9 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     }
   }
 
-  if got {
-    let stream = redis_stream::redis_stream(key.clone());
-
+  if let Some(stream) = maybe_stream {
     let fut = stream
-      .map_err(|e| println!("error redis stream: {}", e))
+      .map_err(|e| println!("error cache stream: {:?}", e))
       .for_each(move |bytes| {
         let builder = &mut FlatBufferBuilder::new();
         let chunk_msg = msg::StreamChunk::create(
@@ -1179,7 +1155,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         if let Err(_) = p.send(Err(err.into())) {
           error!("error sending error for http response :/");
         }
-        return Ok(())
+        return Ok(());
       }
 
       let res = reserr.unwrap(); // should be safe.
@@ -1218,27 +1194,27 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                 },
               );
               ptr.send(
-                  fly_buf_from(
-                    serialize_response(
-                      0,
-                      builder,
-                      msg::BaseArgs {
-                        msg: Some(chunk_msg.as_union_value()),
-                        msg_type: msg::Any::StreamChunk,
-                        ..Default::default()
-                      },
-                    ).unwrap(),
-                  ),
-                  Some(fly_buf {
-                    alloc_ptr: 0 as *mut u8,
-                    alloc_len: 0,
-                    data_ptr: (*bytes).as_ptr() as *mut u8,
-                    data_len: bytes.len(),
-                  }),
-                );
+                fly_buf_from(
+                  serialize_response(
+                    0,
+                    builder,
+                    msg::BaseArgs {
+                      msg: Some(chunk_msg.as_union_value()),
+                      msg_type: msg::Any::StreamChunk,
+                      ..Default::default()
+                    },
+                  ).unwrap(),
+                ),
+                Some(fly_buf {
+                  alloc_ptr: 0 as *mut u8,
+                  alloc_len: 0,
+                  data_ptr: (*bytes).as_ptr() as *mut u8,
+                  data_len: bytes.len(),
+                }),
+              );
             }
             Ok(Async::Ready(()))
-          }).map_err(|e: hyper::Error| println!("hyper error: {}",e)),
+          }).map_err(|e: hyper::Error| println!("hyper error: {}", e)),
         );
         if let Err(err) = spawnres {
           error!("error spawning http res stream: {}", err);
@@ -1446,7 +1422,7 @@ fn op_data_get(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
     create_collection(&*con, &coll).unwrap();
 
-    match con.query_row::<String, _>(
+    match con.query_row::<String, _, _>(
       format!("SELECT obj FROM {} WHERE key == ?", coll).as_str(),
       &[&key],
       |row| row.get(0),
@@ -1508,7 +1484,10 @@ fn op_data_drop_coll(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op
     let pool = Arc::clone(&SQLITE_POOL);
     let con = pool.get().unwrap(); // TODO: no unwrap
 
-    match con.execute(format!("DROP TABLE IF EXISTS {}", coll).as_str(), &[]) {
+    match con.execute(
+      format!("DROP TABLE IF EXISTS {}", coll).as_str(),
+      rusqlite::NO_PARAMS,
+    ) {
       Ok(_) => Ok(None),
       Err(e) => Err(format!("{}", e).into()),
     }
@@ -1521,6 +1500,6 @@ fn create_collection(con: &rusqlite::Connection, name: &String) -> rusqlite::Res
       "CREATE TABLE IF NOT EXISTS {} (key TEXT PRIMARY KEY NOT NULL, obj JSON NOT NULL)",
       name
     ).as_str(),
-    &[],
+    rusqlite::NO_PARAMS,
   )
 }

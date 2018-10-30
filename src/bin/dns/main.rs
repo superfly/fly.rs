@@ -13,6 +13,7 @@ extern crate trust_dns_server;
 use trust_dns_server::authority::{AuthLookup, MessageResponseBuilder};
 
 use trust_dns_proto::op::header::Header;
+use trust_dns_proto::rr::record_type::RecordType;
 use trust_dns_proto::rr::{Record, RrsetRecords};
 use trust_dns_server::authority::authority::LookupRecords;
 
@@ -123,7 +124,7 @@ impl RequestHandler for DnsHandler {
       .iter()
       .map(|q| {
         debug!("query: {:?}", q);
-        use self::dns::rr::{DNSClass, Name, RecordType};
+        use self::dns::rr::{DNSClass, Name};
         let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
         let rr_type = match q.query_type() {
           RecordType::A => msg::DnsRecordType::A,
