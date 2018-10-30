@@ -36,9 +36,14 @@ impl From<rusqlite::Error> for CacheError {
   }
 }
 
+use config::CONFIG;
+
 lazy_static! {
   static ref SQLITE_CACHE_POOL: Arc<r2d2::Pool<SqliteConnectionManager>> = {
-    let manager = SqliteConnectionManager::file("cache.db");
+    let manager = SqliteConnectionManager::file(match CONFIG.read().unwrap().get::<String>("cache.sqlite.filename"){
+      Ok(s) => s,
+      Err(_e) => "cache.db".to_string(),
+    });
     let pool = r2d2::Pool::builder().build(manager).unwrap();
     let con = pool.get().unwrap(); // TODO: no unwrap
     con.execute("CREATE TABLE IF NOT EXISTS cache (
@@ -78,15 +83,18 @@ pub fn set(
           let mut stmt = conn
             .prepare(
               "INSERT INTO cache(key, value, expires_at)
-      VALUES (?, ?, datetime('now', '+? seconds'))
+      VALUES (?, ?, datetime('now', ?))
       ON CONFLICT (key) DO
         UPDATE SET value=excluded.value,expires_at=excluded.expires_at
     ",
             ).unwrap();
 
           stmt
-            .insert(&[&key as &ToSql, &b as &ToSql, &format!("{}", ttl) as &ToSql])
-            .unwrap()
+            .insert(&[
+              &key as &ToSql,
+              &b as &ToSql,
+              &format!("+{} seconds", ttl) as &ToSql,
+            ]).unwrap()
         } else {
           let mut stmt = conn
             .prepare(
@@ -99,60 +107,9 @@ pub fn set(
 
           stmt.insert(&[&key as &ToSql, &b as &ToSql]).unwrap()
         };
-
-        // let mut stmt = conn
-        //   .prepare("SELECT rowid FROM cache WHERE key = ? LIMIT 1")
-        //   .unwrap();
-
-        // let mut rows = match stmt.query(&[&key]) {
-        //   Ok(r) => r,
-        //   Err(e) => return Err(e.into()),
-        // };
-        // let rowid: i64 = match rows.next() {
-        //   Some(res) => match res {
-        //     Ok(r) => r.get(0),
-        //     Err(e) => return Err(e.into()),
-        //   },
-        //   None => return Err(CacheError::Unknown),
-        // };
         Ok(())
       }),
   )
-
-  // Ok(Box::new(
-  //   data_stream
-  //     .map_err(|e| {
-  //       error!("error cache set stream!");
-  //       CacheError::Unknown
-  //     }).map(move |b| -> Result<(), CacheError> {
-  //       let start = offset.fetch_add(b.len(), Ordering::SeqCst) as u64;
-  //       debug!("sqlite cache set len: {} at offset: {}", b.len(), start);
-
-  //       let conn = pool.get().unwrap();
-
-  //       let mut blob =
-  //         match conn
-  //           .deref()
-  //           .blob_open(rusqlite::DatabaseName::Main, "cache", "value", rowid, false)
-  //         {
-  //           Ok(b) => b,
-  //           Err(e) => {
-  //             return Err(e.into());
-  //           }
-  //         };
-
-  //       // if let Err(e) = blob.seek(SeekFrom::Start(start)) {
-  //       //   return Err(e.into());
-  //       // }
-
-  //       match blob.write(b.as_slice()) {
-  //         Ok(n) => debug!("sqlite cache set set, wrote {}", n),
-  //         Err(e) => return Err(e.into()),
-  //       };
-
-  //       Ok(())
-  //     }).and_then(|res| res), // uh, ok. that's required!
-  // ))
 }
 
 pub fn get(
@@ -169,7 +126,7 @@ pub fn get(
       WHERE key = ? AND
         (
           expires_at IS NULL OR
-          expires_at <= datetime('now')
+          expires_at >= datetime('now')
         ) LIMIT 1",
     ).unwrap();
 
@@ -189,7 +146,6 @@ pub fn get(
 
   Ok(Some(Box::new(stream::unfold(0, move |pos| {
     debug!("sqlite cache get in stream future, pos: {}", pos);
-    // println!("unfolding... pos: {}, modulo: {}", pos, pos % size);
 
     // End early given some rules!
     // not a multiple of size, means we're done.
@@ -226,4 +182,99 @@ pub fn get(
       Err(e) => Some(future::err(e.into())),
     }
   }))))
+}
+
+#[cfg(test)]
+mod tests {
+  // Note this useful idiom: importing names from outer (for mod tests) scope.
+  use super::*;
+  use config::CONFIG;
+  use futures::sync::mpsc;
+
+  extern crate chrono;
+  use self::chrono::{DateTime, Utc};
+
+  fn setup() {
+    {
+      CONFIG
+        .write()
+        .unwrap()
+        .set("cache.sqlite.filename", "testcache.db")
+        .unwrap()
+    };
+  }
+
+  #[test]
+  fn test_set() {
+    setup();
+
+    let v: [u8; 1000000] = [1; 1000000];
+    let key = "test";
+
+    let setfut = {
+      let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
+      let setfut = set(key.to_string(), None, Box::new(recver));
+      sender.unbounded_send(v.to_vec()).unwrap();
+      setfut
+    };
+
+    let mut el = tokio::runtime::Runtime::new().unwrap();
+    let res = el.block_on(setfut).unwrap();
+    assert_eq!(res, ());
+
+    let pool = Arc::clone(&SQLITE_CACHE_POOL);
+    let conn = pool.get().unwrap(); // TODO: no unwrap
+
+    let mut stmt = conn
+      .prepare("SELECT key,value,expires_at FROM cache WHERE key = ? LIMIT 1;")
+      .unwrap();
+
+    let mut rows = stmt.query(&[key]).unwrap();
+    let row = rows.next().unwrap().unwrap();
+
+    let gotkey: String = row.get(0);
+    let gotv: Vec<u8> = row.get(1);
+    let gotex: rusqlite::types::Value = row.get(2);
+
+    assert_eq!(gotkey, key);
+    assert_eq!(gotv, v.to_vec());
+    assert_eq!(gotex, rusqlite::types::Value::Null);
+  }
+
+  #[test]
+  fn test_set_ttl() {
+    setup();
+
+    let v: [u8; 1000000] = [1; 1000000];
+    let key = "test:ttl";
+
+    let setfut = {
+      let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
+      let setfut = set(key.to_string(), Some(500), Box::new(recver));
+      sender.unbounded_send(v.to_vec()).unwrap();
+      setfut
+    };
+
+    let mut el = tokio::runtime::Runtime::new().unwrap();
+    let res = el.block_on(setfut).unwrap();
+    assert_eq!(res, ());
+
+    let pool = Arc::clone(&SQLITE_CACHE_POOL);
+    let conn = pool.get().unwrap(); // TODO: no unwrap
+
+    let mut stmt = conn
+      .prepare("SELECT key,value,expires_at FROM cache WHERE key = ? AND expires_at > datetime('now') LIMIT 1;")
+      .unwrap();
+
+    let mut rows = stmt.query(&[key]).unwrap();
+    let row = rows.next().unwrap().unwrap();
+
+    let gotkey: String = row.get(0);
+    let gotv: Vec<u8> = row.get(1);
+    let gotex: DateTime<Utc> = row.get(2);
+
+    assert_eq!(gotkey, key);
+    assert_eq!(gotv, v.to_vec());
+    assert!(gotex > Utc::now() && gotex < Utc::now() + chrono::FixedOffset::east(500));
+  }
 }

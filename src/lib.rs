@@ -26,3 +26,5 @@ pub mod redis_stream;
 pub mod runtime;
 mod sqlite_cache;
 pub mod utils;
+
+pub mod config;

@@ -17,7 +17,7 @@ flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 hyper = "0.12"
 hyper-tls = "0.3"
 http = "0.1"
-rusqlite = {version="0.15", features=["bundled","blob"]}
+rusqlite = {version="0.15", features=["bundled", "blob", "chrono"]}
 r2d2 = "0.8"
 r2d2_sqlite = "0.7"
 r2d2_redis = "0.8"
@@ -35,6 +35,8 @@ tokio-fs = "0.1"
 tokio-codec = "0.1"
 glob = "0.2"
 clap = "2.32"
+config = "0.9"
+chrono = "0.4"
 
 [workspace]
 members = [
