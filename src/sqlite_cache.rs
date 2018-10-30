@@ -197,6 +197,9 @@ mod tests {
   use std::thread::sleep;
   use std::time::Duration;
 
+  extern crate rand;
+  use self::rand::{thread_rng, Rng, RngCore};
+
   fn setup() {
     {
       CONFIG
@@ -233,8 +236,8 @@ mod tests {
   #[test]
   fn test_set() {
     setup();
-
-    let v: [u8; 1000000] = [1; 1000000];
+    let mut v = [0u8; 1000000];
+    thread_rng().fill_bytes(&mut v);
     let key = "test";
 
     set_value(key, &v, None, None);
@@ -261,8 +264,8 @@ mod tests {
   #[test]
   fn test_set_ttl() {
     setup();
-
-    let v: [u8; 1000000] = [1; 1000000];
+    let mut v = [0u8; 1000000];
+    thread_rng().fill_bytes(&mut v);
     let key = "test:ttl";
 
     set_value(key, &v, Some(500), None);
@@ -289,7 +292,8 @@ mod tests {
   #[test]
   fn test_get() {
     setup();
-    let v: [u8; 1000000] = [1; 1000000];
+    let mut v = [0u8; 1000000];
+    thread_rng().fill_bytes(&mut v);
     let key = "test:get";
 
     let mut el = tokio::runtime::Runtime::new().unwrap();
@@ -305,7 +309,8 @@ mod tests {
   #[test]
   fn test_get_ttl() {
     setup();
-    let v: [u8; 1000000] = [1; 1000000];
+    let mut v = [0u8; 1000000];
+    thread_rng().fill_bytes(&mut v);
     let key = "test:get:ttl";
 
     let mut el = tokio::runtime::Runtime::new().unwrap();
@@ -321,7 +326,7 @@ mod tests {
   #[test]
   fn test_get_expired() {
     setup();
-    let v: [u8; 1000000] = [1; 1000000];
+    let v = [0u8; 1];
     let key = "test:get:expired";
     set_value(key, &v, Some(1), None);
 
