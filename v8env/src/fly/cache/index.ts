@@ -18,7 +18,7 @@
  */
 
 /** */
-import { sendSync, sendAsync, streams, sendStreamChunks, sendStreamChunk } from '../../bridge'
+import { sendAsync, streams, sendStreamChunks, sendStreamChunk } from '../../bridge'
 import * as fbs from "../../msg_generated";
 import * as flatbuffers from "../../flatbuffers";
 
@@ -117,38 +117,34 @@ export function getString(key: string): Promise<string | null> {
  * @returns true if the set was successful
  */
 export function set(key: string, value: string | ArrayBuffer | ArrayBufferView | WhatWGReadableStream, options?: CacheSetOptions | number): Promise<boolean> {
-  // if (typeof value !== "string" && !(value instanceof ArrayBuffer)) {
-  //   throw new Error("Cache values must be either a string or array buffer")
-  // }
+  // TODO: validate value input
 
   const fbb = flatbuffers.createBuilder()
   const keyFbb = fbb.createString(key)
   fbs.CacheSet.startCacheSet(fbb);
   fbs.CacheSet.addKey(fbb, keyFbb);
+
+  if (typeof options === 'number') // TODO: maybe we don't need multiple ways of doing this
+    fbs.CacheSet.addTtl(fbb, options)
+  else if (typeof options === 'object' && typeof options.ttl === 'number')
+    fbs.CacheSet.addTtl(fbb, options.ttl)
+
   return sendAsync(fbb, fbs.Any.CacheSet, fbs.CacheSet.endCacheSet(fbb)).then(async baseMsg => {
-    console.log("got cache set ready!");
     let msg = new fbs.CacheSetReady()
     baseMsg.msg(msg);
     let id = msg.id()
-    console.log("id:", id)
     if (value instanceof WhatWGReadableStream) {
-      console.log("got a stream");
       await sendStreamChunks(id, value)
     } else {
-      console.log("not a readable stream I guess!");
       let buf: ArrayBufferView;
       if (typeof value === "string") {
-        console.log("string")
         buf = new TextEncoder().encode(value)
       } else if (value instanceof ArrayBuffer) {
-        console.log("array buf")
         buf = new Uint8Array(value)
       } else {
-        console.log("array buf view")
         buf = value
       }
       sendStreamChunk(id, true, buf);
-      console.log("sent, done.");
     }
     return true
   })
@@ -218,17 +214,16 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
  * @param key Key to delete
  * @returns true if delete was successful
  */
-// export function del(key: string) {
-//   return new Promise<boolean>(function cacheDelPromise(resolve, reject) {
-//     bridge.dispatch("flyCacheDel", key, function cacheDelCallback(err: string | null, ok?: boolean) {
-//       if (err != null) {
-//         reject(err)
-//         return
-//       }
-//       resolve(ok)
-//     })
-//   })
-// }
+export function del(key: string) {
+  const fbb = flatbuffers.createBuilder()
+  const keyFbb = fbb.createString(key)
+  fbs.CacheDel.startCacheDel(fbb);
+  fbs.CacheDel.addKey(fbb, keyFbb);
+
+  return sendAsync(fbb, fbs.Any.CacheDel, fbs.CacheDel.endCacheDel(fbb)).then(baseMsg => {
+    return true
+  })
+}
 
 /**
  * A library for caching/retrieving Response objects
@@ -255,7 +250,7 @@ const cache = {
   // getMultiString,
   set,
   // expire,
-  // del,
+  del,
   // setTags,
   // purgeTag,
   // global

@@ -184,6 +184,26 @@ pub fn get(
   }))))
 }
 
+pub fn del(key: String) -> Box<Future<Item = (), Error = CacheError> + Send> {
+  debug!("sqlite cache del key: {}", key);
+
+  Box::new(future::lazy(move || -> Result<(), CacheError> {
+    let pool = Arc::clone(&SQLITE_CACHE_POOL);
+    let conn = pool.get().unwrap(); // TODO: no unwrap
+
+    let mut stmt = match conn.prepare("DELETE FROM cache WHERE key = ?") {
+      Ok(s) => s,
+      Err(e) => return Err(e.into()),
+    };
+    let ret = match stmt.execute(&[&key]) {
+      Ok(r) => r,
+      Err(e) => return Err(e.into()),
+    };
+    debug!("sqlite cache del for key: {} returned: {}", key, ret);
+    Ok(())
+  }))
+}
+
 #[cfg(test)]
 mod tests {
   // Note this useful idiom: importing names from outer (for mod tests) scope.
@@ -198,7 +218,7 @@ mod tests {
   use std::time::Duration;
 
   extern crate rand;
-  use self::rand::{thread_rng, Rng, RngCore};
+  use self::rand::{thread_rng, RngCore};
 
   fn setup() {
     {
@@ -360,6 +380,22 @@ mod tests {
     set_value(key, &v, Some(1), None);
 
     sleep(Duration::from_secs(2)); // inefficient, but these are just tests
+
+    let stream = get(key.to_string()).unwrap();
+
+    assert!(stream.is_none());
+  }
+
+  #[test]
+  fn test_del() {
+    let v = [0u8; 1];
+    let key = "test:del";
+
+    let mut el = tokio::runtime::Runtime::new().unwrap();
+    set_value(key, &v, None, Some(&mut el));
+
+    let res = el.block_on(del(key.to_string())).unwrap();
+    assert_eq!(res, ());
 
     let stream = get(key.to_string()).unwrap();
 

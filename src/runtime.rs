@@ -329,6 +329,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::StreamChunk => op_stream_chunk,
     msg::Any::CacheGet => op_cache_get,
     msg::Any::CacheSet => op_cache_set,
+    msg::Any::CacheDel => op_cache_del,
     msg::Any::CryptoDigest => op_crypto_digest,
     msg::Any::CryptoRandomValues => op_crypto_random_values,
     msg::Any::SourceMap => op_source_map,
@@ -623,6 +624,24 @@ fn op_crypto_digest(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
 use super::NEXT_EVENT_ID;
 use std::str;
 
+fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_cache_del().unwrap();
+  let key = msg.key().unwrap().to_string();
+
+  let rt = ptr.to_runtime();
+
+  let spawnres = rt
+    .event_loop
+    .lock()
+    .unwrap()
+    .spawn(sqlite_cache::del(key).map_err(|e| println!("error cache set stream! {:?}", e)));
+  if let Err(err) = spawnres {
+    return odd_future(format!("{}", err).into());
+  }
+
+  ok_future(None)
+}
+
 fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_set().unwrap();
@@ -637,7 +656,13 @@ fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     rt.streams.lock().unwrap().insert(stream_id, sender);
   }
 
-  let fut = sqlite_cache::set(key, None, Box::new(recver));
+  let ttl = if msg.ttl() == 0 {
+    None
+  } else {
+    Some(msg.ttl())
+  };
+
+  let fut = sqlite_cache::set(key, ttl, Box::new(recver));
 
   let spawnres = rt.event_loop.lock().unwrap().spawn(
     fut

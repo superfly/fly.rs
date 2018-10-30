@@ -13,6 +13,7 @@ union Any {
   CacheGetReady,
   CacheSet,
   CacheSetReady,
+  CacheDel,
   CryptoDigest,
   CryptoDigestReady,
   CryptoRandomValues,
@@ -156,10 +157,15 @@ table CacheGetReady {
 
 table CacheSet {
   key: string;
+  ttl: uint;
 }
 
 table CacheSetReady {
   id: uint;
+}
+
+table CacheDel {
+  key: string;
 }
 
 table CryptoDigest {
