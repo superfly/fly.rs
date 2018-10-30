@@ -268,7 +268,7 @@ mod tests {
     thread_rng().fill_bytes(&mut v);
     let key = "test:ttl";
 
-    set_value(key, &v, Some(500), None);
+    set_value(key, &v, Some(10), None);
 
     let pool = Arc::clone(&SQLITE_CACHE_POOL);
     let conn = pool.get().unwrap(); // TODO: no unwrap
@@ -286,7 +286,36 @@ mod tests {
 
     assert_eq!(gotkey, key);
     assert_eq!(gotv, v.to_vec());
-    assert!(gotex > Utc::now() && gotex < Utc::now() + chrono::FixedOffset::east(500));
+    assert!(gotex > Utc::now() && gotex < Utc::now() + chrono::FixedOffset::east(10));
+  }
+
+  #[test]
+  fn test_update_ttl() {
+    setup();
+    let mut v = [0u8; 1000000];
+    thread_rng().fill_bytes(&mut v);
+    let key = "test:ttl";
+
+    set_value(key, &v, None, None);
+    set_value(key, &v, Some(10), None);
+
+    let pool = Arc::clone(&SQLITE_CACHE_POOL);
+    let conn = pool.get().unwrap(); // TODO: no unwrap
+
+    let mut stmt = conn
+      .prepare("SELECT key,value,expires_at FROM cache WHERE key = ? AND expires_at > datetime('now') LIMIT 1;")
+      .unwrap();
+
+    let mut rows = stmt.query(&[key]).unwrap();
+    let row = rows.next().unwrap().unwrap();
+
+    let gotkey: String = row.get(0);
+    let gotv: Vec<u8> = row.get(1);
+    let gotex: DateTime<Utc> = row.get(2);
+
+    assert_eq!(gotkey, key);
+    assert_eq!(gotv, v.to_vec());
+    assert!(gotex > Utc::now() && gotex < Utc::now() + chrono::FixedOffset::east(10));
   }
 
   #[test]
