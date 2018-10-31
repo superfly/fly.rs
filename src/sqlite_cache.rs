@@ -98,10 +98,10 @@ pub fn set(
         } else {
           let mut stmt = conn
             .prepare(
-              "INSERT INTO cache(key, value)
-      VALUES (?, ?)
+              "INSERT INTO cache(key, value, expires_at)
+      VALUES (?, ?, NULL)
       ON CONFLICT (key) DO
-        UPDATE SET value=excluded.value
+        UPDATE SET value=excluded.value,expires_at=excluded.expires_at
     ",
             ).unwrap();
 
@@ -132,8 +132,6 @@ pub fn get(
 
   let mut rows = stmt.query(&[&key])?;
 
-  debug!("got rows");
-
   let rowid: i64 = match rows.next() {
     Some(res) => res?.get(0),
     None => {
@@ -142,15 +140,12 @@ pub fn get(
     }
   };
 
-  debug!("got a rowid: {}", rowid);
-
   Ok(Some(Box::new(stream::unfold(0, move |pos| {
     debug!("sqlite cache get in stream future, pos: {}", pos);
 
     // End early given some rules!
     // not a multiple of size, means we're done.
     if pos > 0 && pos % size > 0 {
-      debug!("sqlite cache get returning early");
       return None;
     }
 
@@ -200,6 +195,30 @@ pub fn del(key: String) -> Box<Future<Item = (), Error = CacheError> + Send> {
       Err(e) => return Err(e.into()),
     };
     debug!("sqlite cache del for key: {} returned: {}", key, ret);
+    Ok(())
+  }))
+}
+
+pub fn expire(key: String, ttl: u32) -> Box<Future<Item = (), Error = CacheError> + Send> {
+  debug!("sqlite cache expire key: {} w/ ttl: {}", key, ttl);
+
+  Box::new(future::lazy(move || -> Result<(), CacheError> {
+    let pool = Arc::clone(&SQLITE_CACHE_POOL);
+    let conn = pool.get().unwrap(); // TODO: no unwrap
+
+    let mut stmt = match conn.prepare(
+      "UPDATE cache
+      SET expires_at = datetime('now', ?)
+      WHERE key = ?",
+    ) {
+      Ok(s) => s,
+      Err(e) => return Err(e.into()),
+    };
+    let ret = match stmt.execute(&[&format!("+{} seconds", ttl), &key]) {
+      Ok(r) => r,
+      Err(e) => return Err(e.into()),
+    };
+    debug!("sqlite cache expire for key: {} returned: {}", key, ret);
     Ok(())
   }))
 }
@@ -400,5 +419,44 @@ mod tests {
     let stream = get(key.to_string()).unwrap();
 
     assert!(stream.is_none());
+  }
+
+  #[test]
+  fn test_expire() {
+    let v = [0u8; 1];
+    let key = "test:expire";
+
+    let mut el = tokio::runtime::Runtime::new().unwrap();
+    set_value(key, &v, None, Some(&mut el));
+
+    let pool = Arc::clone(&SQLITE_CACHE_POOL);
+    let conn = pool.get().unwrap(); // TODO: no unwrap
+
+    let mut stmt = conn
+      .prepare("SELECT expires_at FROM cache WHERE key = ? LIMIT 1;")
+      .unwrap();
+
+    {
+      let mut rows = stmt.query(&[key]).unwrap();
+      let row = rows.next().unwrap().unwrap();
+
+      let gotex: rusqlite::types::Value = row.get(0);
+
+      assert_eq!(gotex, rusqlite::types::Value::Null);
+    }
+
+    let res = el.block_on(expire(key.to_string(), 10)).unwrap();
+    assert_eq!(res, ());
+
+    // let mut stmt = conn
+    //   .prepare("SELECT expires_at FROM cache WHERE key = ? LIMIT 1;")
+    //   .unwrap();
+
+    let mut rows = stmt.query(&[key]).unwrap();
+    let row = rows.next().unwrap().unwrap();
+
+    let gotex: DateTime<Utc> = row.get(0);
+
+    assert!(gotex > Utc::now() && gotex < Utc::now() + chrono::FixedOffset::east(10));
   }
 }

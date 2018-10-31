@@ -156,17 +156,17 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
  * @param ttl Expiration time remaining in seconds
  * @returns true if ttl was successfully updated
  */
-// export function expire(key: string, ttl: number) {
-//   return new Promise<boolean>(function cacheSetPromise(resolve, reject) {
-//     bridge.dispatch("flyCacheExpire", key, ttl, function cacheSetCallback(err: string | null, ok?: boolean) {
-//       if (err != null) {
-//         reject(err)
-//         return
-//       }
-//       resolve(ok)
-//     })
-//   })
-// }
+export function expire(key: string, ttl: number) {
+  const fbb = flatbuffers.createBuilder()
+  const keyFbb = fbb.createString(key)
+  fbs.CacheExpire.startCacheExpire(fbb);
+  fbs.CacheExpire.addKey(fbb, keyFbb);
+  fbs.CacheExpire.addTtl(fbb, ttl);
+
+  return sendAsync(fbb, fbs.Any.CacheExpire, fbs.CacheExpire.endCacheExpire(fbb)).then(baseMsg => {
+    return true
+  })
+}
 
 /**
  * Replace tags for a given cache key
@@ -249,7 +249,7 @@ const cache = {
   // getMulti,
   // getMultiString,
   set,
-  // expire,
+  expire,
   del,
   // setTags,
   // purgeTag,

@@ -14,6 +14,7 @@ union Any {
   CacheSet,
   CacheSetReady,
   CacheDel,
+  CacheExpire,
   CryptoDigest,
   CryptoDigestReady,
   CryptoRandomValues,
@@ -166,6 +167,11 @@ table CacheSetReady {
 
 table CacheDel {
   key: string;
+}
+
+table CacheExpire {
+  key: string;
+  ttl: uint;
 }
 
 table CryptoDigest {

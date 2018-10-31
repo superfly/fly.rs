@@ -330,6 +330,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CacheGet => op_cache_get,
     msg::Any::CacheSet => op_cache_set,
     msg::Any::CacheDel => op_cache_del,
+    msg::Any::CacheExpire => op_cache_expire,
     msg::Any::CryptoDigest => op_crypto_digest,
     msg::Any::CryptoRandomValues => op_crypto_random_values,
     msg::Any::SourceMap => op_source_map,
@@ -634,7 +635,24 @@ fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     .event_loop
     .lock()
     .unwrap()
-    .spawn(sqlite_cache::del(key).map_err(|e| println!("error cache set stream! {:?}", e)));
+    .spawn(sqlite_cache::del(key).map_err(|e| error!("error cache del future! {:?}", e)));
+  if let Err(err) = spawnres {
+    return odd_future(format!("{}", err).into());
+  }
+
+  ok_future(None)
+}
+
+fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_cache_expire().unwrap();
+  let key = msg.key().unwrap().to_string();
+  let ttl = msg.ttl();
+
+  let rt = ptr.to_runtime();
+
+  let spawnres = rt.event_loop.lock().unwrap().spawn(
+    sqlite_cache::expire(key, ttl).map_err(|e| error!("error cache expire future! {:?}", e)),
+  );
   if let Err(err) = spawnres {
     return odd_future(format!("{}", err).into());
   }
