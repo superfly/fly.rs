@@ -72,6 +72,8 @@ extern "C"
 
   extern void js_set_response(const runtime *rt, fly_buf buf);
 
+  extern void js_runtime_dispose(const runtime *rt);
+
   extern const char *js_version();
 
 } // extern "C"

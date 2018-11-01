@@ -2,5 +2,8 @@ use std::process::Command;
 
 fn main() {
   println!("cargo:rerun-if-changed=msg.fbs");
-  Command::new("./scripts/fbs.sh").spawn().unwrap();
+  let status = Command::new("./scripts/fbs.sh")
+    .status()
+    .expect("failed to generated flatbuffer messages");
+  assert!(status.success());
 }

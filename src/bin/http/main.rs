@@ -41,8 +41,6 @@ pub static mut RUNTIME: Option<Box<Runtime>> = None;
 
 pub struct FlyServer;
 
-extern crate libc;
-
 use fly::msg;
 
 impl Service for FlyServer {

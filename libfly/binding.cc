@@ -387,6 +387,11 @@ extern "C"
     return;
   }
 
+  // void PromiseRejectCallback(v8::PromiseRejectMessage promise_reject_message)
+  // {
+
+  // }
+
   const js_runtime *js_runtime_new(js_runtime_options options)
   {
     js_runtime *rt = new js_runtime;
@@ -413,6 +418,7 @@ extern "C"
     params.constraints = rc;
 
     v8::Isolate *isolate = v8::Isolate::New(params);
+    // isolate->SetPromiseRejectCallback(PromiseRejectCallback);
     isolate->SetData(0, rt);
     rt->isolate = isolate;
 
@@ -573,15 +579,18 @@ extern "C"
     return true;
   }
 
+  void js_runtime_dispose(const runtime *rt)
+  {
+    rt->isolate->Dispose();
+    delete rt;
+  }
+
   fly_simple_buf js_create_snapshot(const char *filename, const char *code)
   {
     v8::StartupData blob;
     {
       v8::SnapshotCreator creator(ext_refs);
       v8::Isolate *isolate = creator.GetIsolate();
-      // js_runtime *rt = new js_runtime;
-      // isolate->SetData(0, rt);
-      // rt->isolate = isolate;
       {
         v8::HandleScope handle_scope(isolate);
         v8::Local<v8::Context> context = v8::Context::New(isolate);
@@ -591,46 +600,8 @@ extern "C"
         InitContext(isolate, context);
         ExecuteV8StringSource(context, filename, code);
 
-        // auto fly = v8::Object::New(isolate);
-        // context->Global()->Set(context, v8_str(isolate, "libfly"), fly).FromJust();
-
-        // auto print_tmpl = v8::FunctionTemplate::New(isolate, Print);
-        // auto print_val = print_tmpl->GetFunction(context).ToLocalChecked();
-        // fly->Set(context, v8_str(isolate, "print"), print_val);
-
-        // auto send_tmpl = v8::FunctionTemplate::New(isolate, Send);
-        // auto send_val = send_tmpl->GetFunction(context).ToLocalChecked();
-        // fly->Set(context, v8_str(isolate, "send"), send_val);
-
-        // auto recv_tmpl = v8::FunctionTemplate::New(isolate, Recv);
-        // auto recv_val = recv_tmpl->GetFunction(context).ToLocalChecked();
-        // fly->Set(context, v8_str(isolate, "recv"), recv_val);
-
-        // rt->context.Reset(isolate, context);
-
-        // v8::ScriptOrigin origin = v8::ScriptOrigin(v8_str(isolate, filename));
-        // v8::MaybeLocal<v8::Script> script = v8::Script::Compile(
-        //     context,
-        //     v8_str(isolate, code),
-        //     &origin);
-
-        // if (script.IsEmpty())
-        // {
-        //   printf("errrrr compiling!\n");
-        //   exit(1);
-        // }
-
-        // v8::MaybeLocal<v8::Value> result = script.ToLocalChecked()->Run(context);
-        // if (result.IsEmpty())
-        // {
-        //   printf("errrrr evaluating!\n");
-        //   exit(1);
-        // }
-
         creator.SetDefaultContext(context, v8::SerializeInternalFieldsCallback(
                                                SerializeInternalFields, nullptr));
-        // rt->context.Reset();
-        // rt->recv.Reset();
       }
       blob =
           creator.CreateBlob(v8::SnapshotCreator::FunctionCodeHandling::kClear);

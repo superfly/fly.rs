@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use std::thread;
 use tokio::runtime::current_thread;
 
-use tokio::timer::{Delay, Interval};
+use tokio::timer::Delay;
 
 use std::time::{Duration, Instant};
 
@@ -121,13 +121,14 @@ impl JsRuntime {
 
 pub struct Runtime {
   pub ptr: JsRuntime,
+  pub name: String,
   pub event_loop: Mutex<tokio::runtime::current_thread::Handle>,
+  pub quit_ch: mpsc::Sender<()>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
-  pub name: String,
 }
 
 static JSINIT: Once = Once::new();
@@ -137,28 +138,47 @@ impl Runtime {
   pub fn new(name: Option<String>) -> Box<Self> {
     JSINIT.call_once(|| unsafe { js_init() });
 
-    let (c, p) = oneshot::channel::<current_thread::Handle>();
+    let (c, p) = oneshot::channel::<(current_thread::Handle, mpsc::Sender<()>)>();
     thread::Builder::new()
       .name(format!(
         "runtime-loop-{}",
         NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
       )).spawn(move || {
         let mut l = current_thread::Runtime::new().unwrap();
-        let task = Interval::new_interval(Duration::from_secs(5))
-          .for_each(move |_| Ok(()))
-          .map_err(|e| panic!("interval errored; err={:?}", e));
-        l.spawn(task);
-        match c.send(l.handle()) {
-          Ok(_) => {}
-          Err(e) => panic!(e),
+        let (txrt, rxrt) = mpsc::channel::<()>(1);
+        let (txquit, rxquit) = mpsc::channel::<()>(1);
+        unsafe {
+          EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(Box::new(
+            rxrt
+              .into_future()
+              .map_err(|_| info!("error rt ch recv"))
+              .and_then(|_| {
+                info!("main event loop notified of quitting.");
+                Ok(())
+              }),
+          ))
         };
+        l.spawn(Box::new(
+          rxquit
+            .into_future()
+            .map_err(|_| info!("error quit ch recv"))
+            .and_then(move |_| {
+              info!("quitting rt event loop...");
+              txrt.clone().try_send(()).unwrap();
+              Ok(())
+            }),
+        ));
+        c.send((l.handle(), txquit)).unwrap();
 
         l.run()
       }).unwrap();
 
+    let (rthandle, txquit) = p.wait().unwrap();
+
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(0 as *const js_runtime),
-      event_loop: Mutex::new(p.wait().unwrap()),
+      event_loop: Mutex::new(rthandle),
+      quit_ch: txquit,
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
       dns_responses: Mutex::new(HashMap::new()),
@@ -210,10 +230,13 @@ impl Runtime {
   }
 
   pub fn from_raw<'a>(raw: *const js_runtime) -> &'a mut Self {
-    let ptr = unsafe { js_get_data(raw) };
-    let rt_ptr = ptr as *mut Runtime;
-    let rt_box = unsafe { Box::from_raw(rt_ptr) };
-    Box::leak(rt_box)
+    let ptr = unsafe { js_get_data(raw) } as *mut _;
+    unsafe { &mut *ptr }
+  }
+
+  pub fn dispose(&self) {
+    self.quit_ch.clone().try_send(()).unwrap();
+    unsafe { js_runtime_dispose(self.ptr.0) };
   }
 }
 
@@ -1545,4 +1568,12 @@ fn create_collection(con: &rusqlite::Connection, name: &String) -> rusqlite::Res
     ).as_str(),
     rusqlite::NO_PARAMS,
   )
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_runtime_new() {}
 }

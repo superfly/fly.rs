@@ -225,7 +225,6 @@ pub fn expire(key: String, ttl: u32) -> Box<Future<Item = (), Error = CacheError
 
 #[cfg(test)]
 mod tests {
-  // Note this useful idiom: importing names from outer (for mod tests) scope.
   use super::*;
   use config::CONFIG;
   use futures::sync::mpsc;
