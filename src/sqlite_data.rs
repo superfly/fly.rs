@@ -188,9 +188,10 @@ mod tests {
     el.block_on(store.del(coll.to_string(), key.to_string()))
       .unwrap();
 
-    let got = el.block_on(store.get(coll.to_string(), key.to_string()));
+    let got = el
+      .block_on(store.get(coll.to_string(), key.to_string()))
+      .unwrap();
 
-    assert!(got.is_err());
-    assert_eq!(got.err().unwrap(), DataError::Failure("asda".to_string()));
+    assert!(got.is_none());
   }
 }
