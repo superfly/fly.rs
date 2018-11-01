@@ -305,7 +305,7 @@ lazy_static! {
           ch.send(
             v.iter()
               .map(|(line, col, name, filename)| {
-                if filename == "v8env.js" {
+                if filename == "v8env/dist/v8env.js" {
                   return match sm.lookup_token(*line, *col) {
                     Some(t) => {
                       let newline = t.get_src_line();
