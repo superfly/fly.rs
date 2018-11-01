@@ -67,6 +67,11 @@ fn main() {
         .index(1),
     ).get_matches();
 
+  let main_el = tokio::runtime::Runtime::new().unwrap();
+  unsafe {
+    EVENT_LOOP_HANDLE = Some(main_el.executor());
+  };
+
   let runtime = {
     let rt = Runtime::new(None);
     rt.eval_file(matches.value_of("input").unwrap());
@@ -85,11 +90,6 @@ fn main() {
 
   let udp_socket = UdpSocket::bind(&addr).expect(&format!("udp bind failed: {}", addr));
   info!("Listener bound on address: {}", addr);
-
-  let main_el = tokio::runtime::Runtime::new().unwrap();
-  unsafe {
-    EVENT_LOOP_HANDLE = Some(main_el.executor());
-  };
 
   let _ = main_el.block_on_all(future::lazy(move || -> Result<(), ()> {
     server.register_socket(udp_socket);

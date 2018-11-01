@@ -86,7 +86,7 @@ addEventListener("resolv", event => {
   event.respondWith(function () {
     return new DNSResponse([
       {
-        name: event.request.queries[0].name,
+        name: event.request.name,
         type: DNSRecordType.TXT,
         ttl: 5,
         data: { data: [new TextEncoder().encode("helloworld"), new TextEncoder().encode("helloworld2")] }
