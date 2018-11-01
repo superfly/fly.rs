@@ -53,7 +53,7 @@ addEventListener("fetch", function (event) {
     resolv("fly.io").then(res => {
       console.log("got dns res:", res)
     }).catch(err => { console.log("error resolving I guess:", err.stack) })
-    return new Response(null, { headers: {} })
+    event.respondWith(new Response(null, { headers: {} }))
   }
   else {
     req.headers.delete("host");
@@ -91,7 +91,7 @@ addEventListener("resolv", event => {
         ttl: 5,
         data: { data: [new TextEncoder().encode("helloworld"), new TextEncoder().encode("helloworld2")] }
       }
-    ])
+    ], { authoritative: true })
   })
 
 })

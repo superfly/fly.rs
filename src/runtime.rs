@@ -6,7 +6,7 @@ use tokio::prelude::*;
 use std::io;
 
 use std::ffi::{CStr, CString};
-use std::sync::{Arc, Mutex, Once};
+use std::sync::{Mutex, Once};
 
 use self::fs::File;
 use std::fs;
@@ -41,11 +41,6 @@ use self::sha2::Digest; // puts trait in scope
 use self::sha2::Sha256;
 
 extern crate hyper;
-extern crate r2d2;
-extern crate r2d2_redis;
-extern crate r2d2_sqlite;
-extern crate rusqlite;
-use self::r2d2_sqlite::SqliteConnectionManager;
 
 use self::hyper::body::Payload;
 use self::hyper::client::HttpConnector;
@@ -73,11 +68,13 @@ extern crate tokio_codec;
 use self::tokio_codec::{BytesCodec, FramedRead};
 
 use cache::*;
+use data::*;
 use ops; // src/ops/
 use utils::*;
 
 use config::CONFIG;
 use sqlite_cache;
+use sqlite_data;
 
 #[derive(Debug)]
 pub enum JsHttpResponseBody {
@@ -132,6 +129,7 @@ pub struct Runtime {
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
   pub cache_store: Box<CacheStore + 'static + Send>,
+  pub data_store: Box<DataStore + 'static + Send>,
 }
 
 static JSINIT: Once = Once::new();
@@ -196,6 +194,7 @@ impl Runtime {
         Ok(s) => s,
         Err(_e) => "cache.db".to_string(),
       })),
+      data_store: Box::new(sqlite_data::SqliteDataStore::new("data.db".to_string())),
     });
 
     (*rt).ptr.0 = unsafe {
@@ -285,11 +284,6 @@ lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
     ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
     len: V8ENV_SNAPSHOT.len() as i32
-  };
-  static ref SQLITE_POOL: Arc<r2d2::Pool<SqliteConnectionManager>> = {
-    let manager = SqliteConnectionManager::file("play.db");
-    let pool = r2d2::Pool::builder().build(manager).unwrap();
-    Arc::new(pool)
   };
   static ref SM_CHAN: Mutex<
     stdmspc::Sender<(
@@ -1465,122 +1459,86 @@ where
   (delay_task, cancel_tx)
 }
 
-fn op_data_put(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_put(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_put().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
   let value = msg.json().unwrap().to_string();
 
-  Box::new(future::lazy(move || -> FlyResult<Buf> {
-    let pool = Arc::clone(&SQLITE_POOL);
-    let con = pool.get().unwrap(); // TODO: no unwrap
+  let rt = ptr.to_runtime();
 
-    create_collection(&*con, &coll).unwrap();
-
-    match con.execute(
-      format!("INSERT OR REPLACE INTO {} VALUES (?, ?)", coll).as_str(),
-      &[&key, &value],
-    ) {
-      Ok(r) => {
-        println!("PUT returned: {}", r);
-        Ok(None)
-      }
-      Err(e) => Err(format!("{}", e).into()),
-    }
-  }))
+  Box::new(
+    rt.data_store
+      .put(coll, key, value)
+      .map_err(|e| format!("{:?}", e).into())
+      .and_then(move |_| Ok(None)),
+  )
 }
 
-fn op_data_get(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_data_get().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
 
-  Box::new(future::lazy(move || -> FlyResult<Buf> {
-    let pool = Arc::clone(&SQLITE_POOL);
-    let con = pool.get().unwrap(); // TODO: no unwrap
+  let rt = ptr.to_runtime();
 
-    create_collection(&*con, &coll).unwrap();
-
-    match con.query_row::<String, _, _>(
-      format!("SELECT obj FROM {} WHERE key == ?", coll).as_str(),
-      &[&key],
-      |row| row.get(0),
-    ) {
-      Err(e) => match e {
-        rusqlite::Error::QueryReturnedNoRows => Ok(None),
-        _ => Err(format!("{}", e).into()),
-      },
-      Ok(s) => {
-        let builder = &mut FlatBufferBuilder::new();
-        let json = builder.create_string(&s);
-        let msg = msg::DataGetReady::create(
-          builder,
-          &msg::DataGetReadyArgs {
-            json: Some(json),
-            ..Default::default()
-          },
-        );
-        Ok(serialize_response(
-          cmd_id,
-          builder,
-          msg::BaseArgs {
-            msg: Some(msg.as_union_value()),
-            msg_type: msg::Any::DataGetReady,
-            ..Default::default()
-          },
-        ))
-      }
-    }
-  }))
+  Box::new(
+    rt.data_store
+      .get(coll, key)
+      .map_err(|e| format!("error in data store get: {:?}", e).into())
+      .and_then(move |s| match s {
+        None => Ok(None),
+        Some(s) => {
+          let builder = &mut FlatBufferBuilder::new();
+          let json = builder.create_string(&s);
+          let msg = msg::DataGetReady::create(
+            builder,
+            &msg::DataGetReadyArgs {
+              json: Some(json),
+              ..Default::default()
+            },
+          );
+          Ok(serialize_response(
+            cmd_id,
+            builder,
+            msg::BaseArgs {
+              msg: Some(msg.as_union_value()),
+              msg_type: msg::Any::DataGetReady,
+              ..Default::default()
+            },
+          ))
+        }
+      }),
+  )
 }
 
-fn op_data_del(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+fn op_data_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_data_del().unwrap();
   let coll = msg.collection().unwrap().to_string();
   let key = msg.key().unwrap().to_string();
 
-  Box::new(future::lazy(move || -> FlyResult<Buf> {
-    let pool = Arc::clone(&SQLITE_POOL);
-    let con = pool.get().unwrap(); // TODO: no unwrap
+  let rt = ptr.to_runtime();
 
-    create_collection(&*con, &coll).unwrap();
-
-    match con.execute(
-      format!("DELETE FROM {} WHERE key == ?", coll).as_str(),
-      &[&key],
-    ) {
-      Ok(_) => Ok(None),
-      Err(e) => Err(format!("{}", e).into()),
-    }
-  }))
+  Box::new(
+    rt.data_store
+      .del(coll, key)
+      .map_err(|e| format!("{:?}", e).into())
+      .and_then(move |_| Ok(None)),
+  )
 }
 
-fn op_data_drop_coll(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let msg = base.msg_as_data_del().unwrap();
+fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_data_drop_collection().unwrap();
   let coll = msg.collection().unwrap().to_string();
 
-  Box::new(future::lazy(move || -> FlyResult<Buf> {
-    let pool = Arc::clone(&SQLITE_POOL);
-    let con = pool.get().unwrap(); // TODO: no unwrap
+  let rt = ptr.to_runtime();
 
-    match con.execute(
-      format!("DROP TABLE IF EXISTS {}", coll).as_str(),
-      rusqlite::NO_PARAMS,
-    ) {
-      Ok(_) => Ok(None),
-      Err(e) => Err(format!("{}", e).into()),
-    }
-  }))
-}
-
-fn create_collection(con: &rusqlite::Connection, name: &String) -> rusqlite::Result<usize> {
-  con.execute(
-    format!(
-      "CREATE TABLE IF NOT EXISTS {} (key TEXT PRIMARY KEY NOT NULL, obj JSON NOT NULL)",
-      name
-    ).as_str(),
-    rusqlite::NO_PARAMS,
+  Box::new(
+    rt.data_store
+      .drop_coll(coll)
+      .map_err(|e| format!("{:?}", e).into())
+      .and_then(move |_| Ok(None)),
   )
 }
 
