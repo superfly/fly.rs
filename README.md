@@ -12,7 +12,7 @@ This is a programmable DNS server. You can write JavaScript to handle DNS querie
 
 ### Windows
 
-Not yet done. Relevant issue: #9
+Not yet done. Relevant issue: [#9](https://github.com/superfly/fly.rs/issues/9)
 
 ## Usage
 
@@ -59,7 +59,7 @@ addEventListener("resolv", event => {
 
 The Fly runtime was originally derived from [deno](/denoland/deno) and shares some of the same message passing semantics. It has diverged quite a bit, but when possible we'll be contributing code back to deno.
 
-There's an issue: #5
+There's an issue: [#5](https://github.com/superfly/fly.rs/issues/5)
 
 ## Development
 
