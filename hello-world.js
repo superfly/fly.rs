@@ -83,32 +83,15 @@ addEventListener("fetch", function (event) {
 
 addEventListener("resolv", event => {
   console.log("got resolv event!")
-  // event.respondWith(resolv(event.request.queries[0]))
-  // event.respondWith(function () {
-  //   return {
-  //     authoritative: true,
-  //     answers: [
-  //       {
-  //         name: event.request.queries[0].name,
-  //         rrType: DNSRecordType.A,
-  //         ttl: 5,
-  //         data: { ip: "127.0.0.1" }
-  //       }
-  //     ]
-  //   }
-  // })
   event.respondWith(function () {
-    return {
-      authoritative: true,
-      answers: [
-        {
-          name: event.request.queries[0].name,
-          rrType: DNSRecordType.TXT,
-          ttl: 5,
-          data: { data: [new TextEncoder().encode("helloworld"), new TextEncoder().encode("helloworld2")] }
-        }
-      ]
-    }
+    return new DNSResponse([
+      {
+        name: event.request.queries[0].name,
+        type: DNSRecordType.TXT,
+        ttl: 5,
+        data: { data: [new TextEncoder().encode("helloworld"), new TextEncoder().encode("helloworld2")] }
+      }
+    ])
   })
 
 })

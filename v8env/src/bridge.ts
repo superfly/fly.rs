@@ -127,20 +127,19 @@ export function addEventListener(name: string, fn: Function) {
         base.msg(msg);
         let id = msg.id();
 
-        let queries: DNSQuery[] = [];
-        for (let i = 0; i < msg.queriesLength(); i++) {
-          const q = msg.queries(i);
-          queries.push({
-            name: q.name(),
-            dnsClass: q.dnsClass(),
-            rrType: q.rrType()
-          })
-        }
+        let q = msg.queries(0);
 
-        let req: DNSRequest = {
-          messageType: msg.messageType(),
-          queries: queries
-        }
+        // let queries: DNSQuery[] = [];
+        // for (let i = 0; i < msg.queriesLength(); i++) {
+        //   const q = msg.queries(i);
+        //   queries.push({
+        //     name: q.name(),
+        //     dnsClass: q.dnsClass(),
+        //     type: q.rrType()
+        //   })
+        // }
+
+        const req = new DNSRequest(q.name(), q.rrType())
 
         fn.call(window, {
           request: req,
@@ -151,7 +150,7 @@ export function addEventListener(name: string, fn: Function) {
             }
             if (ret instanceof Promise) {
               ret.then(handleDNSRes.bind(null, id)).catch(handleDNSError.bind(null, id))
-            } else if (typeof ret === 'object') {
+            } else if (ret instanceof DNSResponse) {
               handleDNSRes(id, ret)
             }
           }
@@ -183,7 +182,7 @@ function handleDNSRes(id: number, res: DNSResponse) {
     const ans = res.answers[i];
     let rdata: flatbuffers.Offset;
     let rdataType: fbs.DnsRecordData;
-    switch (ans.rrType) {
+    switch (ans.type) {
       case fbs.DnsRecordType.A: {
         rdataType = fbs.DnsRecordData.DnsA
         const ip = fbb.createString((<DNSDataA>ans.data).ip)
@@ -277,7 +276,7 @@ function handleDNSRes(id: number, res: DNSResponse) {
         break;
       }
       default:
-        throw new Error("unhandled record type: " + fbs.DnsRecordType[ans.rrType])
+        throw new Error("unhandled record type: " + fbs.DnsRecordType[ans.type])
     }
 
     const name = fbb.createString(ans.name);
@@ -285,7 +284,7 @@ function handleDNSRes(id: number, res: DNSResponse) {
     fbs.DnsRecord.addName(fbb, name);
     fbs.DnsRecord.addRdataType(fbb, rdataType);
     fbs.DnsRecord.addRdata(fbb, rdata);
-    fbs.DnsRecord.addRrType(fbb, ans.rrType);
+    fbs.DnsRecord.addRrType(fbb, ans.type);
     fbs.DnsRecord.addTtl(fbb, ans.ttl);
     answers[i] = fbs.DnsRecord.endDnsRecord(fbb);
   }

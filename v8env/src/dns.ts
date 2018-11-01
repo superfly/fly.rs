@@ -65,7 +65,7 @@ export const DNSResponseCode = {
 export interface DNSQuery {
   name: string,
   dnsClass: fbs.DnsClass,
-  rrType: fbs.DnsRecordType,
+  type: fbs.DnsRecordType,
 }
 
 export interface DNSMessage {
@@ -122,21 +122,41 @@ export type DNSRecordData = DNSDataA | DNSDataAAAA | DNSDataCNAME | DNSDataMX | 
 
 export interface DNSRecord {
   name: string,
-  rrType: fbs.DnsRecordType,
+  type: fbs.DnsRecordType,
   dnsClass: fbs.DnsClass,
   ttl: number,
   data: DNSRecordData,
 }
 
-export interface DNSResponse {
-  authoritative: boolean,
-  truncated: boolean,
-  responseCode: fbs.DnsResponseCode,
-  queries: DNSQuery[],
-  answers: DNSRecord[]
+export class DNSRequest {
+  name: string
+  type: fbs.DnsRecordType
+  constructor(name: string, type?: fbs.DnsRecordType) {
+    this.name = name
+    this.type = type || DNSRecordType.A
+  }
 }
 
-export interface DNSRequest {
-  messageType: fbs.DnsMessageType,
+export interface DNSResponseInit {
+  authoritative?: boolean
+  truncated?: boolean
+  responseCode?: fbs.DnsResponseCode
+  queries?: DNSQuery[]
+}
+
+export class DNSResponse {
+  authoritative: boolean
+  truncated: boolean
+  responseCode: fbs.DnsResponseCode
+  answers: DNSRecord[]
   queries: DNSQuery[]
+
+  constructor(answers: DNSRecord[], init?: DNSResponseInit) {
+    this.answers = answers
+    init || (init = {})
+    this.authoritative = init.authoritative || false
+    this.truncated = init.truncated || false
+    this.responseCode = init.responseCode || fbs.DnsResponseCode.NoError
+    this.queries = init.queries || []
+  }
 }

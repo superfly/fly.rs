@@ -60,6 +60,8 @@ declare global {
   const fly: Fly
 
   const resolv: typeof resolv_.resolv;
+  const DNSResponse: typeof dns.DNSResponse;
+  const DNSRequest: typeof dns.DNSRequest;
   const DNSClass: typeof dns.DNSClass;
   const DNSRecordType: typeof dns.DNSRecordType;
   const DNSMessageType: typeof dns.DNSMessageType;
@@ -99,6 +101,8 @@ window.fly = {
   data: flyData
 }
 
+window.DNSRequest = dns.DNSRequest;
+window.DNSResponse = dns.DNSResponse;
 window.DNSClass = dns.DNSClass;
 window.DNSRecordType = dns.DNSRecordType;
 window.DNSMessageType = dns.DNSMessageType;

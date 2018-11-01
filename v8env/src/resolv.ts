@@ -3,22 +3,19 @@ import * as errors from "./errors";
 import * as util from "./util";
 import * as flatbuffers from "./flatbuffers"
 import { sendAsync } from "./bridge";
-import { DNSQuery, DNSResponse, DNSRecord, DNSRecordData } from "./dns";
+import { DNSQuery, DNSResponse, DNSRecord, DNSRecordData, DNSRequest } from "./dns";
+import { FlyResponse } from "./response";
 
-export function resolv(req: DNSQuery | string): Promise<DNSResponse> {
-  let query: DNSQuery = typeof req === "string" ? {
-    name: req,
-    rrType: fbs.DnsRecordType.A,
-    dnsClass: fbs.DnsClass.IN
-  } : req
+export function resolv(info: string | DNSRequest, type?: fbs.DnsRecordType): Promise<DNSResponse> {
+  let req: DNSRequest = typeof info === "string" ? new DNSRequest(info, type) : info
 
   return new Promise(function resolvPromise(resolve, reject) {
     const fbb = flatbuffers.createBuilder();
-    const nameStr = fbb.createString(query.name)
+    const nameStr = fbb.createString(req.name)
     fbs.DnsQuery.startDnsQuery(fbb);
     fbs.DnsQuery.addName(fbb, nameStr);
-    fbs.DnsQuery.addDnsClass(fbb, query.dnsClass);
-    fbs.DnsQuery.addRrType(fbb, query.rrType);
+    fbs.DnsQuery.addDnsClass(fbb, fbs.DnsClass.IN);
+    fbs.DnsQuery.addRrType(fbb, req.type);
     sendAsync(fbb, fbs.Any.DnsQuery, fbs.DnsQuery.endDnsQuery(fbb)).then(baseRes => {
       let msg = new fbs.DnsResponse()
       baseRes.msg(msg);
@@ -52,19 +49,18 @@ export function resolv(req: DNSQuery | string): Promise<DNSResponse> {
         }
         answers.push({
           name: ans.name(),
-          rrType: ans.rrType(),
+          type: ans.rrType(),
           dnsClass: ans.dnsClass(),
           ttl: ans.ttl(),
           data: data,
         })
       }
-      resolve({
+      resolve(new DNSResponse(answers, {
         authoritative: msg.authoritative(),
         truncated: msg.truncated(),
         responseCode: msg.responseCode(),
-        queries: [query],
-        answers: answers
-      })
+        queries: [{ name: req.name, type: req.type, dnsClass: fbs.DnsClass.IN }],
+      }))
     }).catch(reject)
   })
 }
