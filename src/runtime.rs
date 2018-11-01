@@ -72,9 +72,11 @@ extern crate tokio_fs;
 extern crate tokio_codec;
 use self::tokio_codec::{BytesCodec, FramedRead};
 
+use cache::*;
 use ops; // src/ops/
 use utils::*;
 
+use config::CONFIG;
 use sqlite_cache;
 
 #[derive(Debug)]
@@ -129,6 +131,7 @@ pub struct Runtime {
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
+  pub cache_store: Box<CacheStore + 'static + Send>,
 }
 
 static JSINIT: Once = Once::new();
@@ -185,6 +188,14 @@ impl Runtime {
       streams: Mutex::new(HashMap::new()),
       http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
       name: name.unwrap_or("v8".to_string()),
+      cache_store: Box::new(sqlite_cache::SqliteCacheStore::new(match CONFIG
+        .read()
+        .unwrap()
+        .get::<String>("cache.sqlite.filename")
+      {
+        Ok(s) => s,
+        Err(_e) => "cache.db".to_string(),
+      })),
     });
 
     (*rt).ptr.0 = unsafe {
@@ -654,11 +665,11 @@ fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let spawnres = rt
-    .event_loop
-    .lock()
-    .unwrap()
-    .spawn(sqlite_cache::del(key).map_err(|e| error!("error cache del future! {:?}", e)));
+  let spawnres = rt.event_loop.lock().unwrap().spawn(
+    rt.cache_store
+      .del(key)
+      .map_err(|e| error!("error cache del future! {:?}", e)),
+  );
   if let Err(err) = spawnres {
     return odd_future(format!("{}", err).into());
   }
@@ -674,7 +685,9 @@ fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let rt = ptr.to_runtime();
 
   let spawnres = rt.event_loop.lock().unwrap().spawn(
-    sqlite_cache::expire(key, ttl).map_err(|e| error!("error cache expire future! {:?}", e)),
+    rt.cache_store
+      .expire(key, ttl)
+      .map_err(|e| error!("error cache expire future! {:?}", e)),
   );
   if let Err(err) = spawnres {
     return odd_future(format!("{}", err).into());
@@ -703,7 +716,7 @@ fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     Some(msg.ttl())
   };
 
-  let fut = sqlite_cache::set(key, ttl, Box::new(recver));
+  let fut = rt.cache_store.set(key, Box::new(recver), ttl);
 
   let spawnres = rt.event_loop.lock().unwrap().spawn(
     fut
@@ -741,16 +754,17 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let key = msg.key().unwrap().to_string();
 
-  let maybe_stream = match sqlite_cache::get(key) {
+  let rt = ptr.to_runtime();
+
+  let maybe_stream = match rt.cache_store.get(key) {
     Ok(s) => s,
     Err(e) => match e {
-      sqlite_cache::CacheError::IoErr(ioe) => return odd_future(ioe.into()),
-      sqlite_cache::CacheError::Unknown => return odd_future("unknown error".to_string().into()),
-      sqlite_cache::CacheError::RusqliteErr(e) => return odd_future(format!("{}", e).into()),
+      CacheError::NotFound => return odd_future("not found".to_string().into()),
+      CacheError::IoErr(ioe) => return odd_future(ioe.into()),
+      CacheError::Unknown => return odd_future("unknown error".to_string().into()),
+      CacheError::Failure(e) => return odd_future(e.into()),
     },
   };
-
-  let rt = ptr.to_runtime();
 
   let got = maybe_stream.is_some();
 
@@ -1572,8 +1586,6 @@ fn create_collection(con: &rusqlite::Connection, name: &String) -> rusqlite::Res
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-
   #[test]
   fn test_runtime_new() {}
 }

@@ -27,4 +27,5 @@ pub mod runtime;
 mod sqlite_cache;
 pub mod utils;
 
+pub mod cache;
 pub mod config;
