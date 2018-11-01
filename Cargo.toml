@@ -28,9 +28,9 @@ sourcemap = "2.2"
 rand = "0.5"
 libfly = { path = "libfly" }
 tokio-udp = "0.1"
-trust-dns-server = { git = "https://github.com/bluejekyll/trust-dns", rev = "dc133e91c4d1461aece3ddcb9525dce824d2baa1" }
-trust-dns = { git = "https://github.com/bluejekyll/trust-dns", rev = "dc133e91c4d1461aece3ddcb9525dce824d2baa1" }
-trust-dns-proto = { git = "https://github.com/bluejekyll/trust-dns", rev = "dc133e91c4d1461aece3ddcb9525dce824d2baa1" }
+trust-dns-server = "0.15"
+trust-dns = "0.15"
+trust-dns-proto = "*"
 tokio-fs = "0.1"
 tokio-codec = "0.1"
 glob = "0.2"
