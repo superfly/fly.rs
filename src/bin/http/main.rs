@@ -12,24 +12,22 @@ extern crate libfly;
 extern crate hyper;
 use hyper::body::Payload;
 use hyper::header;
-use hyper::rt::{poll_fn, Future, Stream};
+use hyper::rt::{Future, Stream};
 use hyper::service::{service_fn, Service};
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::{Body, Request, Response, Server, StatusCode};
 
-#[macro_use]
 extern crate futures;
+use futures::sync::mpsc;
 use futures::sync::oneshot;
 use std::sync::mpsc::RecvError;
 
 use tokio::prelude::*;
 
 use fly::runtime::*;
-use fly::utils::*;
 
 use env_logger::Env;
 
 extern crate flatbuffers;
-use flatbuffers::FlatBufferBuilder;
 
 use std::alloc::System;
 #[global_allocator]
@@ -41,8 +39,6 @@ pub static mut RUNTIME: Option<Box<Runtime>> = None;
 
 pub struct FlyServer;
 
-use fly::msg;
-
 impl Service for FlyServer {
     type ReqBody = Body;
     type ResBody = Body;
@@ -50,170 +46,113 @@ impl Service for FlyServer {
     type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let (parts, mut body) = req.into_parts();
-        let url = {
-            format!(
-                "http://{}{}",
-                match parts.headers.get(header::HOST) {
-                    Some(v) => match v.to_str() {
-                        Ok(s) => s,
-                        Err(e) => {
-                            error!("error stringifying host: {}", e);
-                            return Box::new(future::ok(
-                                Response::builder()
-                                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                                    .body(Body::empty())
-                                    .unwrap(),
-                            ));
-                        }
-                    },
-                    None => {
+        let (parts, body) = req.into_parts();
+        let host = {
+            match parts.headers.get(header::HOST) {
+                Some(v) => match v.to_str() {
+                    Ok(s) => s,
+                    Err(e) => {
+                        error!("error stringifying host: {}", e);
                         return Box::new(future::ok(
                             Response::builder()
-                                .status(StatusCode::NOT_FOUND)
-                                .body(Body::empty())
+                                .status(StatusCode::BAD_REQUEST)
+                                .body(Body::from("Bad host header"))
                                 .unwrap(),
-                        ))
+                        ));
                     }
                 },
-                parts.uri.path_and_query().unwrap()
-            )
+                None => {
+                    return Box::new(future::ok(
+                        Response::builder()
+                            .status(StatusCode::NOT_FOUND)
+                            .body(Body::empty())
+                            .unwrap(),
+                    ))
+                }
+            }
         };
 
-        let builder = &mut FlatBufferBuilder::new();
-
-        let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst);
-
-        let req_url = builder.create_string(url.as_str());
-
-        let req_method = match parts.method {
-            Method::GET => msg::HttpMethod::Get,
-            Method::POST => msg::HttpMethod::Post,
-            _ => unimplemented!(),
-        };
-
-        let headers: Vec<_> = parts
-            .headers
-            .iter()
-            .map(|(key, value)| {
-                let key = builder.create_string(key.as_str());
-                let value = builder.create_string(value.to_str().unwrap());
-                msg::HttpHeader::create(
-                    builder,
-                    &msg::HttpHeaderArgs {
-                        key: Some(key),
-                        value: Some(value),
-                        ..Default::default()
-                    },
-                )
-            }).collect();
-
-        let req_headers = builder.create_vector(&headers);
-
-        let req_msg = msg::HttpRequest::create(
-            builder,
-            &msg::HttpRequestArgs {
-                id: req_id as u32,
-                method: req_method,
-                url: Some(req_url),
-                headers: Some(req_headers),
-                has_body: !body.is_end_stream(),
-                ..Default::default()
-            },
-        );
-
+        // TODO: match host with appropriate runtime when multiple apps are supported.
         let rt = unsafe { RUNTIME.as_ref().unwrap() };
-        let rtptr = rt.ptr;
 
-        let to_send = fly_buf_from(
-            serialize_response(
-                0,
-                builder,
-                msg::BaseArgs {
-                    msg: Some(req_msg.as_union_value()),
-                    msg_type: msg::Any::HttpRequest,
-                    ..Default::default()
-                },
-            ).unwrap(),
-        );
-
-        let (p, c) = oneshot::channel::<JsHttpResponse>();
-        {
-            rt.responses.lock().unwrap().insert(req_id as u32, p);
+        if rt.fetch_events.is_none() {
+            return Box::new(future::ok(
+                Response::builder()
+                    .status(StatusCode::SERVICE_UNAVAILABLE)
+                    .body(Body::empty())
+                    .unwrap(),
+            ));
         }
 
-        {
-            let rtptr = rtptr.clone();
-            let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
-                rtptr.send(to_send, None);
-                Ok(())
-            }));
-            if let Err(err) = spawnres {
-                error!("error spawning: {}", err);
-            }
-        }
+        let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
-        if !body.is_end_stream() {
-            let spawnres = rt.event_loop.lock().unwrap().spawn(
-                poll_fn(move || {
-                    while let Some(chunk) = try_ready!(body.poll_data()) {
-                        let mut bytes = chunk.into_bytes();
-                        let builder = &mut FlatBufferBuilder::new();
-                        // let fb_bytes = builder.create_vector(&bytes);
-                        let chunk_msg = msg::StreamChunk::create(
-                            builder,
-                            &msg::StreamChunkArgs {
-                                id: req_id as u32,
-                                // bytes: Some(fb_bytes),
-                                done: body.is_end_stream(),
-                            },
-                        );
-                        let to_send = fly_buf_from(
-                            serialize_response(
-                                0,
-                                builder,
-                                msg::BaseArgs {
-                                    msg: Some(chunk_msg.as_union_value()),
-                                    msg_type: msg::Any::StreamChunk,
-                                    ..Default::default()
-                                },
-                            ).unwrap(),
-                        );
-                        unsafe {
-                            libfly::js_send(
-                                rtptr.0,
-                                to_send,
-                                libfly::fly_buf {
-                                    alloc_ptr: 0 as *mut u8,
-                                    alloc_len: 0,
-                                    data_ptr: (*bytes).as_ptr() as *mut u8,
-                                    data_len: bytes.len(),
-                                },
-                            )
-                        };
+        let url = format!("http://{}{}", host, parts.uri.path_and_query().unwrap());
+
+        // double checking, could've been removed since last check (maybe not? may need a lock)
+        if let Some(ref ch) = rt.fetch_events {
+            let rx = {
+                let (tx, rx) = oneshot::channel::<JsHttpResponse>();
+                rt.responses.lock().unwrap().insert(req_id, tx);
+                rx
+            };
+            let sendres = ch.unbounded_send(JsHttpRequest {
+                id: req_id,
+                method: parts.method,
+                url: url,
+                headers: parts.headers.clone(),
+                body: if body.is_end_stream() {
+                    None
+                } else {
+                    let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
+                    let spawnres = rt.event_loop.lock().unwrap().spawn(
+                        body.map_err(|e| error!("error reading body chunk: {}", e))
+                            .for_each(move |chunk| {
+                                let sendres = tx.unbounded_send(chunk.into_bytes().to_vec());
+                                if let Err(e) = sendres {
+                                    error!("error sending js body chunk: {}", e);
+                                }
+                                Ok(())
+                            }),
+                    );
+                    if let Err(e) = spawnres {
+                        error!("error spawning body stream: {}", e);
                     }
-                    Ok(Async::Ready(()))
-                }).map_err(|e: hyper::Error| println!("hyper server error: {}", e)),
-            );
-            if let Err(err) = spawnres {
-                error!("error spawning: {}", err);
+                    Some(JsBody::Stream(rx))
+                },
+            });
+
+            if let Err(e) = sendres {
+                error!("error sending js http request: {}", e);
+                return Box::new(future::ok(
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::empty())
+                        .unwrap(),
+                ));
             }
+
+            Box::new(rx.and_then(|res: JsHttpResponse| {
+                let (mut parts, mut body) = Response::<Body>::default().into_parts();
+                parts.headers = res.headers;
+                parts.status = res.status;
+
+                if let Some(js_body) = res.body {
+                    body = match js_body {
+                        JsBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
+                        JsBody::Static(b) => Body::from(b),
+                    };
+                }
+
+                future::ok(Response::from_parts(parts, body))
+            }))
+        } else {
+            Box::new(future::ok(
+                Response::builder()
+                    .status(StatusCode::SERVICE_UNAVAILABLE)
+                    .body(Body::empty())
+                    .unwrap(),
+            ))
         }
-
-        Box::new(c.and_then(|res: JsHttpResponse| {
-            let (mut parts, mut body) = Response::<Body>::default().into_parts();
-            parts.headers = res.headers;
-            parts.status = res.status;
-
-            if let Some(js_body) = res.body {
-                body = match js_body {
-                    JsHttpResponseBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
-                    JsHttpResponseBody::Static(b) => Body::from(b),
-                };
-            }
-
-            future::ok(Response::from_parts(parts, body))
-        }))
     }
 }
 
@@ -249,11 +188,10 @@ fn main() {
         EVENT_LOOP_HANDLE = Some(main_el.executor());
     };
 
-    let runtime = {
-        let rt = Runtime::new(None);
-        rt.eval_file(matches.value_of("input").unwrap());
-        rt
-    };
+    let mut runtime = Runtime::new(None);
+    runtime
+        .main_eval_file(matches.value_of("input").unwrap())
+        .unwrap();
     unsafe {
         RUNTIME = Some(runtime);
     };

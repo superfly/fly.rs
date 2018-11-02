@@ -1,3 +1,4 @@
+extern crate http;
 extern crate libc;
 
 use tokio;
@@ -76,8 +77,10 @@ use config::CONFIG;
 use sqlite_cache;
 use sqlite_data;
 
+extern crate trust_dns as dns;
+
 #[derive(Debug)]
-pub enum JsHttpResponseBody {
+pub enum JsBody {
   Stream(mpsc::UnboundedReceiver<Vec<u8>>),
   Static(Vec<u8>),
 }
@@ -86,7 +89,16 @@ pub enum JsHttpResponseBody {
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
   pub status: StatusCode,
-  pub body: Option<JsHttpResponseBody>,
+  pub body: Option<JsBody>,
+}
+
+#[derive(Debug)]
+pub struct JsHttpRequest {
+  pub id: u32,
+  pub method: http::Method,
+  pub url: String,
+  pub headers: HeaderMap,
+  pub body: Option<JsBody>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -122,7 +134,6 @@ pub struct Runtime {
   pub ptr: JsRuntime,
   pub name: String,
   pub event_loop: Mutex<tokio::runtime::current_thread::Handle>,
-  pub quit_ch: mpsc::Sender<()>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
@@ -130,62 +141,70 @@ pub struct Runtime {
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
   pub cache_store: Box<CacheStore + 'static + Send>,
   pub data_store: Box<DataStore + 'static + Send>,
+  pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
+  pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
+  ready_ch: Option<oneshot::Sender<()>>,
 }
 
 static JSINIT: Once = Once::new();
 static NEXT_RUNTIME_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
-impl Runtime {
-  pub fn new(name: Option<String>) -> Box<Self> {
-    JSINIT.call_once(|| unsafe { js_init() });
+fn init_event_loop() -> (current_thread::Handle, oneshot::Sender<()>) {
+  let (c, p) = oneshot::channel::<(current_thread::Handle, oneshot::Sender<()>)>();
+  thread::Builder::new()
+    .name(format!(
+      "runtime-loop-{}",
+      NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
+    )).spawn(move || {
+      let mut l = current_thread::Runtime::new().unwrap();
+      let (txready, rxready) = oneshot::channel::<()>();
+      let (txquit, rxquit) = oneshot::channel::<()>();
 
-    let (c, p) = oneshot::channel::<(current_thread::Handle, mpsc::Sender<()>)>();
-    thread::Builder::new()
-      .name(format!(
-        "runtime-loop-{}",
-        NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
-      )).spawn(move || {
-        let mut l = current_thread::Runtime::new().unwrap();
-        let (txrt, rxrt) = mpsc::channel::<()>(1);
-        let (txquit, rxquit) = mpsc::channel::<()>(1);
-        unsafe {
-          EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(Box::new(
-            rxrt
-              .into_future()
-              .map_err(|_| info!("error rt ch recv"))
-              .and_then(|_| {
-                info!("main event loop notified of quitting.");
-                Ok(())
-              }),
-          ))
-        };
-        l.spawn(Box::new(
+      unsafe {
+        EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(Box::new(
           rxquit
-            .into_future()
-            .map_err(|_| info!("error quit ch recv"))
-            .and_then(move |_| {
-              info!("quitting rt event loop...");
-              txrt.clone().try_send(()).unwrap();
+            .map_err(|_| info!("error runtime quit chan recv"))
+            .and_then(|_| {
+              info!("main event loop notified of quitting.");
               Ok(())
             }),
-        ));
-        c.send((l.handle(), txquit)).unwrap();
+        ))
+      };
 
-        l.run()
-      }).unwrap();
+      l.spawn(rxready.map_err(|_| error!("error recving ready signal for runtime")));
 
-    let (rthandle, txquit) = p.wait().unwrap();
+      c.send((l.handle(), txready)).unwrap();
+      match l.run() {
+        Ok(_) => {}
+        Err(e) => error!("error running runtime event loop: {}", e),
+      };
+      warn!("Event loop has run its course.");
+      match txquit.send(()) {
+        Ok(_) => {}
+        Err(_) => error!("error sending quit signal for runtime"),
+      };
+    }).unwrap();
+  p.wait().unwrap()
+}
+
+impl Runtime {
+  pub fn new(name: Option<String>) -> Box<Runtime> {
+    JSINIT.call_once(|| unsafe { js_init() });
+
+    let (rthandle, txready) = init_event_loop();
 
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(0 as *const js_runtime),
+      name: name.unwrap_or("v8".to_string()),
       event_loop: Mutex::new(rthandle),
-      quit_ch: txquit,
+      ready_ch: Some(txready),
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
       dns_responses: Mutex::new(HashMap::new()),
       streams: Mutex::new(HashMap::new()),
       http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
-      name: name.unwrap_or("v8".to_string()),
+      fetch_events: None,
+      resolv_events: None,
       cache_store: Box::new(sqlite_cache::SqliteCacheStore::new(match CONFIG
         .read()
         .unwrap()
@@ -217,22 +236,51 @@ impl Runtime {
     rt
   }
 
-  pub fn eval(&self, filename: &str, code: &str) {
-    unsafe {
-      js_eval(
-        self.ptr.0,
-        CString::new(filename).unwrap().as_ptr(),
-        CString::new(code).unwrap().as_ptr(),
-      )
+  pub fn main_eval(
+    &mut self,
+    filename: &str,
+    code: &str,
+  ) -> Result<(), tokio::executor::SpawnError> {
+    match self.eval(filename, code) {
+      Err(e) => return Err(e),
+      _ => {}
     };
+
+    self.ready_ch.take().unwrap().send(());
+
+    Ok(())
   }
 
-  pub fn eval_file(&self, filename: &str) {
+  pub fn main_eval_file(&mut self, filename: &str) -> Result<(), tokio::executor::SpawnError> {
     let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
 
-    self.eval(filename, contents.as_str());
+    self.main_eval(filename, contents.as_str())
+  }
+
+  pub fn eval(&self, filename: &str, code: &str) -> Result<(), tokio::executor::SpawnError> {
+    let cfilename = CString::new(filename).unwrap();
+    let ccode = CString::new(code).unwrap();
+    let ptr = self.ptr;
+    self
+      .event_loop
+      .lock()
+      .unwrap()
+      .spawn(future::lazy(move || -> Result<(), ()> {
+        unsafe {
+          js_eval(ptr.0, cfilename.as_ptr(), ccode.as_ptr());
+        }
+        Ok(())
+      }))
+  }
+
+  pub fn eval_file(&self, filename: &str) -> Result<(), tokio::executor::SpawnError> {
+    let mut file = File::open(filename).unwrap();
+    let mut contents = String::new();
+    file.read_to_string(&mut contents).unwrap();
+
+    self.eval(filename, contents.as_str())
   }
 
   pub fn heap_statistics(&self) -> js_heap_stats {
@@ -245,12 +293,10 @@ impl Runtime {
   }
 
   pub fn dispose(&self) {
-    self.quit_ch.clone().try_send(()).unwrap();
+    // self.quit_ch.clone().try_send(()).unwrap();
     unsafe { js_runtime_dispose(self.ptr.0) };
   }
 }
-
-extern crate tokio_io_pool;
 
 #[cfg(debug_assertions)]
 lazy_static! {
@@ -368,6 +414,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::DataDropCollection => op_data_drop_coll,
     msg::Any::DnsQuery => ops::dns::op_dns_query,
     msg::Any::DnsResponse => ops::dns::op_dns_response,
+    msg::Any::AddEventListener => op_add_event_ln,
     _ => unimplemented!(),
   };
 
@@ -460,7 +507,6 @@ fn op_timer_start(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   };
   // }
   Box::new(fut.then(move |result| {
-    // println!("we're ready to notify");
     let builder = &mut FlatBufferBuilder::new();
     let msg = msg::TimerReady::create(
       builder,
@@ -648,6 +694,218 @@ fn op_crypto_digest(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> 
       },
     ))
   }))
+}
+
+fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_add_event_listener().unwrap();
+
+  match msg.event() {
+    msg::EventType::Fetch => {
+      let (tx, rx) = mpsc::unbounded::<JsHttpRequest>();
+      let rt = ptr.to_runtime();
+      rt.event_loop
+        .lock()
+        .unwrap()
+        .spawn(
+          rx.map_err(|_| error!("error event receiving http request"))
+            .for_each(move |req| {
+              let builder = &mut FlatBufferBuilder::new();
+
+              let req_url = builder.create_string(req.url.as_str());
+
+              let req_method = match req.method {
+                Method::GET => msg::HttpMethod::Get,
+                Method::POST => msg::HttpMethod::Post,
+                _ => unimplemented!(),
+              };
+
+              let headers: Vec<_> = req
+                .headers
+                .iter()
+                .map(|(key, value)| {
+                  let key = builder.create_string(key.as_str());
+                  let value = builder.create_string(value.to_str().unwrap());
+                  msg::HttpHeader::create(
+                    builder,
+                    &msg::HttpHeaderArgs {
+                      key: Some(key),
+                      value: Some(value),
+                      ..Default::default()
+                    },
+                  )
+                }).collect();
+
+              let req_headers = builder.create_vector(&headers);
+
+              let req_msg = msg::HttpRequest::create(
+                builder,
+                &msg::HttpRequestArgs {
+                  id: req.id,
+                  method: req_method,
+                  url: Some(req_url),
+                  headers: Some(req_headers),
+                  has_body: req.body.is_some(),
+                  ..Default::default()
+                },
+              );
+
+              let to_send = fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(req_msg.as_union_value()),
+                    msg_type: msg::Any::HttpRequest,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              );
+
+              ptr.send(to_send, None);
+
+              if let Some(jsbody) = req.body {
+                if let JsBody::Stream(body) = jsbody {
+                  let req_id = req.id;
+                  let rt = ptr.to_runtime();
+                  let spawnres = rt.event_loop.lock().unwrap().spawn(
+                    body
+                      .map_err(|_| error!("error receiving body chunk :/"))
+                      .for_each(move |bytes: Vec<u8>| {
+                        let builder = &mut FlatBufferBuilder::new();
+                        // let fb_bytes = builder.create_vector(&bytes);
+                        let chunk_msg = msg::StreamChunk::create(
+                          builder,
+                          &msg::StreamChunkArgs {
+                            id: req_id,
+                            done: false,
+                          },
+                        );
+                        let to_send = fly_buf_from(
+                          serialize_response(
+                            0,
+                            builder,
+                            msg::BaseArgs {
+                              msg: Some(chunk_msg.as_union_value()),
+                              msg_type: msg::Any::StreamChunk,
+                              ..Default::default()
+                            },
+                          ).unwrap(),
+                        );
+                        ptr.send(
+                          to_send,
+                          Some(fly_buf {
+                            alloc_ptr: 0 as *mut u8,
+                            alloc_len: 0,
+                            data_ptr: (*bytes).as_ptr() as *mut u8,
+                            data_len: bytes.len(),
+                          }),
+                        );
+                        Ok(())
+                      }),
+                  );
+                  if let Err(err) = spawnres {
+                    error!("error spawning: {}", err);
+                  }
+                }
+              }
+
+              Ok(())
+            }),
+        ).unwrap(); // TODO: don't
+      rt.fetch_events = Some(tx);
+    }
+    msg::EventType::Resolv => {
+      let (tx, rx) = mpsc::unbounded::<ops::dns::JsDnsRequest>();
+      let rt = ptr.to_runtime();
+      rt.event_loop
+        .lock()
+        .unwrap()
+        .spawn(
+          rx.map_err(|_| error!("error event receiving http request"))
+            .for_each(move |req| {
+              let builder = &mut FlatBufferBuilder::new();
+
+              let queries: Vec<_> = req
+                .queries
+                .iter()
+                .map(|q| {
+                  debug!("query: {:?}", q);
+                  use self::dns::rr::{DNSClass, Name, RecordType};
+                  let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
+                  let rr_type = match q.query_type() {
+                    RecordType::A => msg::DnsRecordType::A,
+                    RecordType::AAAA => msg::DnsRecordType::AAAA,
+                    RecordType::AXFR => msg::DnsRecordType::AXFR,
+                    RecordType::CAA => msg::DnsRecordType::CAA,
+                    RecordType::CNAME => msg::DnsRecordType::CNAME,
+                    RecordType::IXFR => msg::DnsRecordType::IXFR,
+                    RecordType::MX => msg::DnsRecordType::MX,
+                    RecordType::NS => msg::DnsRecordType::NS,
+                    RecordType::NULL => msg::DnsRecordType::NULL,
+                    RecordType::OPT => msg::DnsRecordType::OPT,
+                    RecordType::PTR => msg::DnsRecordType::PTR,
+                    RecordType::SOA => msg::DnsRecordType::SOA,
+                    RecordType::SRV => msg::DnsRecordType::SRV,
+                    RecordType::TLSA => msg::DnsRecordType::TLSA,
+                    RecordType::TXT => msg::DnsRecordType::TXT,
+                    _ => unimplemented!(),
+                  };
+                  let dns_class = match q.query_class() {
+                    DNSClass::IN => msg::DnsClass::IN,
+                    DNSClass::CH => msg::DnsClass::CH,
+                    DNSClass::HS => msg::DnsClass::HS,
+                    DNSClass::NONE => msg::DnsClass::NONE,
+                    DNSClass::ANY => msg::DnsClass::ANY,
+                    _ => unimplemented!(),
+                  };
+
+                  msg::DnsQuery::create(
+                    builder,
+                    &msg::DnsQueryArgs {
+                      name: Some(name),
+                      rr_type: rr_type,
+                      dns_class: dns_class,
+                      ..Default::default()
+                    },
+                  )
+                }).collect();
+
+              let req_queries = builder.create_vector(&queries);
+
+              let req_msg = msg::DnsRequest::create(
+                builder,
+                &msg::DnsRequestArgs {
+                  id: req.id,
+                  message_type: match req.message_type {
+                    dns::op::MessageType::Query => msg::DnsMessageType::Query,
+                    _ => unimplemented!(),
+                  },
+                  queries: Some(req_queries),
+                  ..Default::default()
+                },
+              );
+
+              let to_send = fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(req_msg.as_union_value()),
+                    msg_type: msg::Any::DnsRequest,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              );
+
+              ptr.send(to_send, None);
+              Ok(())
+            }),
+        ).unwrap(); // TODO: don't
+      rt.resolv_events = Some(tx);
+    }
+  };
+
+  ok_future(None)
 }
 
 use super::NEXT_EVENT_ID;
@@ -916,7 +1174,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           if let Err(_) = p.send(Ok(JsHttpResponse {
             headers: HeaderMap::new(),
             status: StatusCode::OK,
-            body: Some(JsHttpResponseBody::Stream(rx)),
+            body: Some(JsBody::Stream(rx)),
           })) {
             error!("error sending http response");
             return Ok(());
@@ -1020,7 +1278,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
       if let Err(_) = p.send(Ok(JsHttpResponse {
         headers: HeaderMap::new(),
         status: StatusCode::OK,
-        body: Some(JsHttpResponseBody::Stream(rx)),
+        body: Some(JsBody::Stream(rx)),
       })) {
         error!("error sending http response");
         return Ok(());
@@ -1218,84 +1476,79 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let fut = rt
-    .http_client
-    .request(req)
-    // .map_err(move |e| {
-    //   perr.send(Err(e.into()));
-    // })
-    .then(move |reserr| {
-      if let Err(err) = reserr {
-        if let Err(_) = p.send(Err(err.into())) {
-          error!("error sending error for http response :/");
-        }
-        return Ok(());
+  let fut = rt.http_client.request(req).then(move |reserr| {
+    debug!("got http response (or error)");
+    if let Err(err) = reserr {
+      if let Err(_) = p.send(Err(err.into())) {
+        error!("error sending error for http response :/");
       }
+      return Ok(());
+    }
 
-      let res = reserr.unwrap(); // should be safe.
+    let res = reserr.unwrap(); // should be safe.
 
-      let (parts, mut body) = res.into_parts();
+    let (parts, mut body) = res.into_parts();
 
-      let mut stream_rx: Option<JsHttpResponseBody> = None;
-      if !body.is_end_stream() {
-        let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-        stream_rx = Some(JsHttpResponseBody::Stream(rx));
-        let mut streams = ptr.to_runtime().streams.lock().unwrap();
-        streams.insert(req_id, tx);
+    let mut stream_rx: Option<JsBody> = None;
+    if !body.is_end_stream() {
+      let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
+      stream_rx = Some(JsBody::Stream(rx));
+      let mut streams = ptr.to_runtime().streams.lock().unwrap();
+      streams.insert(req_id, tx);
+    }
+
+    if let Err(_) = p.send(Ok(JsHttpResponse {
+      headers: parts.headers,
+      status: parts.status,
+      body: stream_rx,
+    })) {
+      error!("error sending http response");
+      return Ok(());
+    }
+
+    if !body.is_end_stream() {
+      let rt = ptr.to_runtime(); // like a clone
+      let spawnres = rt.event_loop.lock().unwrap().spawn(
+        poll_fn(move || {
+          while let Some(chunk) = try_ready!(body.poll_data()) {
+            let mut bytes = chunk.into_bytes();
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: body.is_end_stream(),
+              },
+            );
+            ptr.send(
+              fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(chunk_msg.as_union_value()),
+                    msg_type: msg::Any::StreamChunk,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              ),
+              Some(fly_buf {
+                alloc_ptr: 0 as *mut u8,
+                alloc_len: 0,
+                data_ptr: (*bytes).as_ptr() as *mut u8,
+                data_len: bytes.len(),
+              }),
+            );
+          }
+          Ok(Async::Ready(()))
+        }).map_err(|e: hyper::Error| println!("hyper error: {}", e)),
+      );
+      if let Err(err) = spawnres {
+        error!("error spawning http res stream: {}", err);
       }
-
-      if let Err(_) = p.send(Ok(JsHttpResponse {
-        headers: parts.headers,
-        status: parts.status,
-        body: stream_rx,
-      })) {
-        error!("error sending http response");
-        return Ok(());
-      }
-
-      if !body.is_end_stream() {
-        let rt = ptr.to_runtime(); // like a clone
-        let spawnres = rt.event_loop.lock().unwrap().spawn(
-          poll_fn(move || {
-            while let Some(chunk) = try_ready!(body.poll_data()) {
-              let mut bytes = chunk.into_bytes();
-              let builder = &mut FlatBufferBuilder::new();
-              let chunk_msg = msg::StreamChunk::create(
-                builder,
-                &msg::StreamChunkArgs {
-                  id: req_id,
-                  done: body.is_end_stream(),
-                },
-              );
-              ptr.send(
-                fly_buf_from(
-                  serialize_response(
-                    0,
-                    builder,
-                    msg::BaseArgs {
-                      msg: Some(chunk_msg.as_union_value()),
-                      msg_type: msg::Any::StreamChunk,
-                      ..Default::default()
-                    },
-                  ).unwrap(),
-                ),
-                Some(fly_buf {
-                  alloc_ptr: 0 as *mut u8,
-                  alloc_len: 0,
-                  data_ptr: (*bytes).as_ptr() as *mut u8,
-                  data_len: bytes.len(),
-                }),
-              );
-            }
-            Ok(Async::Ready(()))
-          }).map_err(|e: hyper::Error| println!("hyper error: {}", e)),
-        );
-        if let Err(err) = spawnres {
-          error!("error spawning http res stream: {}", err);
-        }
-      }
-      Ok(())
-    });
+    }
+    Ok(())
+  });
 
   let fut2 = c
     .map_err(|e| {
@@ -1379,7 +1632,7 @@ fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let mut body: Option<JsHttpResponseBody> = None;
+  let mut body: Option<JsBody> = None;
   let has_body = msg.has_body();
   if has_body {
     if raw.data_len == 0 {
@@ -1389,9 +1642,9 @@ fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
         let mut streams = rt.streams.lock().unwrap();
         streams.insert(req_id, sender);
       }
-      body = Some(JsHttpResponseBody::Stream(recver));
+      body = Some(JsBody::Stream(recver));
     } else {
-      body = Some(JsHttpResponseBody::Static(
+      body = Some(JsBody::Static(
         unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec(),
       ));
     }

@@ -17,17 +17,20 @@ const ROLLUP_BROWSER: &'static [u8] =
 const BUILDER_CODE: &'static [u8] = include_bytes!("./builder.js");
 
 fn main() {
-  let rt = Runtime::new(None);
-  rt.eval("rollup.browser.js", str::from_utf8(ROLLUP_BROWSER).unwrap());
-  rt.eval("builder.js", str::from_utf8(BUILDER_CODE).unwrap());
-  let args: Vec<String> = env::args().collect();
-
   let mut main_el = tokio::runtime::Runtime::new().unwrap();
   unsafe {
     EVENT_LOOP_HANDLE = Some(main_el.executor());
   };
 
-  rt.eval("<no file>", format!("buildFn('{}')", &args[1]).as_str());
+  let mut rt = Runtime::new(None);
+  rt.eval("rollup.browser.js", str::from_utf8(ROLLUP_BROWSER).unwrap())
+    .unwrap();
+  rt.eval("builder.js", str::from_utf8(BUILDER_CODE).unwrap())
+    .unwrap();
+  let args: Vec<String> = env::args().collect();
+
+  rt.main_eval("<no file>", format!("buildFn('{}')", &args[1]).as_str())
+    .unwrap();
 
   main_el
     .block_on(future::lazy(|| -> Result<(), ()> {

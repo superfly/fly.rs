@@ -6,8 +6,7 @@ authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 [dependencies]
 tokio = "0.1"
 tokio-signal = "0.2"
-futures = "0.1"
-tokio-io-pool = "*"
+futures = "0.1.25"
 log = "*"
 env_logger = "*"
 lazy_static = "1.1"
@@ -16,7 +15,7 @@ libc = "*"
 flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
 hyper = "0.12"
 hyper-tls = "0.3"
-http = "0.1"
+http = "*"
 rusqlite = {version="0.15", features=["bundled", "blob", "chrono"]}
 r2d2 = "0.8"
 r2d2_sqlite = "0.7"

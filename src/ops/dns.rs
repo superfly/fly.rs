@@ -34,6 +34,13 @@ pub struct JsDnsResponse {
 }
 
 #[derive(Debug)]
+pub struct JsDnsRequest {
+  pub id: u32,
+  pub message_type: dns::op::MessageType,
+  pub queries: Vec<dns::op::LowerQuery>,
+}
+
+#[derive(Debug)]
 pub struct JsDnsRecord {
   pub name: dns::rr::Name,
   pub rdata: dns::rr::RData,

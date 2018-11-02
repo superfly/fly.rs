@@ -71,6 +71,7 @@ function handleBody(base: fbs.Base, raw: Uint8Array) {
 export type DNSResponseFn = () => DNSResponse | Promise<DNSResponse>
 
 export function addEventListener(name: string, fn: Function) {
+  let event_type: fbs.EventType;
   switch (name) {
     case "fetch":
       listenerTable.set(fbs.Any.HttpRequest, function (base: fbs.Base) {
@@ -119,9 +120,10 @@ export function addEventListener(name: string, fn: Function) {
           }
         })
       })
+      event_type = fbs.EventType.Fetch;
       break;
 
-    case "resolv":
+    case "resolv": {
       listenerTable.set(fbs.Any.DnsRequest, function (base: fbs.Base) {
         let msg = new fbs.DnsRequest();
         base.msg(msg);
@@ -156,8 +158,14 @@ export function addEventListener(name: string, fn: Function) {
           }
         })
       })
+      event_type = fbs.EventType.Resolv;
       break;
+    }
   }
+  const fbb = flatbuffers.createBuilder();
+  fbs.AddEventListener.startAddEventListener(fbb);
+  fbs.AddEventListener.addEvent(fbb, event_type);
+  sendSync(fbb, fbs.Any.AddEventListener, fbs.AddEventListener.endAddEventListener(fbb))
 }
 
 function handleDNSError(id: number, err: Error) {

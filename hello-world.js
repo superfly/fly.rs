@@ -93,5 +93,4 @@ addEventListener("resolv", event => {
       }
     ], { authoritative: true })
   })
-
 })

@@ -13,7 +13,7 @@ extern crate trust_dns_server;
 use trust_dns_server::authority::{AuthLookup, MessageResponseBuilder};
 
 use trust_dns_proto::op::header::Header;
-use trust_dns_proto::rr::record_type::RecordType;
+use trust_dns_proto::op::response_code::ResponseCode;
 use trust_dns_proto::rr::{Record, RrsetRecords};
 use trust_dns_server::authority::authority::LookupRecords;
 
@@ -25,7 +25,6 @@ use trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerF
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 extern crate flatbuffers;
-use flatbuffers::FlatBufferBuilder;
 
 #[macro_use]
 extern crate log;
@@ -35,11 +34,8 @@ extern crate libfly;
 
 use tokio::prelude::*;
 
-use fly::msg;
-
 use fly::ops::dns::*;
 use fly::runtime::*;
-use fly::utils::*;
 
 use env_logger::Env;
 
@@ -72,11 +68,10 @@ fn main() {
     EVENT_LOOP_HANDLE = Some(main_el.executor());
   };
 
-  let runtime = {
-    let rt = Runtime::new(None);
-    rt.eval_file(matches.value_of("input").unwrap());
-    rt
-  };
+  let mut runtime = Runtime::new(None);
+  runtime
+    .main_eval_file(matches.value_of("input").unwrap())
+    .unwrap();
 
   let handler = DnsHandler { runtime };
 
@@ -114,100 +109,42 @@ impl RequestHandler for DnsHandler {
       req.message
     );
 
-    let builder = &mut FlatBufferBuilder::new();
-
     let eid = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
-    let queries: Vec<_> = req
-      .message
-      .queries()
-      .iter()
-      .map(|q| {
-        debug!("query: {:?}", q);
-        use self::dns::rr::{DNSClass, Name};
-        let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
-        let rr_type = match q.query_type() {
-          RecordType::A => msg::DnsRecordType::A,
-          RecordType::AAAA => msg::DnsRecordType::AAAA,
-          RecordType::AXFR => msg::DnsRecordType::AXFR,
-          RecordType::CAA => msg::DnsRecordType::CAA,
-          RecordType::CNAME => msg::DnsRecordType::CNAME,
-          RecordType::IXFR => msg::DnsRecordType::IXFR,
-          RecordType::MX => msg::DnsRecordType::MX,
-          RecordType::NS => msg::DnsRecordType::NS,
-          RecordType::NULL => msg::DnsRecordType::NULL,
-          RecordType::OPT => msg::DnsRecordType::OPT,
-          RecordType::PTR => msg::DnsRecordType::PTR,
-          RecordType::SOA => msg::DnsRecordType::SOA,
-          RecordType::SRV => msg::DnsRecordType::SRV,
-          RecordType::TLSA => msg::DnsRecordType::TLSA,
-          RecordType::TXT => msg::DnsRecordType::TXT,
-          _ => unimplemented!(),
-        };
-        let dns_class = match q.query_class() {
-          DNSClass::IN => msg::DnsClass::IN,
-          DNSClass::CH => msg::DnsClass::CH,
-          DNSClass::HS => msg::DnsClass::HS,
-          DNSClass::NONE => msg::DnsClass::NONE,
-          DNSClass::ANY => msg::DnsClass::ANY,
-          _ => unimplemented!(),
-        };
-
-        msg::DnsQuery::create(
-          builder,
-          &msg::DnsQueryArgs {
-            name: Some(name),
-            rr_type: rr_type,
-            dns_class: dns_class,
-            ..Default::default()
-          },
-        )
-      }).collect();
-
-    let req_queries = builder.create_vector(&queries);
-
-    let req_msg = msg::DnsRequest::create(
-      builder,
-      &msg::DnsRequestArgs {
-        id: eid,
-        message_type: msg::DnsMessageType::Query,
-        queries: Some(req_queries),
-        ..Default::default()
-      },
-    );
-
     let rt = &self.runtime;
-    let rtptr = rt.ptr;
 
-    let to_send = fly_buf_from(
-      serialize_response(
-        0,
-        builder,
-        msg::BaseArgs {
-          msg: Some(req_msg.as_union_value()),
-          msg_type: msg::Any::DnsRequest,
-          ..Default::default()
-        },
-      ).unwrap(),
-    );
-
-    let (p, c) = oneshot::channel::<JsDnsResponse>();
-    {
-      rt.dns_responses.lock().unwrap().insert(eid, p);
+    if rt.resolv_events.is_none() {
+      return res.send_response(
+        MessageResponseBuilder::new(Some(req.message.raw_queries())).error_msg(
+          req.message.id(),
+          req.message.op_code(),
+          ResponseCode::ServFail,
+        ),
+      );
     }
 
-    {
-      let rtptr = rtptr.clone();
-      rt.event_loop
-        .lock()
-        .unwrap()
-        .spawn(future::lazy(move || {
-          unsafe { libfly::js_send(rtptr.0, to_send, null_buf()) };
-          Ok(())
-        })).unwrap();
+    let ch = rt.resolv_events.as_ref().unwrap();
+    let rx = {
+      let (tx, rx) = oneshot::channel::<JsDnsResponse>();
+      rt.dns_responses.lock().unwrap().insert(eid, tx);
+      rx
+    };
+    let sendres = ch.unbounded_send(JsDnsRequest {
+      id: eid,
+      message_type: req.message.message_type(),
+      queries: req.message.queries().to_vec(),
+    });
+    if let Err(_e) = sendres {
+      return res.send_response(
+        MessageResponseBuilder::new(Some(req.message.raw_queries())).error_msg(
+          req.message.id(),
+          req.message.op_code(),
+          ResponseCode::ServFail,
+        ),
+      );
     }
 
-    let dns_res: JsDnsResponse = c.wait().unwrap();
+    let dns_res: JsDnsResponse = rx.wait().unwrap();
     let answers: Vec<Record> = dns_res
       .answers
       .iter()
@@ -220,7 +157,6 @@ impl RequestHandler for DnsHandler {
         )
       }).collect();
     let mut msg = MessageResponseBuilder::new(Some(req.message.raw_queries()));
-
     let msg = {
       msg.answers(AuthLookup::Records(LookupRecords::RecordsIter(
         RrsetRecords::RecordsOnly(answers.iter()),
@@ -238,7 +174,6 @@ impl RequestHandler for DnsHandler {
 
       msg.build(header)
     };
-
     res.send_response(msg)
   }
 }

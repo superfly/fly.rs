@@ -29,6 +29,7 @@ union Any {
   DnsQuery,
   DnsRequest,
   DnsResponse,
+  AddEventListener,
 }
 
 enum ErrorKind: byte {
@@ -223,6 +224,15 @@ table DataDel {
 }
 table DataDropCollection {
   collection: string;
+}
+
+enum EventType: byte {
+  Fetch = 0,
+  Resolv,
+}
+
+table AddEventListener {
+  event: EventType;
 }
 
 root_type Base;
