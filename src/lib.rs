@@ -27,14 +27,16 @@ pub static NEXT_EVENT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 pub mod errors;
 pub mod msg;
 pub mod ops;
-mod postgres_data;
-pub mod redis_stream;
 pub mod runtime;
-mod sqlite_cache;
-mod sqlite_data;
+
 pub mod utils;
 
 pub mod cache;
 pub mod data;
 
 pub mod settings;
+
+mod postgres_data;
+mod redis_cache;
+mod sqlite_cache;
+mod sqlite_data;

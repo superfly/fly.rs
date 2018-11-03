@@ -17,6 +17,11 @@ pub struct PostgresStoreConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RedisStoreConfig {
+  pub url: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub enum DataStore {
   Sqlite(SqliteStoreConfig),
   Postgres(PostgresStoreConfig),
@@ -25,6 +30,7 @@ pub enum DataStore {
 #[derive(Debug, Deserialize)]
 pub enum CacheStore {
   Sqlite(SqliteStoreConfig),
+  Redis(RedisStoreConfig),
 }
 
 #[derive(Debug, Deserialize)]

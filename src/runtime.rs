@@ -74,10 +74,12 @@ use ops; // src/ops/
 use utils::*;
 
 use postgres_data;
-use settings;
-use settings::SETTINGS;
+use redis_cache;
 use sqlite_cache;
 use sqlite_data;
+
+use settings;
+use settings::SETTINGS;
 
 extern crate trust_dns as dns;
 
@@ -213,6 +215,9 @@ impl Runtime {
         Some(ref store) => match store {
           settings::CacheStore::Sqlite(conf) => {
             Box::new(sqlite_cache::SqliteCacheStore::new(conf.filename.clone()))
+          }
+          settings::CacheStore::Redis(conf) => {
+            Box::new(redis_cache::RedisCacheStore::new(conf.url.clone()))
           }
         },
         None => Box::new(sqlite_cache::SqliteCacheStore::new("cache.db".to_string())),
