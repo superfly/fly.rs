@@ -1,6 +1,11 @@
 extern crate flatbuffers;
 extern crate hyper;
 
+extern crate serde;
+
+#[macro_use]
+extern crate serde_derive;
+
 #[macro_use]
 extern crate log;
 
@@ -22,6 +27,7 @@ pub static NEXT_EVENT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 pub mod errors;
 pub mod msg;
 pub mod ops;
+mod postgres_data;
 pub mod redis_stream;
 pub mod runtime;
 mod sqlite_cache;
@@ -31,4 +37,4 @@ pub mod utils;
 pub mod cache;
 pub mod data;
 
-pub mod config;
+pub mod settings;

@@ -20,6 +20,8 @@ rusqlite = {version="0.15", features=["bundled", "blob", "chrono"]}
 r2d2 = "0.8"
 r2d2_sqlite = "0.7"
 r2d2_redis = "0.8"
+r2d2_postgres = "0.14"
+postgres = "0.15"
 sha2 = "0.7"
 sha-1 = "0.7"
 url = "1.7"
@@ -29,6 +31,7 @@ libfly = { path = "libfly" }
 tokio-udp = "0.1"
 trust-dns-server = "0.15"
 trust-dns = "0.15"
+trust-dns-resolver = "0.10"
 trust-dns-proto = "*"
 tokio-fs = "0.1"
 tokio-codec = "0.1"
@@ -36,6 +39,8 @@ glob = "0.2"
 clap = "2.32"
 config = "0.9"
 chrono = "0.4"
+serde_derive = "1"
+serde = "1"
 
 [workspace]
 members = [

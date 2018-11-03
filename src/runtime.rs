@@ -73,7 +73,9 @@ use data::*;
 use ops; // src/ops/
 use utils::*;
 
-use config::CONFIG;
+use postgres_data;
+use settings;
+use settings::SETTINGS;
 use sqlite_cache;
 use sqlite_data;
 
@@ -193,6 +195,8 @@ impl Runtime {
 
     let (rthandle, txready) = init_event_loop();
 
+    let s = SETTINGS.read().unwrap();
+
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(0 as *const js_runtime),
       name: name.unwrap_or("v8".to_string()),
@@ -205,15 +209,25 @@ impl Runtime {
       http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
       fetch_events: None,
       resolv_events: None,
-      cache_store: Box::new(sqlite_cache::SqliteCacheStore::new(match CONFIG
-        .read()
-        .unwrap()
-        .get::<String>("cache.sqlite.filename")
-      {
-        Ok(s) => s,
-        Err(_e) => "cache.db".to_string(),
-      })),
-      data_store: Box::new(sqlite_data::SqliteDataStore::new("data.db".to_string())),
+      cache_store: match s.cache_store {
+        Some(ref store) => match store {
+          settings::CacheStore::Sqlite(conf) => {
+            Box::new(sqlite_cache::SqliteCacheStore::new(conf.filename.clone()))
+          }
+        },
+        None => Box::new(sqlite_cache::SqliteCacheStore::new("cache.db".to_string())),
+      },
+      data_store: match s.data_store {
+        Some(ref store) => match store {
+          settings::DataStore::Sqlite(conf) => {
+            Box::new(sqlite_data::SqliteDataStore::new(conf.filename.clone()))
+          }
+          settings::DataStore::Postgres(conf) => {
+            Box::new(postgres_data::PostgresDataStore::new(conf.url.clone()))
+          }
+        },
+        None => Box::new(sqlite_data::SqliteDataStore::new("data.db".to_string())),
+      },
     });
 
     (*rt).ptr.0 = unsafe {
@@ -1416,17 +1430,6 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
         },
       ))
     });
-
-  // unsafe {
-  //   match EVENT_LOOP_HANDLE {
-  //     Some(ref mut elh) => {
-  //       elh.spawn(fut);
-  //     }
-  //     None => {
-  //       rt.event_loop.lock().unwrap().spawn(fut);
-  //     }
-  //   }
-  // };
 
   Box::new(fut2)
 }

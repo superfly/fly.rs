@@ -3,7 +3,10 @@ use msg;
 
 extern crate trust_dns as dns;
 extern crate trust_dns_proto as dns_proto;
+extern crate trust_dns_resolver as dns_resolver;
 use self::dns::client::ClientHandle; // necessary for trait to be in scope
+
+use self::dns_resolver::config::ResolverConfig;
 
 use std::sync::Mutex;
 
@@ -14,8 +17,18 @@ use utils::*;
 use futures::Future;
 
 lazy_static! {
+  static ref DEFAULT_RESOLVER: ResolverConfig = {
+    match dns_resolver::system_conf::read_system_conf() {
+      Ok((r, _)) => r,
+      Err(e) => {
+        warn!("error getting system resolv conf: {}, using google's", e);
+        ResolverConfig::google()
+      }
+    }
+  };
   static ref DNS_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
-    let (stream, handle) = dns::udp::UdpClientStream::new(([8, 8, 8, 8], 53).into());
+    let (stream, handle) =
+      dns::udp::UdpClientStream::new(DEFAULT_RESOLVER.name_servers()[0].socket_addr);
     let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
     unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(bg) };
     Mutex::new(client)
