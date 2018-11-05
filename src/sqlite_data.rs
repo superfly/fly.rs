@@ -143,14 +143,13 @@ mod tests {
   ) {
     let setfut = store.put(coll.to_string(), key.to_string(), value.to_string());
 
-    let res = match maybe_el {
+    match maybe_el {
       Some(el) => el.block_on(setfut).unwrap(),
       None => tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(setfut)
         .unwrap(),
     };
-    assert_eq!(res, ());
   }
 
   #[test]

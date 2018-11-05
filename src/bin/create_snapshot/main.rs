@@ -16,12 +16,9 @@ fn main() {
   let mut file = File::open(filename).unwrap();
   let mut contents = String::new();
   file.read_to_string(&mut contents).unwrap();
-  let snap = unsafe {
-    js_create_snapshot(
-      CString::new(filename).unwrap().as_ptr(),
-      CString::new(contents).unwrap().as_ptr(),
-    )
-  };
+  let cfilename = CString::new(filename).unwrap();
+  let ccontents = CString::new(contents).unwrap();
+  let snap = unsafe { js_create_snapshot(cfilename.as_ptr(), ccontents.as_ptr()) };
 
   let bytes: Vec<u8> =
     unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();

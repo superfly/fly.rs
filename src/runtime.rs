@@ -31,6 +31,8 @@ use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use futures::future;
 
+use std::ptr;
+
 extern crate sha1; // SHA-1
 extern crate sha2; // SHA-256, etc.
 #[allow(unused_imports)]
@@ -130,7 +132,7 @@ impl JsRuntime {
   }
 
   pub fn to_runtime<'a>(&self) -> &'a mut Runtime {
-    Runtime::from_raw(self.0)
+    unsafe { Runtime::from_raw(self.0) }
   }
 }
 
@@ -200,7 +202,7 @@ impl Runtime {
     let s = SETTINGS.read().unwrap();
 
     let mut rt = Box::new(Runtime {
-      ptr: JsRuntime(0 as *const js_runtime),
+      ptr: JsRuntime(ptr::null() as *const js_runtime),
       name: name.unwrap_or("v8".to_string()),
       event_loop: Mutex::new(rthandle),
       ready_ch: Some(txready),
@@ -244,11 +246,9 @@ impl Runtime {
         soft_memory_limit: 128,
         hard_memory_limit: 256,
       });
-      js_eval(
-        ptr,
-        CString::new("fly_main.js").unwrap().as_ptr(),
-        CString::new("flyMain()").unwrap().as_ptr(),
-      );
+      let cfilename = CString::new("fly_main.js").unwrap();
+      let cscript = CString::new("flyMain()").unwrap();
+      js_eval(ptr, cfilename.as_ptr(), cscript.as_ptr());
       ptr
     };
 
@@ -260,12 +260,9 @@ impl Runtime {
     filename: &str,
     code: &str,
   ) -> Result<(), tokio::executor::SpawnError> {
-    match self.eval(filename, code) {
-      Err(e) => return Err(e),
-      _ => {}
-    };
+    self.eval(filename, code)?;
 
-    self.ready_ch.take().unwrap().send(());
+    self.ready_ch.take().unwrap().send(()).unwrap(); //TODO: no unwrap
 
     Ok(())
   }
@@ -306,9 +303,9 @@ impl Runtime {
     unsafe { js_runtime_heap_statistics(self.ptr.0) }
   }
 
-  pub fn from_raw<'a>(raw: *const js_runtime) -> &'a mut Self {
-    let ptr = unsafe { js_get_data(raw) } as *mut _;
-    unsafe { &mut *ptr }
+  pub unsafe fn from_raw<'a>(raw: *const js_runtime) -> &'a mut Self {
+    let ptr = js_get_data(raw) as *mut _;
+    &mut *ptr
   }
 
   pub fn dispose(&self) {
@@ -325,10 +322,9 @@ lazy_static! {
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
     let snap = unsafe {
-      js_create_snapshot(
-        CString::new(filename).unwrap().as_ptr(),
-        CString::new(contents).unwrap().as_ptr(),
-      )
+      let cfilename = CString::new(filename).unwrap();
+      let ccontents = CString::new(contents).unwrap();
+      js_create_snapshot(cfilename.as_ptr(), ccontents.as_ptr())
     };
     let bytes: Vec<u8> =
       unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();
@@ -345,21 +341,16 @@ use self::sourcemap::SourceMap;
 
 pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
 
+type SourceMapId = (u32, u32, String, String);
+
 lazy_static! {
   static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
     ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
     len: V8ENV_SNAPSHOT.len() as i32
   };
-  static ref SM_CHAN: Mutex<
-    stdmspc::Sender<(
-      Vec<(u32, u32, String, String)>,
-      oneshot::Sender<Vec<(u32, u32, String, String)>>
-    )>,
-  > = {
-    let (sender, receiver) = stdmspc::channel::<(
-      Vec<(u32, u32, String, String)>,
-      oneshot::Sender<Vec<(u32, u32, String, String)>>,
-    )>();
+  static ref SM_CHAN: Mutex<stdmspc::Sender<(Vec<SourceMapId>, oneshot::Sender<Vec<SourceMapId>>)>> = {
+    let (sender, receiver) =
+      stdmspc::channel::<(Vec<SourceMapId>, oneshot::Sender<Vec<SourceMapId>>)>();
     thread::Builder::new()
       .name("sourcemapper".to_string())
       .spawn(move || {
@@ -485,9 +476,9 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
   }
 }
 
-pub extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *const libc::c_char) {
+pub unsafe extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *const libc::c_char) {
   let rt = Runtime::from_raw(raw);
-  let msg = unsafe { CStr::from_ptr(msg).to_string_lossy().into_owned() };
+  let msg = CStr::from_ptr(msg).to_string_lossy().into_owned();
 
   let lvl = match lvl {
     0 => log::Level::Error,
@@ -548,7 +539,7 @@ fn op_timer_start(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 }
 
 fn remove_timer(ptr: JsRuntime, timer_id: u32) {
-  let rt = Runtime::from_raw(ptr.0);
+  let rt = ptr.to_runtime();
   rt.timers.lock().unwrap().remove(&timer_id);
 }
 
@@ -593,7 +584,7 @@ fn op_source_map(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     frames.insert(i, (line, col, String::from(name), String::from(filename)));
   }
 
-  let (tx, rx) = oneshot::channel::<Vec<(u32, u32, String, String)>>();
+  let (tx, rx) = oneshot::channel::<Vec<SourceMapId>>();
   if let Err(err) = SM_CHAN.lock().unwrap().send((frames, tx)) {
     return odd_future(format!("{}", err).into());
   }
@@ -813,7 +804,7 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                         ptr.send(
                           to_send,
                           Some(fly_buf {
-                            alloc_ptr: 0 as *mut u8,
+                            alloc_ptr: ptr::null_mut() as *mut u8,
                             alloc_len: 0,
                             data_ptr: (*bytes).as_ptr() as *mut u8,
                             data_len: bytes.len(),
@@ -1099,7 +1090,7 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             ).unwrap(),
           ),
           Some(fly_buf {
-            alloc_ptr: 0 as *mut u8,
+            alloc_ptr: ptr::null_mut() as *mut u8,
             alloc_len: 0,
             data_ptr: (*bytes).as_ptr() as *mut u8,
             data_len: bytes.len(),
@@ -1178,7 +1169,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
       tokio_fs::File::open(path).then(
         move |fileerr: Result<tokio_fs::File, io::Error>| -> Result<(), ()> {
           if let Err(err) = fileerr {
-            if let Err(_) = p.send(Err(err.into())) {
+            if p.send(Err(err.into())).is_err() {
               error!("error sending file open error");
             }
             return Ok(());
@@ -1190,11 +1181,13 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           let mut stream = ptr.to_runtime().streams.lock().unwrap();
           stream.insert(req_id, tx);
 
-          if let Err(_) = p.send(Ok(JsHttpResponse {
-            headers: HeaderMap::new(),
-            status: StatusCode::OK,
-            body: Some(JsBody::Stream(rx)),
-          })) {
+          if p
+            .send(Ok(JsHttpResponse {
+              headers: HeaderMap::new(),
+              status: StatusCode::OK,
+              body: Some(JsBody::Stream(rx)),
+            })).is_err()
+          {
             error!("error sending http response");
             return Ok(());
           }
@@ -1226,7 +1219,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
                       ).unwrap(),
                     ),
                     Some(fly_buf {
-                      alloc_ptr: 0 as *mut u8,
+                      alloc_ptr: ptr::null_mut() as *mut u8,
                       alloc_len: 0,
                       data_ptr: chunk.as_mut_ptr(),
                       data_len: chunk.len(),
@@ -1284,7 +1277,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
   } else {
     let fut = tokio_fs::read_dir(path).then(move |read_dir_err| {
       if let Err(err) = read_dir_err {
-        if let Err(_) = p.send(Err(err.into())) {
+        if p.send(Err(err.into())).is_err() {
           error!("error sending read_dir error");
         }
         return Ok(());
@@ -1294,11 +1287,13 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
       let mut streams = ptr.to_runtime().streams.lock().unwrap();
       streams.insert(req_id, tx);
 
-      if let Err(_) = p.send(Ok(JsHttpResponse {
-        headers: HeaderMap::new(),
-        status: StatusCode::OK,
-        body: Some(JsBody::Stream(rx)),
-      })) {
+      if p
+        .send(Ok(JsHttpResponse {
+          headers: HeaderMap::new(),
+          status: StatusCode::OK,
+          body: Some(JsBody::Stream(rx)),
+        })).is_err()
+      {
         error!("error sending http response");
         return Ok(());
       }
@@ -1332,7 +1327,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
                 ).unwrap(),
               ),
               Some(fly_buf {
-                alloc_ptr: 0 as *mut u8,
+                alloc_ptr: ptr::null_mut() as *mut u8,
                 alloc_len: 0,
                 data_ptr: pathbytes.as_ptr() as *mut u8,
                 data_len: pathbytes.len(),
@@ -1487,7 +1482,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let fut = rt.http_client.request(req).then(move |reserr| {
     debug!("got http response (or error)");
     if let Err(err) = reserr {
-      if let Err(_) = p.send(Err(err.into())) {
+      if p.send(Err(err.into())).is_err() {
         error!("error sending error for http response :/");
       }
       return Ok(());
@@ -1505,11 +1500,13 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       streams.insert(req_id, tx);
     }
 
-    if let Err(_) = p.send(Ok(JsHttpResponse {
-      headers: parts.headers,
-      status: parts.status,
-      body: stream_rx,
-    })) {
+    if p
+      .send(Ok(JsHttpResponse {
+        headers: parts.headers,
+        status: parts.status,
+        body: stream_rx,
+      })).is_err()
+    {
       error!("error sending http response");
       return Ok(());
     }
@@ -1541,7 +1538,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                 ).unwrap(),
               ),
               Some(fly_buf {
-                alloc_ptr: 0 as *mut u8,
+                alloc_ptr: ptr::null_mut() as *mut u8,
                 alloc_len: 0,
                 data_ptr: (*bytes).as_ptr() as *mut u8,
                 data_len: bytes.len(),
@@ -1661,11 +1658,13 @@ fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   let mut responses = rt.responses.lock().unwrap();
   match responses.remove(&req_id) {
     Some(sender) => {
-      if let Err(_) = sender.send(JsHttpResponse {
-        headers: headers,
-        status: status,
-        body: body,
-      }) {
+      if sender
+        .send(JsHttpResponse {
+          headers: headers,
+          status: status,
+          body: body,
+        }).is_err()
+      {
         return odd_future("error sending http response".to_string().into());
       }
     }

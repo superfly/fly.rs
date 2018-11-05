@@ -402,8 +402,7 @@ mod tests {
     let mut el = tokio::runtime::Runtime::new().unwrap();
     set_value(&store, key, &v, None, Some(&mut el));
 
-    let res = el.block_on(store.del(key.to_string())).unwrap();
-    assert_eq!(res, ());
+    el.block_on(store.del(key.to_string())).unwrap();
 
     let stream = store.get(key.to_string()).unwrap();
 
@@ -435,8 +434,7 @@ mod tests {
       assert_eq!(gotex, rusqlite::types::Value::Null);
     }
 
-    let res = el.block_on(store.expire(key.to_string(), 10)).unwrap();
-    assert_eq!(res, ());
+    el.block_on(store.expire(key.to_string(), 10)).unwrap();
 
     // let mut stmt = conn
     //   .prepare("SELECT expires_at FROM cache WHERE key = ? LIMIT 1;")
