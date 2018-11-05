@@ -14,6 +14,7 @@ pub struct SqliteStoreConfig {
 #[derive(Debug, Deserialize)]
 pub struct PostgresStoreConfig {
   pub url: String,
+  pub dbname: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

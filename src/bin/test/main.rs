@@ -8,6 +8,7 @@ use env_logger::Env;
 extern crate libfly;
 
 use fly::runtime::{Runtime, EVENT_LOOP_HANDLE};
+use fly::settings::SETTINGS;
 use std::env;
 
 extern crate futures;
@@ -40,7 +41,7 @@ fn main() {
     EVENT_LOOP_HANDLE = Some(main_el.executor());
   };
 
-  let mut rt = Runtime::new(None);
+  let mut rt = Runtime::new(None, &SETTINGS.read().unwrap());
   rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap())
     .unwrap();
   rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap())

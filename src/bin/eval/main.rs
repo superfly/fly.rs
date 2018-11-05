@@ -10,6 +10,7 @@ use env_logger::Env;
 
 extern crate fly;
 use fly::runtime::{Runtime, EVENT_LOOP_HANDLE};
+use fly::settings::SETTINGS;
 
 fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
@@ -33,7 +34,7 @@ fn main() {
 
   main_el
     .block_on_all(futures::future::lazy(move || -> Result<(), ()> {
-      let mut runtime = Runtime::new(None);
+      let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
       runtime
         .main_eval_file(matches.value_of("input").unwrap())
         .unwrap();

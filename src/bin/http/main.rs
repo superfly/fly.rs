@@ -24,6 +24,7 @@ use std::sync::mpsc::RecvError;
 use tokio::prelude::*;
 
 use fly::runtime::*;
+use fly::settings::SETTINGS;
 
 use env_logger::Env;
 
@@ -188,7 +189,7 @@ fn main() {
         EVENT_LOOP_HANDLE = Some(main_el.executor());
     };
 
-    let mut runtime = Runtime::new(None);
+    let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
     runtime
         .main_eval_file(matches.value_of("input").unwrap())
         .unwrap();

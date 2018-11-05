@@ -12,6 +12,8 @@ use std::str;
 use std::thread::sleep;
 use std::time::Duration;
 
+use fly::settings::SETTINGS;
+
 const ROLLUP_BROWSER: &'static [u8] =
   include_bytes!("../../../v8env/node_modules/rollup/dist/rollup.browser.js");
 const BUILDER_CODE: &'static [u8] = include_bytes!("./builder.js");
@@ -22,7 +24,7 @@ fn main() {
     EVENT_LOOP_HANDLE = Some(main_el.executor());
   };
 
-  let mut rt = Runtime::new(None);
+  let mut rt = Runtime::new(None, &SETTINGS.read().unwrap());
   rt.eval("rollup.browser.js", str::from_utf8(ROLLUP_BROWSER).unwrap())
     .unwrap();
   rt.eval("builder.js", str::from_utf8(BUILDER_CODE).unwrap())

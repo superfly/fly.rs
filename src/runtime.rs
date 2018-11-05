@@ -70,8 +70,8 @@ extern crate tokio_fs;
 extern crate tokio_codec;
 use self::tokio_codec::{BytesCodec, FramedRead};
 
-use cache::*;
-use data::*;
+use cache;
+use data;
 use ops; // src/ops/
 use utils::*;
 
@@ -80,8 +80,8 @@ use redis_cache;
 use sqlite_cache;
 use sqlite_data;
 
-use settings;
-use settings::SETTINGS;
+// use settings::{};
+use settings::{CacheStore, DataStore, Settings};
 
 extern crate trust_dns as dns;
 
@@ -145,8 +145,8 @@ pub struct Runtime {
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
-  pub cache_store: Box<CacheStore + 'static + Send>,
-  pub data_store: Box<DataStore + 'static + Send>,
+  pub cache_store: Box<cache::CacheStore + 'static + Send>,
+  pub data_store: Box<data::DataStore + 'static + Send>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   ready_ch: Option<oneshot::Sender<()>>,
@@ -194,12 +194,10 @@ fn init_event_loop() -> (current_thread::Handle, oneshot::Sender<()>) {
 }
 
 impl Runtime {
-  pub fn new(name: Option<String>) -> Box<Runtime> {
+  pub fn new(name: Option<String>, settings: &Settings) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
     let (rthandle, txready) = init_event_loop();
-
-    let s = SETTINGS.read().unwrap();
 
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
@@ -213,25 +211,24 @@ impl Runtime {
       http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
       fetch_events: None,
       resolv_events: None,
-      cache_store: match s.cache_store {
+      cache_store: match settings.cache_store {
         Some(ref store) => match store {
-          settings::CacheStore::Sqlite(conf) => {
+          CacheStore::Sqlite(conf) => {
             Box::new(sqlite_cache::SqliteCacheStore::new(conf.filename.clone()))
           }
-          settings::CacheStore::Redis(conf) => {
-            Box::new(redis_cache::RedisCacheStore::new(conf.url.clone()))
-          }
+          CacheStore::Redis(conf) => Box::new(redis_cache::RedisCacheStore::new(conf.url.clone())),
         },
         None => Box::new(sqlite_cache::SqliteCacheStore::new("cache.db".to_string())),
       },
-      data_store: match s.data_store {
+      data_store: match settings.data_store {
         Some(ref store) => match store {
-          settings::DataStore::Sqlite(conf) => {
+          DataStore::Sqlite(conf) => {
             Box::new(sqlite_data::SqliteDataStore::new(conf.filename.clone()))
           }
-          settings::DataStore::Postgres(conf) => {
-            Box::new(postgres_data::PostgresDataStore::new(conf.url.clone()))
-          }
+          DataStore::Postgres(conf) => Box::new(postgres_data::PostgresDataStore::new(
+            conf.url.clone(),
+            conf.dbname.as_ref().cloned(),
+          )),
         },
         None => Box::new(sqlite_data::SqliteDataStore::new("data.db".to_string())),
       },
@@ -1021,10 +1018,10 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let maybe_stream = match rt.cache_store.get(key) {
     Ok(s) => s,
     Err(e) => match e {
-      CacheError::NotFound => return odd_future("not found".to_string().into()),
-      CacheError::IoErr(ioe) => return odd_future(ioe.into()),
-      CacheError::Unknown => return odd_future("unknown error".to_string().into()),
-      CacheError::Failure(e) => return odd_future(e.into()),
+      cache::CacheError::NotFound => return odd_future("not found".to_string().into()),
+      cache::CacheError::IoErr(ioe) => return odd_future(ioe.into()),
+      cache::CacheError::Unknown => return odd_future("unknown error".to_string().into()),
+      cache::CacheError::Failure(e) => return odd_future(e.into()),
     },
   };
 
