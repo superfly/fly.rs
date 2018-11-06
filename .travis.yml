@@ -21,7 +21,10 @@ cache:
   directories:
   - node_modules
   - v8env/node_modules
+  - third_party/flatbuffers
+
 addons:
+  postgresql: "10" # required for JSONB
   apt:
     sources:
       - ubuntu-toolchain-r-test
@@ -71,13 +74,11 @@ before_script:
 script:
 - RUST_BACKTRACE=1 cargo test
 
-after_success:
+before_deploy:
 - cargo build --release --bin create_snapshot
 - ls -lah target/release
 - target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 - cargo build --bin dns --release
-
-before_deploy:
 - strip target/release/dns
 - cp target/release/dns fly-dns
 - tar czf ${DNS_RELEASE_FILENAME} fly-dns
