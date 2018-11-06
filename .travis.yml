@@ -60,8 +60,18 @@ install:
 - wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-$TRAVIS_OS_NAME-x64.tar.gz | tar xvz -C libfly
 - touch v8env.bin
 
+before_script:
+  - # HACK: https://github.com/travis-ci/travis-ci/issues/1875#issuecomment-263847183
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -rf /usr/local/var/postgres; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then initdb /usr/local/var/postgres; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start postgres; fi
+  - # NOTE: https://github.com/docker-library/postgres/issues/146
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then while ! pg_isready; do sleep 1; done; createuser -s postgres; fi
+
 script:
-- cargo test
+- RUST_BACKTRACE=1 cargo test
+
+after_success:
 - cargo build --release --bin create_snapshot
 - ls -lah target/release
 - target/release/create_snapshot v8env/dist/v8env.js v8env.bin
