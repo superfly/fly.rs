@@ -1,8 +1,20 @@
+![superfly octokitty](https://user-images.githubusercontent.com/7375749/44759033-57b92780-aafd-11e8-880c-818b01c65ff3.png)
+
 # Fly DNS Apps
 
-## Handling DNS requests with JavaScript
+## DNS Applications
 
-This is a programmable DNS server. You can write JavaScript to handle DNS queries any way you want.
+This is a DNS application server. It executes JavaScript to respond to DNS requests, and provides libraries for caching, global data storage, and outbound DNS/HTTP requests.
+
+## Why would you want it?
+
+You can use this project to build custom DNS services — both authoritative servers and resolvers. It's quicker and easier to do complicated DNS work with Fly than it is to build a DNS service from scratch, especially if you already know JavaScript. 
+
+The real power is in running other peoples' code, however. It's designed to be deployed around the world, run untrusted applications built by not-you and make DNS development accessible to more developers.
+
+## How it works
+
+DNS application code runs in v8 isolates with [strict memory limits](https://github.com/superfly/fly.rs/blob/master/src/runtime.rs#L239-L245). The runtime accepts requests, parses them, and hands structured data over to application code.
 
 ## Installation
 
