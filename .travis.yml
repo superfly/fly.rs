@@ -24,7 +24,7 @@ cache:
   - third_party/flatbuffers
 
 addons:
-  postgresql: "10" # required for JSONB
+  postgresql: "9.6" # required for JSONB
   apt:
     sources:
       - ubuntu-toolchain-r-test
