@@ -9,6 +9,9 @@ matrix:
       dist: trusty
     - os: osx
 
+services:
+  - postgresql
+
 env:
   global:
     - DNS_RELEASE_FILENAME=fly-dns-${TRAVIS_OS_NAME}-x64.tar.gz

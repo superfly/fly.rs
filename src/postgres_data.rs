@@ -27,24 +27,13 @@ impl PostgresDataStore {
       builder.user(user.name(), user.password());
     }
 
-    // let dbname: String = if let Some(dbname) = &maybe_dbname {
-    //   dbname.clone()
-    // } else if let Some(dbname) = params.database() {
-    //   dbname.to_string()
-    // } else {
-    //   panic!("postgres database name required");
-    // };
-
     if let Some(dbname) = params.database() {
       builder.database(dbname);
     }
 
     let params = builder.build(params.host().clone());
 
-    println!("params: {:?}", params);
-
     let pool = if let Some(dbname) = &maybe_dbname {
-      println!("cloned params: {:?}", params.clone());
       let conn = Connection::connect(params.clone(), TlsMode::None).unwrap();
       match conn.execute(&format!("CREATE DATABASE \"{}\"", dbname), NO_PARAMS) {
         Ok(_) => debug!("database created with success"),
@@ -61,7 +50,6 @@ impl PostgresDataStore {
       }
 
       let pool_params = builder.build(params.host().clone());
-      println!("pool params: {:?}", pool_params);
       let manager =
         PostgresConnectionManager::new(pool_params, r2d2_postgres::TlsMode::None).unwrap();
       r2d2::Pool::builder().build(manager).unwrap()
@@ -181,17 +169,24 @@ fn ensure_coll(conn: &postgres::Connection, name: &str) -> postgres::Result<u64>
 #[cfg(test)]
 mod tests {
   use super::*;
+  use std::env;
+
+  lazy_static! {
+    static ref PG_URL: String = {
+      format!(
+        "postgres://{}@localhost:5432/{}",
+        env::var("PG_TEST_USER").unwrap_or("postgres".to_string()),
+        env::var("PG_TEST_DB").unwrap_or("postgres".to_string())
+      )
+    };
+  }
 
   fn setup(dbname: Option<String>) -> PostgresDataStore {
-    PostgresDataStore::new(
-      "postgres://jerome@localhost:5432/postgres".to_string(),
-      dbname,
-    )
+    PostgresDataStore::new((*PG_URL).clone(), dbname)
   }
 
   fn teardown(dbname: &str) {
-    let conn =
-      Connection::connect("postgres://jerome@localhost:5432/postgres", TlsMode::None).unwrap();
+    let conn = Connection::connect((*PG_URL).as_str(), TlsMode::None).unwrap();
 
     conn
       .execute(&format!("DROP DATABASE {}", dbname), NO_PARAMS)
