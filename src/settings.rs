@@ -27,12 +27,14 @@ pub struct RedisStoreConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum DataStore {
   Sqlite(SqliteStoreConfig),
   Postgres(PostgresStoreConfig),
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum CacheStore {
   Sqlite(SqliteStoreConfig),
   Redis(RedisStoreConfig),
