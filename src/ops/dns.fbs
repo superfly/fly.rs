@@ -132,6 +132,7 @@ table DnsQuery {
   name: string;
   rr_type: DnsRecordType;
   dns_class: DnsClass;
+  name_servers: [string];
 }
 
 table DnsRecord {

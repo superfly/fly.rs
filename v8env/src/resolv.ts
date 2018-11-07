@@ -3,19 +3,25 @@ import * as errors from "./errors";
 import * as util from "./util";
 import * as flatbuffers from "./flatbuffers"
 import { sendAsync } from "./bridge";
-import { DNSQuery, DNSResponse, DNSRecord, DNSRecordData, DNSRequest } from "./dns";
+import { DNSQuery, DNSResponse, DNSRecord, DNSRecordData, DNSRequest, DNSRequestInit } from "./dns";
 import { FlyResponse } from "./response";
 
-export function resolv(info: string | DNSRequest, type?: fbs.DnsRecordType): Promise<DNSResponse> {
-  let req: DNSRequest = typeof info === "string" ? new DNSRequest(info, type) : info
+export function resolv(info: string | DNSRequest, init?: DNSRequestInit): Promise<DNSResponse> {
+  let req: DNSRequest = typeof info === "string" ? new DNSRequest(info, init) : info
 
   return new Promise(function resolvPromise(resolve, reject) {
     const fbb = flatbuffers.createBuilder();
+
+    let nss = req.nameservers && req.nameservers.length > 0 ?
+      fbs.DnsQuery.createNameServersVector(fbb, req.nameservers.map(ns => fbb.createString(ns))) : null;
+
     const nameStr = fbb.createString(req.name)
     fbs.DnsQuery.startDnsQuery(fbb);
     fbs.DnsQuery.addName(fbb, nameStr);
     fbs.DnsQuery.addDnsClass(fbb, fbs.DnsClass.IN);
     fbs.DnsQuery.addRrType(fbb, req.type);
+    if (nss)
+      fbs.DnsQuery.addNameServers(fbb, nss);
     sendAsync(fbb, fbs.Any.DnsQuery, fbs.DnsQuery.endDnsQuery(fbb)).then(baseRes => {
       let msg = new fbs.DnsResponse()
       baseRes.msg(msg);
@@ -55,6 +61,7 @@ export function resolv(info: string | DNSRequest, type?: fbs.DnsRecordType): Pro
           data: data,
         })
       }
+      console.log("resolving w/ dns response")
       resolve(new DNSResponse(answers, {
         authoritative: msg.authoritative(),
         truncated: msg.truncated(),

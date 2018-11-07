@@ -41,7 +41,7 @@ fly-dns --port 8053 relative/path/to/file.js
 addEventListener("resolv", event => {
   event.respondWith( // this function responds to the DNS request event
     resolv( // the resolv function resolves DNS queries
-      event.request.queries[0] // picks the first DNSQuery in the request
+      event.request.name // requested record name
     )
   )
 })
@@ -52,17 +52,14 @@ addEventListener("resolv", event => {
 ```javascript
 addEventListener("resolv", event => {
   event.respondWith(function () { // can respond with a function
-    return {
-      authoritative: true, // hopefully you know what you're doing
-      answers: [ // list of DNS answers
-        {
-          name: event.request.queries[0].name, // name of the DNS entry
-          rrType: DNSRecordType.A, // record type
-          ttl: 300, // time-to-live for the client
-          data: {ip: "127.0.0.1"} // data for the record
-        }
-      ]
-    }
+    return new DNSResponse([ // list of DNS answers
+      {
+        name: event.request.queries[0].name, // name of the DNS entry
+        rrType: DNSRecordType.A, // record type
+        ttl: 300, // time-to-live for the client
+        data: {ip: "127.0.0.1"} // data for the record
+      }
+    ], { authoritative: true })
   })
 })
 ```

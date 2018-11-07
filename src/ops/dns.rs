@@ -8,6 +8,7 @@ use self::dns::client::ClientHandle; // necessary for trait to be in scope
 
 use self::dns_resolver::config::ResolverConfig;
 
+use std::collections::HashMap;
 use std::sync::Mutex;
 
 use libfly::*;
@@ -16,8 +17,10 @@ use utils::*;
 
 use futures::Future;
 
+use std::net::{SocketAddr, ToSocketAddrs};
+
 lazy_static! {
-  static ref DEFAULT_RESOLVER: ResolverConfig = {
+  static ref DEFAULT_RESOLVER_CONFIG: ResolverConfig = {
     match dns_resolver::system_conf::read_system_conf() {
       Ok((r, _)) => r,
       Err(e) => {
@@ -26,13 +29,19 @@ lazy_static! {
       }
     }
   };
-  static ref DNS_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
+  static ref DEFAULT_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
     let (stream, handle) =
-      dns::udp::UdpClientStream::new(DEFAULT_RESOLVER.name_servers()[0].socket_addr);
+      dns::udp::UdpClientStream::new(DEFAULT_RESOLVER_CONFIG.name_servers()[0].socket_addr);
     let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
     unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(bg) };
     Mutex::new(client)
   };
+  static ref DNS_RESOLVERS: Mutex<
+    HashMap<
+      SocketAddr,
+      dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
+    >,
+  > = Mutex::new(HashMap::new());
 }
 
 #[derive(Debug)]
@@ -68,50 +77,28 @@ pub struct JsDnsQuery {
   pub dns_class: dns::rr::DNSClass,
 }
 
-pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  println!("handle dns");
-  let cmd_id = base.cmd_id();
-  let msg = base.msg_as_dns_query().unwrap();
-
-  let query_type = match msg.rr_type() {
-    msg::DnsRecordType::A => dns::rr::RecordType::A,
-    msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
-    msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
-    msg::DnsRecordType::AXFR => dns::rr::RecordType::AXFR,
-    msg::DnsRecordType::CAA => dns::rr::RecordType::CAA,
-    msg::DnsRecordType::CNAME => dns::rr::RecordType::CNAME,
-    msg::DnsRecordType::IXFR => dns::rr::RecordType::IXFR,
-    msg::DnsRecordType::MX => dns::rr::RecordType::MX,
-    msg::DnsRecordType::NS => dns::rr::RecordType::NS,
-    msg::DnsRecordType::NULL => dns::rr::RecordType::NULL,
-    msg::DnsRecordType::OPT => dns::rr::RecordType::OPT,
-    msg::DnsRecordType::PTR => dns::rr::RecordType::PTR,
-    msg::DnsRecordType::SOA => dns::rr::RecordType::SOA,
-    msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
-    msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
-    msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
-  };
-
+fn dns_query(
+  cmd_id: u32,
+  client: &mut dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
+  name: &str,
+  query_type: dns::rr::RecordType,
+) -> Box<Op> {
+  debug!("dns_query {} {}", cmd_id, name);
   Box::new(
-    DNS_RESOLVER
-      .lock()
-      .unwrap()
-      .query(
-        msg.name().unwrap().parse().unwrap(),
-        dns::rr::DNSClass::IN,
-        query_type,
-      ).map_err(|e| format!("dns query error: {}", e).into())
+    client
+      .query(name.parse().unwrap(), dns::rr::DNSClass::IN, query_type)
+      .map_err(|e| format!("dns query error: {}", e).into())
       .and_then(move |res| {
-        // println!("got a dns response! {:?}", res);
+        // debug!("got a dns response! {:?}", res);
         for q in res.queries() {
-          println!("queried: {:?}", q);
+          debug!("queried: {:?}", q);
         }
         let builder = &mut FlatBufferBuilder::new();
         let answers: Vec<_> = res
           .answers()
           .iter()
           .map(|ans| {
-            println!("answer: {:?}", ans);
+            debug!("answer: {:?}", ans);
             use self::dns::rr::{DNSClass, RData, RecordType};
             let name = builder.create_string(&ans.name().to_utf8());
             let rr_type = match ans.rr_type() {
@@ -310,6 +297,73 @@ pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
         ))
       }),
   )
+}
+
+pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  debug!("handle dns");
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_dns_query().unwrap();
+
+  let query_type = match msg.rr_type() {
+    msg::DnsRecordType::A => dns::rr::RecordType::A,
+    msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
+    msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
+    msg::DnsRecordType::AXFR => dns::rr::RecordType::AXFR,
+    msg::DnsRecordType::CAA => dns::rr::RecordType::CAA,
+    msg::DnsRecordType::CNAME => dns::rr::RecordType::CNAME,
+    msg::DnsRecordType::IXFR => dns::rr::RecordType::IXFR,
+    msg::DnsRecordType::MX => dns::rr::RecordType::MX,
+    msg::DnsRecordType::NS => dns::rr::RecordType::NS,
+    msg::DnsRecordType::NULL => dns::rr::RecordType::NULL,
+    msg::DnsRecordType::OPT => dns::rr::RecordType::OPT,
+    msg::DnsRecordType::PTR => dns::rr::RecordType::PTR,
+    msg::DnsRecordType::SOA => dns::rr::RecordType::SOA,
+    msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
+    msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
+    msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
+  };
+
+  let name = msg.name().unwrap();
+
+  if let Some(nss) = msg.name_servers() {
+    let ns = {
+      let ns = nss.get(0);
+      if ns.contains(":") {
+        ns.to_string()
+      } else {
+        format!("{}:53", ns)
+      }
+    };
+    let sockaddr = ns.to_socket_addrs().unwrap().next().unwrap();
+    {
+      if let Some(client) = DNS_RESOLVERS.lock().unwrap().get_mut(&sockaddr) {
+        return dns_query(cmd_id, client, name, query_type);
+      }
+    }
+    // if let Some(client) = DNS_RESOLVERS.lock().unwrap().get_mut(&sockaddr) {
+    //   dns_query(cmd_id, client, name, query_type)
+    // } else {
+    let (stream, handle) = dns::udp::UdpClientStream::new(sockaddr.clone());
+    let (bg, mut client) = dns::client::ClientFuture::new(stream, handle, None);
+    unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(bg) };
+    {
+      DNS_RESOLVERS
+        .lock()
+        .unwrap()
+        .insert(sockaddr.clone(), client);
+    }
+    debug!("INSERTED DNS RESOLVER");
+    dns_query(
+      cmd_id,
+      DNS_RESOLVERS.lock().unwrap().get_mut(&sockaddr).unwrap(),
+      name,
+      query_type,
+    )
+  // }
+  } else {
+    let mut client = DEFAULT_RESOLVER.lock().unwrap();
+    dns_query(cmd_id, &mut client, name, query_type)
+  }
 }
 
 pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {

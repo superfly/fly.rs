@@ -83,6 +83,7 @@ addEventListener("fetch", function (event) {
 
 addEventListener("resolv", event => {
   console.log("got resolv event!")
+  // event.respondWith(resolv(event.request.name, { nameservers: ["ns2.fly.io"] }))
   event.respondWith(function () {
     return new DNSResponse([
       {

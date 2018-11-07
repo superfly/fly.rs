@@ -141,7 +141,7 @@ export function addEventListener(name: string, fn: Function) {
         //   })
         // }
 
-        const req = new DNSRequest(q.name(), q.rrType())
+        const req = new DNSRequest(q.name(), { type: q.rrType() })
 
         fn.call(window, {
           request: req,
@@ -183,6 +183,7 @@ function handleDNSError(id: number, err: Error) {
 }
 
 function handleDNSRes(id: number, res: DNSResponse) {
+  console.log("handle dns res!", res)
   const fbb = flatbuffers.createBuilder();
 
   let answers: number[] = []

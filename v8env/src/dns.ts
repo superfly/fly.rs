@@ -128,12 +128,20 @@ export interface DNSRecord {
   data: DNSRecordData,
 }
 
+export interface DNSRequestInit {
+  type?: fbs.DnsRecordType
+  nameservers?: string[]
+}
+
 export class DNSRequest {
   name: string
   type: fbs.DnsRecordType
-  constructor(name: string, type?: fbs.DnsRecordType) {
+  nameservers: string[]
+  constructor(name: string, init?: DNSRequestInit) {
+    init || (init = {})
     this.name = name
-    this.type = type || DNSRecordType.A
+    this.type = init.type || DNSRecordType.A
+    this.nameservers = init.nameservers || []
   }
 }
 
