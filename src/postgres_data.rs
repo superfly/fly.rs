@@ -45,7 +45,7 @@ impl PostgresDataStore {
         connbuilder.set_ca_file(ca).unwrap();
       }
       connbuilder
-        .set_certificate_file(conf.tls_client_crt.as_ref().unwrap(), X509_FILETYPE_DEFAULT)
+        .set_certificate_file(conf.tls_client_crt.as_ref().unwrap(), X509_FILETYPE_PEM)
         .unwrap();
       connbuilder
         .set_private_key_file(conf.tls_client_key.as_ref().unwrap(), X509_FILETYPE_PEM)
