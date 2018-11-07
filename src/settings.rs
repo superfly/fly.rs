@@ -6,35 +6,39 @@ lazy_static! {
   pub static ref SETTINGS: RwLock<Settings> = RwLock::new(Settings::new().unwrap());
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct SqliteStoreConfig {
   pub filename: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct PostgresStoreConfig {
   pub url: String,
-  pub dbname: Option<String>,
+  pub database: Option<String>,
+  pub tls_client_crt: Option<String>,
+  pub tls_client_key: Option<String>,
+  pub tls_ca_crt: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct RedisStoreConfig {
   pub url: String,
+  pub namespace: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum DataStore {
   Sqlite(SqliteStoreConfig),
   Postgres(PostgresStoreConfig),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub enum CacheStore {
   Sqlite(SqliteStoreConfig),
   Redis(RedisStoreConfig),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
   pub data_store: Option<DataStore>,
   pub cache_store: Option<CacheStore>,

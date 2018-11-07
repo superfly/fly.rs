@@ -4,11 +4,15 @@ use std::sync::Arc;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_postgres;
-use self::r2d2_postgres::PostgresConnectionManager;
+use self::r2d2_postgres::{PostgresConnectionManager, TlsMode};
 
 use self::postgres::params::{Builder, ConnectParams, IntoConnectParams};
+use self::postgres::tls::openssl::openssl::ssl::{SslConnectorBuilder, SslMethod};
+use self::postgres::tls::openssl::openssl::x509::{X509_FILETYPE_DEFAULT, X509_FILETYPE_PEM};
 use self::postgres::types::ToSql;
-use self::postgres::{Connection, TlsMode};
+use self::postgres::Connection;
+
+use settings::PostgresStoreConfig;
 
 extern crate serde_json;
 
@@ -19,7 +23,9 @@ pub struct PostgresDataStore {
 }
 
 impl PostgresDataStore {
-  pub fn new(url: String, maybe_dbname: Option<String>) -> Self {
+  pub fn new(conf: &PostgresStoreConfig) -> Self {
+    let url = conf.url.clone();
+    let maybe_dbname = conf.database.as_ref().cloned();
     let params: ConnectParams = url.into_connect_params().unwrap();
     let mut builder = Builder::new();
     builder.port(params.port());
@@ -33,8 +39,32 @@ impl PostgresDataStore {
 
     let params = builder.build(params.host().clone());
 
+    let maybe_tls = if conf.tls_client_crt.is_some() {
+      let mut connbuilder = SslConnectorBuilder::new(SslMethod::tls()).unwrap();
+      if let Some(ref ca) = conf.tls_ca_crt {
+        connbuilder.set_ca_file(ca).unwrap();
+      }
+      connbuilder
+        .set_certificate_file(conf.tls_client_crt.as_ref().unwrap(), X509_FILETYPE_DEFAULT)
+        .unwrap();
+      connbuilder
+        .set_private_key_file(conf.tls_client_key.as_ref().unwrap(), X509_FILETYPE_PEM)
+        .unwrap();
+      // connbuilder.
+      // connbuilder.set_verify(postgres::tls::openssl::openssl::ssl::);
+      Some(postgres::tls::openssl::OpenSsl::from(connbuilder.build()))
+    } else {
+      None
+    };
+
     let pool = if let Some(dbname) = &maybe_dbname {
-      let conn = Connection::connect(params.clone(), TlsMode::None).unwrap();
+      let conn = Connection::connect(
+        params.clone(),
+        match maybe_tls.as_ref() {
+          Some(tls) => postgres::TlsMode::Require(tls),
+          None => postgres::TlsMode::None,
+        },
+      ).unwrap();
       match conn.execute(&format!("CREATE DATABASE \"{}\"", dbname), NO_PARAMS) {
         Ok(_) => debug!("database created with success"),
         Err(e) => warn!(
@@ -50,11 +80,22 @@ impl PostgresDataStore {
       }
 
       let pool_params = builder.build(params.host().clone());
-      let manager =
-        PostgresConnectionManager::new(pool_params, r2d2_postgres::TlsMode::None).unwrap();
+      let manager = PostgresConnectionManager::new(
+        pool_params,
+        match maybe_tls {
+          Some(tls) => TlsMode::Require(Box::new(tls)),
+          None => TlsMode::None,
+        },
+      ).unwrap();
       r2d2::Pool::builder().build(manager).unwrap()
     } else {
-      let manager = PostgresConnectionManager::new(params, r2d2_postgres::TlsMode::None).unwrap();
+      let manager = PostgresConnectionManager::new(
+        params,
+        match maybe_tls {
+          Some(tls) => TlsMode::Require(Box::new(tls)),
+          None => TlsMode::None,
+        },
+      ).unwrap();
       r2d2::Pool::builder().build(manager).unwrap()
     };
     PostgresDataStore {
@@ -182,11 +223,18 @@ mod tests {
   }
 
   fn setup(dbname: Option<String>) -> PostgresDataStore {
-    PostgresDataStore::new((*PG_URL).clone(), dbname)
+    let conf = PostgresStoreConfig {
+      url: (*PG_URL).clone(),
+      database: dbname,
+      tls_client_crt: None,
+      tls_client_key: None,
+      tls_ca_crt: None,
+    };
+    PostgresDataStore::new(&conf)
   }
 
   fn teardown(dbname: &str) {
-    let conn = Connection::connect((*PG_URL).as_str(), TlsMode::None).unwrap();
+    let conn = Connection::connect((*PG_URL).as_str(), postgres::TlsMode::None).unwrap();
 
     conn
       .execute(&format!("DROP DATABASE {}", dbname), NO_PARAMS)

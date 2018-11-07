@@ -216,7 +216,7 @@ impl Runtime {
           CacheStore::Sqlite(conf) => {
             Box::new(sqlite_cache::SqliteCacheStore::new(conf.filename.clone()))
           }
-          CacheStore::Redis(conf) => Box::new(redis_cache::RedisCacheStore::new(conf.url.clone())),
+          CacheStore::Redis(conf) => Box::new(redis_cache::RedisCacheStore::new(&conf)),
         },
         None => Box::new(sqlite_cache::SqliteCacheStore::new("cache.db".to_string())),
       },
@@ -225,10 +225,7 @@ impl Runtime {
           DataStore::Sqlite(conf) => {
             Box::new(sqlite_data::SqliteDataStore::new(conf.filename.clone()))
           }
-          DataStore::Postgres(conf) => Box::new(postgres_data::PostgresDataStore::new(
-            conf.url.clone(),
-            conf.dbname.as_ref().cloned(),
-          )),
+          DataStore::Postgres(conf) => Box::new(postgres_data::PostgresDataStore::new(&conf)),
         },
         None => Box::new(sqlite_data::SqliteDataStore::new("data.db".to_string())),
       },
