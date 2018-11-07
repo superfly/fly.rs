@@ -8,7 +8,7 @@ use self::r2d2_postgres::{PostgresConnectionManager, TlsMode};
 
 use self::postgres::params::{Builder, ConnectParams, IntoConnectParams};
 use self::postgres::tls::openssl::openssl::ssl::{SslConnectorBuilder, SslMethod};
-use self::postgres::tls::openssl::openssl::x509::{X509_FILETYPE_DEFAULT, X509_FILETYPE_PEM};
+use self::postgres::tls::openssl::openssl::x509::X509_FILETYPE_PEM;
 use self::postgres::types::ToSql;
 use self::postgres::Connection;
 
