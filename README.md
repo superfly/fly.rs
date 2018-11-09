@@ -81,11 +81,12 @@ There's an issue: [#5](https://github.com/superfly/fly.rs/issues/5)
   - `make flatc`
   - ensure `./third_party/flatbuffers` is in `$PATH`
   - `cd ../../`
+- `./scripts/fbs.sh`
 - `cd v8env`
   - `yarn install`
   - `rollup -c`
   - `cd ..`
-- `cargo run --bin dns`
+- `cargo run --bin dns hello-world.js`
 
 ### Running v8env tests
 
