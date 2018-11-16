@@ -12,8 +12,11 @@ window.crypto.getRandomValues(array);
 
 console.log("rand values:", array);
 
+// fly.cache.set("hello", "world");
+
 // const coll = fly.data.collection("hello")
-// coll.put("woot", `{"foo":"bar"}`).then(() => {
+// coll.put("woot", `{"foo":"bar"}`)
+// .then(() => {
 //   return coll.get("woot")
 // }).then((i) => console.log("got data:", i))
 

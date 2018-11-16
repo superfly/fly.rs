@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 
 [dependencies]
-tokio = "0.1"
+tokio = "0.1.11"
 tokio-signal = "0.2"
 futures = "0.1.25"
 log = "*"
