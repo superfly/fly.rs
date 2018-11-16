@@ -504,6 +504,11 @@ extern "C"
     free(rt);
   }
 
+  void js_runtime_run_micro_tasks(const js_runtime *rt)
+  {
+    rt->isolate->RunMicrotasks();
+  }
+
   bool js_eval(const js_runtime *rt, const char *filename, const char *code)
   {
     VALUE_SCOPE(rt->isolate, rt->context);

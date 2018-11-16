@@ -150,43 +150,49 @@ pub struct Runtime {
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   ready_ch: Option<oneshot::Sender<()>>,
+  quit_ch: Option<oneshot::Receiver<()>>,
 }
 
 static JSINIT: Once = Once::new();
 static NEXT_RUNTIME_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
-fn init_event_loop() -> (current_thread::Handle, oneshot::Sender<()>) {
-  let (c, p) = oneshot::channel::<(current_thread::Handle, oneshot::Sender<()>)>();
+fn init_event_loop() -> (
+  current_thread::Handle,
+  oneshot::Sender<()>,
+  oneshot::Receiver<()>,
+) {
+  let (c, p) = oneshot::channel::<(
+    current_thread::Handle,
+    oneshot::Sender<()>,
+    oneshot::Receiver<()>,
+  )>();
   thread::Builder::new()
     .name(format!(
       "runtime-loop-{}",
       NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
     )).spawn(move || {
-      let mut l = current_thread::Runtime::new().unwrap();
+      let mut el = current_thread::Runtime::new().unwrap();
       let (txready, rxready) = oneshot::channel::<()>();
       let (txquit, rxquit) = oneshot::channel::<()>();
 
-      unsafe {
-        EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(Box::new(
-          rxquit
-            .map_err(|_| info!("error runtime quit chan recv"))
-            .and_then(|_| {
-              info!("main event loop notified of quitting.");
-              Ok(())
-            }),
-        ))
+      c.send((el.handle(), txready, rxquit)).unwrap();
+
+      debug!("sent loop handle");
+
+      match el.block_on(rxready.map_err(|_| error!("error recving ready signal for runtime"))) {
+        Ok(_) => warn!("stopped blocking on ready chan"),
+        Err(_) => error!("error blocking on ready chan!"),
       };
 
-      l.spawn(rxready.map_err(|_| error!("error recving ready signal for runtime")));
+      // el.spawn(rxready.map_err(|_| error!("error recving ready signal for runtime")));
 
-      c.send((l.handle(), txready)).unwrap();
-      match l.run() {
-        Ok(_) => {}
+      match el.run() {
+        Ok(_) => warn!("runtime event loop ran fine"),
         Err(e) => error!("error running runtime event loop: {}", e),
       };
       warn!("Event loop has run its course.");
       match txquit.send(()) {
-        Ok(_) => {}
+        Ok(_) => warn!("Sent quit () in channel successfully."),
         Err(_) => error!("error sending quit signal for runtime"),
       };
     }).unwrap();
@@ -197,13 +203,14 @@ impl Runtime {
   pub fn new(name: Option<String>, settings: &Settings) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
-    let (rthandle, txready) = init_event_loop();
+    let (rthandle, txready, rxquit) = init_event_loop();
 
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
       name: name.unwrap_or("v8".to_string()),
       event_loop: Mutex::new(rthandle),
       ready_ch: Some(txready),
+      quit_ch: Some(rxquit),
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
       dns_responses: Mutex::new(HashMap::new()),
@@ -249,40 +256,18 @@ impl Runtime {
     rt
   }
 
-  pub fn main_eval(
-    &mut self,
-    filename: &str,
-    code: &str,
-  ) -> Result<(), tokio::executor::SpawnError> {
-    self.eval(filename, code)?;
-
-    self.ready_ch.take().unwrap().send(()).unwrap(); //TODO: no unwrap
-
-    Ok(())
-  }
-
-  pub fn main_eval_file(&mut self, filename: &str) -> Result<(), tokio::executor::SpawnError> {
-    let mut file = File::open(filename).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-
-    self.main_eval(filename, contents.as_str())
-  }
-
   pub fn eval(&self, filename: &str, code: &str) -> Result<(), tokio::executor::SpawnError> {
+    debug!("evaluating '{}'", filename);
     let cfilename = CString::new(filename).unwrap();
     let ccode = CString::new(code).unwrap();
     let ptr = self.ptr;
-    self
-      .event_loop
-      .lock()
-      .unwrap()
-      .spawn(future::lazy(move || -> Result<(), ()> {
-        unsafe {
-          js_eval(ptr.0, cfilename.as_ptr(), ccode.as_ptr());
-        }
-        Ok(())
-      }))
+    self.spawn(future::lazy(move || -> Result<(), ()> {
+      unsafe {
+        js_eval(ptr.0, cfilename.as_ptr(), ccode.as_ptr());
+      }
+      debug!("finished evaluating '{}'", cfilename.to_string_lossy());
+      Ok(())
+    }))
   }
 
   pub fn eval_file(&self, filename: &str) -> Result<(), tokio::executor::SpawnError> {
@@ -303,8 +288,29 @@ impl Runtime {
   }
 
   pub fn dispose(&self) {
-    // self.quit_ch.clone().try_send(()).unwrap();
-    unsafe { js_runtime_dispose(self.ptr.0) };
+    unsafe {
+      js_runtime_dispose(self.ptr.0);
+      Box::from_raw(js_get_data(self.ptr.0) as *mut Runtime); // to drop it
+    };
+  }
+
+  pub fn run(&mut self) -> oneshot::Receiver<()> {
+    self.ready_ch.take().unwrap().send(()).unwrap(); //TODO: no unwrap
+    debug!("self.ready_ch = {:?}", self.ready_ch);
+    self.quit_ch.take().unwrap()
+  }
+
+  fn spawn<F>(&self, fut: F) -> Result<(), tokio::executor::SpawnError>
+  where
+    F: Future<Item = (), Error = ()> + Send + 'static,
+  {
+    let n = NEXT_FUTURE_ID.fetch_add(1, Ordering::SeqCst);
+    debug!("SPAWNING A FUTURE! id: {}", n);
+    self
+      .event_loop
+      .lock()
+      .unwrap()
+      .spawn(fut.then(move |_| Ok(debug!("SPAWNED FUTURE IS DONE id: {}", n))))
   }
 }
 
@@ -388,7 +394,7 @@ pub type Buf = Option<Box<[u8]>>;
 // which yields either a DenoError or a byte array.
 pub type Op = Future<Item = Buf, Error = FlyError> + Send;
 
-pub type Handler = fn(ptr: JsRuntime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
+pub type Handler = fn(JsRuntime, &msg::Base, fly_buf) -> Box<Op>;
 
 use std::slice;
 
@@ -396,7 +402,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
   let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
   let base = msg::get_root_as_base(bytes);
   let msg_type = base.msg_type();
-  // println!("MSG TYPE: {:?}", msg_type);
+  debug!("MSG TYPE: {:?}", msg_type);
   let cmd_id = base.cmd_id();
   // println!("msg id {}", cmd_id);
   let handler: Handler = match msg_type {
@@ -442,29 +448,31 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
       }
     }
   } else {
-    let fut = fut.and_then(move |maybe_box_u8| {
-      let buf = match maybe_box_u8 {
-        Some(box_u8) => fly_buf_from(box_u8),
-        None => {
-          // async RPCs that return None still need to
-          // send a message back to signal completion.
-          let builder = &mut FlatBufferBuilder::new();
-          fly_buf_from(
-            serialize_response(
-              cmd_id,
-              builder,
-              msg::BaseArgs {
-                ..Default::default()
-              },
-            ).unwrap(),
-          )
-        }
-      };
-      ptr.send(buf, None);
-      Ok(())
-    });
+    debug!("DOING ASYNC MSG");
+    let fut = fut
+      .and_then(move |maybe_box_u8| {
+        let buf = match maybe_box_u8 {
+          Some(box_u8) => fly_buf_from(box_u8),
+          None => {
+            // async RPCs that return None still need to
+            // send a message back to signal completion.
+            let builder = &mut FlatBufferBuilder::new();
+            fly_buf_from(
+              serialize_response(
+                cmd_id,
+                builder,
+                msg::BaseArgs {
+                  ..Default::default()
+                },
+              ).unwrap(),
+            )
+          }
+        };
+        ptr.send(buf, None);
+        Ok(())
+      }).then(|_: Result<(), ()>| Ok(debug!("ASYNC MSG IS DONE!")));
     let rt = ptr.to_runtime();
-    if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
+    if let Err(err) = rt.spawn(fut) {
       ptr.send_error(cmd_id, format!("{}", err).into());
     }
   }
@@ -707,204 +715,198 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     msg::EventType::Fetch => {
       let (tx, rx) = mpsc::unbounded::<JsHttpRequest>();
       let rt = ptr.to_runtime();
-      rt.event_loop
-        .lock()
-        .unwrap()
-        .spawn(
-          rx.map_err(|_| error!("error event receiving http request"))
-            .for_each(move |req| {
-              let builder = &mut FlatBufferBuilder::new();
+      rt.spawn(
+        rx.map_err(|_| error!("error event receiving http request"))
+          .for_each(move |req| {
+            let builder = &mut FlatBufferBuilder::new();
 
-              let req_url = builder.create_string(req.url.as_str());
+            let req_url = builder.create_string(req.url.as_str());
 
-              let req_method = match req.method {
-                Method::GET => msg::HttpMethod::Get,
-                Method::POST => msg::HttpMethod::Post,
-                _ => unimplemented!(),
-              };
+            let req_method = match req.method {
+              Method::GET => msg::HttpMethod::Get,
+              Method::POST => msg::HttpMethod::Post,
+              _ => unimplemented!(),
+            };
 
-              let headers: Vec<_> = req
-                .headers
-                .iter()
-                .map(|(key, value)| {
-                  let key = builder.create_string(key.as_str());
-                  let value = builder.create_string(value.to_str().unwrap());
-                  msg::HttpHeader::create(
-                    builder,
-                    &msg::HttpHeaderArgs {
-                      key: Some(key),
-                      value: Some(value),
-                      ..Default::default()
-                    },
-                  )
-                }).collect();
-
-              let req_headers = builder.create_vector(&headers);
-
-              let req_msg = msg::HttpRequest::create(
-                builder,
-                &msg::HttpRequestArgs {
-                  id: req.id,
-                  method: req_method,
-                  url: Some(req_url),
-                  headers: Some(req_headers),
-                  has_body: req.body.is_some(),
-                  ..Default::default()
-                },
-              );
-
-              let to_send = fly_buf_from(
-                serialize_response(
-                  0,
+            let headers: Vec<_> = req
+              .headers
+              .iter()
+              .map(|(key, value)| {
+                let key = builder.create_string(key.as_str());
+                let value = builder.create_string(value.to_str().unwrap());
+                msg::HttpHeader::create(
                   builder,
-                  msg::BaseArgs {
-                    msg: Some(req_msg.as_union_value()),
-                    msg_type: msg::Any::HttpRequest,
+                  &msg::HttpHeaderArgs {
+                    key: Some(key),
+                    value: Some(value),
                     ..Default::default()
                   },
-                ).unwrap(),
-              );
+                )
+              }).collect();
 
-              ptr.send(to_send, None);
+            let req_headers = builder.create_vector(&headers);
 
-              if let Some(jsbody) = req.body {
-                if let JsBody::Stream(body) = jsbody {
-                  let req_id = req.id;
-                  let rt = ptr.to_runtime();
-                  let spawnres = rt.event_loop.lock().unwrap().spawn(
-                    body
-                      .map_err(|_| error!("error receiving body chunk :/"))
-                      .for_each(move |bytes: Vec<u8>| {
-                        let builder = &mut FlatBufferBuilder::new();
-                        // let fb_bytes = builder.create_vector(&bytes);
-                        let chunk_msg = msg::StreamChunk::create(
+            let req_msg = msg::HttpRequest::create(
+              builder,
+              &msg::HttpRequestArgs {
+                id: req.id,
+                method: req_method,
+                url: Some(req_url),
+                headers: Some(req_headers),
+                has_body: req.body.is_some(),
+                ..Default::default()
+              },
+            );
+
+            let to_send = fly_buf_from(
+              serialize_response(
+                0,
+                builder,
+                msg::BaseArgs {
+                  msg: Some(req_msg.as_union_value()),
+                  msg_type: msg::Any::HttpRequest,
+                  ..Default::default()
+                },
+              ).unwrap(),
+            );
+
+            ptr.send(to_send, None);
+
+            if let Some(jsbody) = req.body {
+              if let JsBody::Stream(body) = jsbody {
+                let req_id = req.id;
+                let rt = ptr.to_runtime();
+                let spawnres = rt.spawn(
+                  body
+                    .map_err(|_| error!("error receiving body chunk :/"))
+                    .for_each(move |bytes: Vec<u8>| {
+                      let builder = &mut FlatBufferBuilder::new();
+                      // let fb_bytes = builder.create_vector(&bytes);
+                      let chunk_msg = msg::StreamChunk::create(
+                        builder,
+                        &msg::StreamChunkArgs {
+                          id: req_id,
+                          done: false,
+                        },
+                      );
+                      let to_send = fly_buf_from(
+                        serialize_response(
+                          0,
                           builder,
-                          &msg::StreamChunkArgs {
-                            id: req_id,
-                            done: false,
+                          msg::BaseArgs {
+                            msg: Some(chunk_msg.as_union_value()),
+                            msg_type: msg::Any::StreamChunk,
+                            ..Default::default()
                           },
-                        );
-                        let to_send = fly_buf_from(
-                          serialize_response(
-                            0,
-                            builder,
-                            msg::BaseArgs {
-                              msg: Some(chunk_msg.as_union_value()),
-                              msg_type: msg::Any::StreamChunk,
-                              ..Default::default()
-                            },
-                          ).unwrap(),
-                        );
-                        ptr.send(
-                          to_send,
-                          Some(fly_buf {
-                            alloc_ptr: ptr::null_mut() as *mut u8,
-                            alloc_len: 0,
-                            data_ptr: (*bytes).as_ptr() as *mut u8,
-                            data_len: bytes.len(),
-                          }),
-                        );
-                        Ok(())
-                      }),
-                  );
-                  if let Err(err) = spawnres {
-                    error!("error spawning: {}", err);
-                  }
+                        ).unwrap(),
+                      );
+                      ptr.send(
+                        to_send,
+                        Some(fly_buf {
+                          alloc_ptr: ptr::null_mut() as *mut u8,
+                          alloc_len: 0,
+                          data_ptr: (*bytes).as_ptr() as *mut u8,
+                          data_len: bytes.len(),
+                        }),
+                      );
+                      Ok(())
+                    }),
+                );
+                if let Err(err) = spawnres {
+                  error!("error spawning: {}", err);
                 }
               }
+            }
 
-              Ok(())
-            }),
-        ).unwrap(); // TODO: don't
+            Ok(())
+          }),
+      ).unwrap(); // TODO: don't
       rt.fetch_events = Some(tx);
     }
     msg::EventType::Resolv => {
       let (tx, rx) = mpsc::unbounded::<ops::dns::JsDnsRequest>();
       let rt = ptr.to_runtime();
-      rt.event_loop
-        .lock()
-        .unwrap()
-        .spawn(
-          rx.map_err(|_| error!("error event receiving http request"))
-            .for_each(move |req| {
-              let builder = &mut FlatBufferBuilder::new();
+      rt.spawn(
+        rx.map_err(|_| error!("error event receiving http request"))
+          .for_each(move |req| {
+            let builder = &mut FlatBufferBuilder::new();
 
-              let queries: Vec<_> = req
-                .queries
-                .iter()
-                .map(|q| {
-                  debug!("query: {:?}", q);
-                  use self::dns::rr::{DNSClass, Name, RecordType};
-                  let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
-                  let rr_type = match q.query_type() {
-                    RecordType::A => msg::DnsRecordType::A,
-                    RecordType::AAAA => msg::DnsRecordType::AAAA,
-                    RecordType::AXFR => msg::DnsRecordType::AXFR,
-                    RecordType::CAA => msg::DnsRecordType::CAA,
-                    RecordType::CNAME => msg::DnsRecordType::CNAME,
-                    RecordType::IXFR => msg::DnsRecordType::IXFR,
-                    RecordType::MX => msg::DnsRecordType::MX,
-                    RecordType::NS => msg::DnsRecordType::NS,
-                    RecordType::NULL => msg::DnsRecordType::NULL,
-                    RecordType::OPT => msg::DnsRecordType::OPT,
-                    RecordType::PTR => msg::DnsRecordType::PTR,
-                    RecordType::SOA => msg::DnsRecordType::SOA,
-                    RecordType::SRV => msg::DnsRecordType::SRV,
-                    RecordType::TLSA => msg::DnsRecordType::TLSA,
-                    RecordType::TXT => msg::DnsRecordType::TXT,
-                    _ => unimplemented!(),
-                  };
-                  let dns_class = match q.query_class() {
-                    DNSClass::IN => msg::DnsClass::IN,
-                    DNSClass::CH => msg::DnsClass::CH,
-                    DNSClass::HS => msg::DnsClass::HS,
-                    DNSClass::NONE => msg::DnsClass::NONE,
-                    DNSClass::ANY => msg::DnsClass::ANY,
-                    _ => unimplemented!(),
-                  };
+            let queries: Vec<_> = req
+              .queries
+              .iter()
+              .map(|q| {
+                debug!("query: {:?}", q);
+                use self::dns::rr::{DNSClass, Name, RecordType};
+                let name = builder.create_string(&Name::from(q.name().clone()).to_utf8());
+                let rr_type = match q.query_type() {
+                  RecordType::A => msg::DnsRecordType::A,
+                  RecordType::AAAA => msg::DnsRecordType::AAAA,
+                  RecordType::AXFR => msg::DnsRecordType::AXFR,
+                  RecordType::CAA => msg::DnsRecordType::CAA,
+                  RecordType::CNAME => msg::DnsRecordType::CNAME,
+                  RecordType::IXFR => msg::DnsRecordType::IXFR,
+                  RecordType::MX => msg::DnsRecordType::MX,
+                  RecordType::NS => msg::DnsRecordType::NS,
+                  RecordType::NULL => msg::DnsRecordType::NULL,
+                  RecordType::OPT => msg::DnsRecordType::OPT,
+                  RecordType::PTR => msg::DnsRecordType::PTR,
+                  RecordType::SOA => msg::DnsRecordType::SOA,
+                  RecordType::SRV => msg::DnsRecordType::SRV,
+                  RecordType::TLSA => msg::DnsRecordType::TLSA,
+                  RecordType::TXT => msg::DnsRecordType::TXT,
+                  _ => unimplemented!(),
+                };
+                let dns_class = match q.query_class() {
+                  DNSClass::IN => msg::DnsClass::IN,
+                  DNSClass::CH => msg::DnsClass::CH,
+                  DNSClass::HS => msg::DnsClass::HS,
+                  DNSClass::NONE => msg::DnsClass::NONE,
+                  DNSClass::ANY => msg::DnsClass::ANY,
+                  _ => unimplemented!(),
+                };
 
-                  msg::DnsQuery::create(
-                    builder,
-                    &msg::DnsQueryArgs {
-                      name: Some(name),
-                      rr_type: rr_type,
-                      dns_class: dns_class,
-                      ..Default::default()
-                    },
-                  )
-                }).collect();
-
-              let req_queries = builder.create_vector(&queries);
-
-              let req_msg = msg::DnsRequest::create(
-                builder,
-                &msg::DnsRequestArgs {
-                  id: req.id,
-                  message_type: match req.message_type {
-                    dns::op::MessageType::Query => msg::DnsMessageType::Query,
-                    _ => unimplemented!(),
-                  },
-                  queries: Some(req_queries),
-                  ..Default::default()
-                },
-              );
-
-              let to_send = fly_buf_from(
-                serialize_response(
-                  0,
+                msg::DnsQuery::create(
                   builder,
-                  msg::BaseArgs {
-                    msg: Some(req_msg.as_union_value()),
-                    msg_type: msg::Any::DnsRequest,
+                  &msg::DnsQueryArgs {
+                    name: Some(name),
+                    rr_type: rr_type,
+                    dns_class: dns_class,
                     ..Default::default()
                   },
-                ).unwrap(),
-              );
+                )
+              }).collect();
 
-              ptr.send(to_send, None);
-              Ok(())
-            }),
-        ).unwrap(); // TODO: don't
+            let req_queries = builder.create_vector(&queries);
+
+            let req_msg = msg::DnsRequest::create(
+              builder,
+              &msg::DnsRequestArgs {
+                id: req.id,
+                message_type: match req.message_type {
+                  dns::op::MessageType::Query => msg::DnsMessageType::Query,
+                  _ => unimplemented!(),
+                },
+                queries: Some(req_queries),
+                ..Default::default()
+              },
+            );
+
+            let to_send = fly_buf_from(
+              serialize_response(
+                0,
+                builder,
+                msg::BaseArgs {
+                  msg: Some(req_msg.as_union_value()),
+                  msg_type: msg::Any::DnsRequest,
+                  ..Default::default()
+                },
+              ).unwrap(),
+            );
+
+            ptr.send(to_send, None);
+            Ok(())
+          }),
+      ).unwrap(); // TODO: don't
       rt.resolv_events = Some(tx);
     }
   };
@@ -912,7 +914,7 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   ok_future(None)
 }
 
-use super::NEXT_EVENT_ID;
+use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
 use std::str;
 
 fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
@@ -921,7 +923,7 @@ fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let spawnres = rt.event_loop.lock().unwrap().spawn(
+  let spawnres = rt.spawn(
     rt.cache_store
       .del(key)
       .map_err(|e| error!("error cache del future! {:?}", e)),
@@ -940,7 +942,7 @@ fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let spawnres = rt.event_loop.lock().unwrap().spawn(
+  let spawnres = rt.spawn(
     rt.cache_store
       .expire(key, ttl)
       .map_err(|e| error!("error cache expire future! {:?}", e)),
@@ -974,7 +976,7 @@ fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let fut = rt.cache_store.set(key, Box::new(recver), ttl);
 
-  let spawnres = rt.event_loop.lock().unwrap().spawn(
+  let spawnres = rt.spawn(
     fut
       .map_err(|e| println!("error cache set stream! {:?}", e))
       .and_then(move |_b| Ok(())),
@@ -1053,7 +1055,7 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       Ok(())
     });
 
-    if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
+    if let Err(err) = rt.spawn(fut) {
       return odd_future(format!("{}", err).into());
     }
   }
@@ -1117,7 +1119,7 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         );
         Ok(())
       });
-    if let Err(err) = rt.event_loop.lock().unwrap().spawn(fut) {
+    if let Err(err) = rt.spawn(fut) {
       return odd_future(format!("{}", err).into());
     }
   }
@@ -1187,7 +1189,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           }
 
           let rt = ptr.to_runtime(); // like a clone
-          let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
+          let spawnres = rt.spawn(future::lazy(move || {
             let innerfut = Box::new(
               FramedRead::new(file, BytesCodec::new())
                 .map_err(|e| println!("error reading file chunk! {}", e))
@@ -1296,7 +1298,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
         .map_err(|e| println!("error read_dir stream: {}", e))
         .for_each(move |entry| {
           let rt = ptr.to_runtime(); // like a clone
-          let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
+          let spawnres = rt.spawn(future::lazy(move || {
             let entrypath = entry.path();
             let pathstr = format!("{}\n", entrypath.to_str().unwrap());
             let pathbytes = pathstr.as_bytes();
@@ -1335,7 +1337,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           Ok(())
         }).and_then(move |_| {
           let rt = ptr.to_runtime(); // like a clone
-          let spawnres = rt.event_loop.lock().unwrap().spawn(future::lazy(move || {
+          let spawnres = rt.spawn(future::lazy(move || {
             let builder = &mut FlatBufferBuilder::new();
             let chunk_msg = msg::StreamChunk::create(
               builder,
@@ -1453,6 +1455,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     *req.uri_mut() = uri;
     *req.method_mut() = match msg.method() {
       msg::HttpMethod::Get => Method::GET,
+      msg::HttpMethod::Head => Method::HEAD,
       msg::HttpMethod::Post => Method::POST,
       _ => unimplemented!(),
     };
@@ -1505,9 +1508,11 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       return Ok(());
     }
 
+    debug!("body is end stream? {}", body.is_end_stream());
+
     if !body.is_end_stream() {
       let rt = ptr.to_runtime(); // like a clone
-      let spawnres = rt.event_loop.lock().unwrap().spawn(
+      let spawnres = rt.spawn(
         poll_fn(move || {
           while let Some(chunk) = try_ready!(body.poll_data()) {
             let mut bytes = chunk.into_bytes();
@@ -1540,12 +1545,18 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             );
           }
           Ok(Async::Ready(()))
-        }).map_err(|e: hyper::Error| println!("hyper error: {}", e)),
+        }).map_err(|e: hyper::Error| error!("hyper error: {}", e))
+        .and_then(move |_| {
+          let mut streams = ptr.to_runtime().streams.lock().unwrap();
+          streams.remove(&req_id);
+          Ok(debug!("done with hyper body"))
+        }),
       );
       if let Err(err) = spawnres {
         error!("error spawning http res stream: {}", err);
       }
     }
+    debug!("done with http request");
     Ok(())
   });
 
@@ -1556,6 +1567,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         format!("err getting response from oneshot: {}", e).as_str(),
       ))
     }).and_then(move |reserr: FlyResult<JsHttpResponse>| {
+      debug!("IN HTTP RESPONSE RECEIVING END");
       if let Err(err) = reserr {
         return Err(err);
       }
@@ -1591,6 +1603,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
           ..Default::default()
         },
       );
+      debug!("done with http response!!!!!");
       Ok(serialize_response(
         cmd_id,
         builder,
@@ -1602,7 +1615,11 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       ))
     });
 
-  unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(fut) };
+  // unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(fut) };
+
+  rt.spawn(fut.then(|_: Result<(), ()>| -> Result<(), ()> {
+    Ok(warn!("WERE DEFINITELY DONE WITH THAT FUTURE"))
+  })).unwrap(); // TODO: no unwrap
 
   Box::new(fut2)
 }
@@ -1798,6 +1815,25 @@ fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 
 #[cfg(test)]
 mod tests {
+  use super::*;
+
+  fn setup() -> tokio::runtime::Runtime {
+    let main_el = tokio::runtime::Runtime::new().unwrap();
+    unsafe {
+      EVENT_LOOP_HANDLE = Some(main_el.executor());
+    };
+    main_el
+  }
+
   #[test]
-  fn test_runtime_new() {}
+  fn test_runtime_dispose() {
+    let main_el = setup();
+    main_el
+      .block_on_all(futures::future::lazy(move || -> Result<(), ()> {
+        let s: Settings = Default::default();
+        let rt = Runtime::new(None, &s);
+        rt.dispose();
+        Ok(())
+      })).unwrap();
+  }
 }

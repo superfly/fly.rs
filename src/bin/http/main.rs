@@ -191,8 +191,13 @@ fn main() {
 
     let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
     runtime
-        .main_eval_file(matches.value_of("input").unwrap())
+        .eval_file(matches.value_of("input").unwrap())
         .unwrap();
+    main_el.spawn(
+        runtime
+            .run()
+            .map_err(|_| error!("error running runtime event loop")),
+    );
     unsafe {
         RUNTIME = Some(runtime);
     };

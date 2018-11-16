@@ -7,18 +7,16 @@ use env_logger::Env;
 
 extern crate libfly;
 
-use fly::runtime::{Runtime, EVENT_LOOP_HANDLE};
+use fly::runtime::Runtime;
 use fly::settings::SETTINGS;
 use std::env;
 
 extern crate futures;
-use futures::future;
+use futures::Future;
 
 extern crate tokio;
 
 use std::str;
-use std::thread::sleep;
-use std::time::Duration;
 
 extern crate glob;
 use glob::glob;
@@ -35,11 +33,6 @@ const FLY_TESTING_SOURCE: &'static [u8] = include_bytes!("../../../v8env/dist/te
 fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
   env_logger::init_from_env(env);
-
-  let mut main_el = tokio::runtime::Runtime::new().unwrap();
-  unsafe {
-    EVENT_LOOP_HANDLE = Some(main_el.executor());
-  };
 
   let mut rt = Runtime::new(None, &SETTINGS.read().unwrap());
   rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap())
@@ -70,12 +63,11 @@ fn main() {
     }
   }
 
-  rt.main_eval("run.js", str::from_utf8(RUN_SOURCE).unwrap())
+  rt.eval("run.js", str::from_utf8(RUN_SOURCE).unwrap())
     .unwrap();
 
-  main_el
-    .block_on(future::lazy(|| -> Result<(), ()> {
-      sleep(Duration::from_secs(5));
-      Ok(())
-    })).unwrap();
+  tokio::run(
+    rt.run()
+      .map_err(|_| error!("error running runtime event loop")),
+  );
 }

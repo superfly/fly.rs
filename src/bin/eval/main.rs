@@ -9,8 +9,10 @@ extern crate env_logger;
 use env_logger::Env;
 
 extern crate fly;
-use fly::runtime::{Runtime, EVENT_LOOP_HANDLE};
+use fly::runtime::Runtime;
 use fly::settings::SETTINGS;
+
+use futures::Future;
 
 fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
@@ -27,17 +29,14 @@ fn main() {
         .index(1),
     ).get_matches();
 
-  let main_el = tokio::runtime::Runtime::new().unwrap();
-  unsafe {
-    EVENT_LOOP_HANDLE = Some(main_el.executor());
-  };
+  let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
+  runtime
+    .eval_file(matches.value_of("input").unwrap())
+    .unwrap();
 
-  main_el
-    .block_on_all(futures::future::lazy(move || -> Result<(), ()> {
-      let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
-      runtime
-        .main_eval_file(matches.value_of("input").unwrap())
-        .unwrap();
-      Ok(())
-    })).unwrap();
+  tokio::run(
+    runtime
+      .run()
+      .map_err(|_| error!("error running runtime event loop")),
+  );
 }

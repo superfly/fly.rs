@@ -64,17 +64,10 @@ fn main() {
         .index(1),
     ).get_matches();
 
-  let main_el = tokio::runtime::Runtime::new().unwrap();
-  unsafe {
-    EVENT_LOOP_HANDLE = Some(main_el.executor());
-  };
-
   let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
   runtime
-    .main_eval_file(matches.value_of("input").unwrap())
+    .eval_file(matches.value_of("input").unwrap())
     .unwrap();
-
-  let handler = DnsHandler { runtime };
 
   let port: u16 = match matches.value_of("port") {
     Some(pstr) => pstr.parse::<u16>().unwrap(),
@@ -82,15 +75,26 @@ fn main() {
   };
 
   let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
-  let server = ServerFuture::new(handler);
 
   let udp_socket = UdpSocket::bind(&addr).expect(&format!("udp bind failed: {}", addr));
   info!("Listener bound on address: {}", addr);
 
-  let _ = main_el.block_on_all(future::lazy(move || -> Result<(), ()> {
+  tokio::run(future::lazy(move || -> Result<(), ()> {
+    tokio::spawn(
+      runtime
+        .run()
+        .map_err(|_| error!("error running runtime event loop")),
+    );
+    let handler = DnsHandler { runtime };
+    let server = ServerFuture::new(handler);
     server.register_socket(udp_socket);
     Ok(())
-  }));
+  }))
+
+  // let _ = main_el.block_on_all(future::lazy(move || -> Result<(), ()> {
+  //   server.register_socket(udp_socket);
+  //   Ok(())
+  // }));
 }
 
 pub struct DnsHandler {
