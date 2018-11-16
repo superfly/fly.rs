@@ -34,9 +34,7 @@ fn main() {
     .eval_file(matches.value_of("input").unwrap())
     .unwrap();
 
-  tokio::run(
-    runtime
-      .run()
-      .map_err(|_| error!("error running runtime event loop")),
-  );
+  // tokio::run(
+  runtime.run().wait().unwrap();
+  // );
 }
