@@ -27,14 +27,13 @@ export function prepareStackTraceWrapper(
 export function prepareStackTrace(error: Error, stack: CallSite[]): string {
   const fbb = flatbuffers.createBuilder();
   const offsets: number[] = stack.map((frame: CallSite) => {
-    const filename = fbb.createString(frame.getFileName());
-    const fnName = frame.getFunctionName();
-    const name = fbb.createString(fnName ? fnName : "");
+    const filename = fbb.createString(frame.getFileName() || "<unknown>");
+    const fnName = fbb.createString(frame.getFunctionName() || "");
     fbs.Frame.startFrame(fbb);
     fbs.Frame.addCol(fbb, frame.getColumnNumber());
     fbs.Frame.addLine(fbb, frame.getLineNumber());
     fbs.Frame.addFilename(fbb, filename);
-    fbs.Frame.addName(fbb, name);
+    fbs.Frame.addName(fbb, fnName);
     return fbs.Frame.endFrame(fbb);
   })
 

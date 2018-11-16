@@ -95,7 +95,7 @@ function onGlobalError(
   colno: number,
   error: Error
 ) {
-  console.log(error.stack);
+  console.log("Global Error", {message, source, lineno, colno, stack:error.stack});
 }
 
 export default function flyMain() {
