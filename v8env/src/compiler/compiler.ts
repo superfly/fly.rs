@@ -1,16 +1,11 @@
 import * as ts from "typescript"
 
-// import { alises } from "./alises"
 import { assert } from "./util"
 import { window } from "../globals"
 import { globalEval } from "../global-eval"
-import * as loader from "./resolver";
+import { fetchModule } from "./resolver";
 import { extname } from "./path";
 import { ContainerName } from "./assets";
-
-// export * from "./bundler"
-
-// const LibPath = "../fly.d.ts";
 
 type AmdCallback = (...args: unknown[]) => void;
 type AmdErrback = (err: unknown) => void;
@@ -152,8 +147,9 @@ function getModuleInfo(moduleId: string): ModuleInfo {
 
 export function resolveModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
   console.log("compiler.resolveModule()", { moduleSpecifier, containingFile })
-  const moduleId = loader.resolve(moduleSpecifier, containingFile)
-  console.log("compiler.resolveModule()", {resolvedId: moduleId})
+  const { moduleId, sourceCode } = fetchModule(moduleSpecifier, containingFile);
+
+  console.log("compiler.resolveModule()", {moduleId, sourceCode})
   if (!moduleId) {
     throw new Error(`Failed to resolve '${moduleSpecifier}' from '${containingFile}'`)
   }
@@ -162,9 +158,8 @@ export function resolveModule(moduleSpecifier: string, containingFile: string): 
     return cache.get(moduleId)
   }
 
-  const source = loader.load(moduleId)
   const moduleInfo = new ModuleInfo(moduleId, 0, mediaType(moduleId))
-  moduleInfo.inputCode = source
+  moduleInfo.inputCode = sourceCode
   cache.set(moduleInfo)
   return moduleInfo
 }
@@ -188,7 +183,6 @@ const service = ts.createLanguageService({
   },
   getScriptFileNames(): string[] {
     return scriptFileNames;
-    // return cache.moduleIds();
   },
   getScriptVersion(fileName: string): string {
     console.log("compiler.getScriptVersion()", { fileName })
@@ -204,7 +198,6 @@ const service = ts.createLanguageService({
   },
   getCurrentDirectory(): string {
     return ""
-    // return process.cwd()
   },
   getDefaultLibFileName(options: ts.CompilerOptions): string {
     console.log("getDefaultLibFileName()");
@@ -299,7 +292,7 @@ function compile(moduleInfo: ModuleInfo): OutputCode {
   if (diagnostics.length > 0) {
     const errMsg = ts.formatDiagnosticsWithColorAndContext(diagnostics, diagnosticHost);
     console.error("Compiler error", { errMsg } );
-    // All TypeScript errors are terminal for deno
+
     throw new Error("typescript error, quit")
     // this._os.exit(1);
   }
@@ -322,7 +315,6 @@ function compile(moduleInfo: ModuleInfo): OutputCode {
   // this._os.codeCache(fileName, sourceCode, outputCode);
   return moduleInfo.outputCode;
 }
-
 
 export function run(moduleSpecifier: ModuleSpecifier, containingFile: ContainingFile): ModuleInfo {
   console.log("compiler.run", { moduleSpecifier, containingFile });
@@ -355,8 +347,6 @@ export function dump() {
 export const moduleCache = cache;
 
 const runQueue: ModuleInfo[] = [];
-
-///// --------------------- DENO factory stuff
 
 /**
  * Drain the run queue, retrieving the arguments for the module
@@ -492,16 +482,3 @@ export function cacheScript(source: string) {
   moduleInfo.inputCode = source;
   cache.set(moduleInfo)
 }
-
-export * from "./path";
-
-// window.compiler = {
-//   run,
-//   reload,
-//   resolveModule,
-//   transform,
-//   dump,
-//   cacheScript
-// };
-
-// export * from "./../gen/files";

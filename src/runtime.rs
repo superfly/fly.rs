@@ -419,6 +419,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::DnsQuery => ops::dns::op_dns_query,
     msg::Any::DnsResponse => ops::dns::op_dns_response,
     msg::Any::AddEventListener => op_add_event_ln,
+    msg::Any::LoadModule => op_load_module,
     _ => unimplemented!(),
   };
 
@@ -1794,6 +1795,42 @@ fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
       .map_err(|e| format!("{:?}", e).into())
       .and_then(move |_| Ok(None)),
   )
+}
+
+fn op_load_module(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+  let cmd_id = base.cmd_id();
+  let msg = base.msg_as_load_module().unwrap();
+  let module_specifier = msg.module_specifier().unwrap().to_string();
+  let containing_file = msg.containing_file().unwrap().to_string();
+
+  let module =
+    match ::compiler::Compiler::new(None).fetch_module(&module_specifier, &containing_file) {
+      Ok(m) => m,
+      Err(e) => return odd_future(e.into()),
+    };
+
+  Box::new(future::lazy(move || {
+    let builder = &mut FlatBufferBuilder::new();
+    let module_id = builder.create_string(&module.module_id);
+    let source_code = builder.create_string(&module.source_code);
+
+    let msg = msg::LoadModuleResp::create(
+      builder,
+      &msg::LoadModuleRespArgs {
+        module_id: Some(module_id),
+        source_code: Some(source_code),
+      },
+    );
+    Ok(serialize_response(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        msg: Some(msg.as_union_value()),
+        msg_type: msg::Any::LoadModuleResp,
+        ..Default::default()
+      },
+    ))
+  }))
 }
 
 #[cfg(test)]

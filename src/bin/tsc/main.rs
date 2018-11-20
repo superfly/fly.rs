@@ -43,7 +43,7 @@ fn main() {
       let entry_file = matches.value_of("input").unwrap();
 
       runtime
-        .main_eval(entry_file, &format!("compiler.run('{}')", entry_file))
+        .main_eval(entry_file, &format!("compiler.run('{}', '.')", entry_file))
         .unwrap();
       Ok(())
     })).unwrap();

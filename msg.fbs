@@ -30,6 +30,8 @@ union Any {
   DnsRequest,
   DnsResponse,
   AddEventListener,
+  LoadModule,
+  LoadModuleResp,
 }
 
 enum ErrorKind: byte {
@@ -233,6 +235,16 @@ enum EventType: byte {
 
 table AddEventListener {
   event: EventType;
+}
+
+table LoadModule {
+  module_specifier: string;
+  containing_file: string;
+}
+
+table LoadModuleResp {
+  module_id: string;
+  source_code: string;
 }
 
 root_type Base;

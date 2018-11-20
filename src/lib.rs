@@ -36,6 +36,7 @@ pub mod data;
 
 pub mod settings;
 
+mod compiler;
 mod postgres_data;
 mod redis_cache;
 mod sqlite_cache;

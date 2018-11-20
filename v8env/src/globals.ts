@@ -19,6 +19,7 @@ import * as url from './url';
 import { FlyRequest } from "./request";
 import flyData from './fly/data';
 import flyCache from './fly/cache';
+import { loadModule } from "./module_loader";
 
 declare global {
   interface Window {
@@ -95,6 +96,7 @@ window.fetch = fetch_.fetch;
 window.resolv = resolv_.resolv;
 window.crypto = crypto_.crypto;
 window.cache = cache_;
+window.loadModule = loadModule;
 
 window.fly = {
   cache: flyCache,
