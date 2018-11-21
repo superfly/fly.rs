@@ -4,6 +4,8 @@ extern crate libc;
 use tokio;
 use tokio::prelude::*;
 
+use tokio::runtime::current_thread;
+
 use std::io;
 
 use std::ffi::{CStr, CString};
@@ -21,7 +23,6 @@ use futures::sync::{mpsc, oneshot};
 use std::collections::HashMap;
 
 use std::thread;
-use tokio::runtime::current_thread;
 
 use tokio::timer::Delay;
 
@@ -65,10 +66,9 @@ extern crate log;
 extern crate rand;
 use self::rand::{thread_rng, Rng};
 
-extern crate tokio_fs;
-
-extern crate tokio_codec;
-use self::tokio_codec::{BytesCodec, FramedRead};
+use tokio::codec::{BytesCodec, FramedRead};
+extern crate bytes;
+use self::bytes::BytesMut;
 
 use cache;
 use data;
@@ -88,6 +88,7 @@ extern crate trust_dns as dns;
 #[derive(Debug)]
 pub enum JsBody {
   Stream(mpsc::UnboundedReceiver<Vec<u8>>),
+  BytesStream(mpsc::UnboundedReceiver<BytesMut>),
   Static(Vec<u8>),
 }
 
@@ -139,12 +140,12 @@ impl JsRuntime {
 pub struct Runtime {
   pub ptr: JsRuntime,
   pub name: String,
-  pub event_loop: Mutex<tokio::runtime::current_thread::Handle>,
+  pub event_loop: Mutex<current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
-  pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
+  // pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
   pub cache_store: Box<cache::CacheStore + 'static + Send>,
   pub data_store: Box<data::DataStore + 'static + Send>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
@@ -171,6 +172,11 @@ fn init_event_loop() -> (
       "runtime-loop-{}",
       NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
     )).spawn(move || {
+      // let mut el = tokio::runtime::Builder::new()
+      //   .keep_alive(Some(Duration::from_secs(60)))
+      //   .core_threads(1)
+      //   .build()
+      //   .unwrap();
       let mut el = current_thread::Runtime::new().unwrap();
       let (txready, rxready) = oneshot::channel::<()>();
       let (txquit, rxquit) = oneshot::channel::<()>();
@@ -179,12 +185,23 @@ fn init_event_loop() -> (
 
       debug!("sent loop handle");
 
-      match el.block_on(rxready.map_err(|_| error!("error recving ready signal for runtime"))) {
-        Ok(_) => warn!("stopped blocking on ready chan"),
-        Err(_) => error!("error blocking on ready chan!"),
-      };
+      // match el.block_on(rxready.map_err(|_| error!("error recving ready signal for runtime"))) {
+      //   Ok(_) => warn!("stopped blocking on ready chan"),
+      //   Err(_) => error!("error blocking on ready chan!"),
+      // };
 
-      // el.spawn(rxready.map_err(|_| error!("error recving ready signal for runtime")));
+      // keep it alive at least until all scripts are evaled
+      el.spawn(
+        rxready
+          .map_err(|_| error!("error recving ready signal for runtime"))
+          .and_then(|_| Ok(warn!("ready ch received!"))),
+      );
+
+      // el.block_on_all(
+      //   rxready
+      //     .map_err(|_| error!("error recving ready signal for runtime"))
+      //     .and_then(|_| Ok(warn!("ready ch received!"))),
+      // ).unwrap();
 
       match el.run() {
         Ok(_) => warn!("runtime event loop ran fine"),
@@ -208,14 +225,13 @@ impl Runtime {
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
       name: name.unwrap_or("v8".to_string()),
-      event_loop: Mutex::new(rthandle),
+      event_loop: Mutex::new(rthandle.clone()),
       ready_ch: Some(txready),
       quit_ch: Some(rxquit),
       timers: Mutex::new(HashMap::new()),
       responses: Mutex::new(HashMap::new()),
       dns_responses: Mutex::new(HashMap::new()),
       streams: Mutex::new(HashMap::new()),
-      http_client: Client::builder().build(HttpsConnector::new(4).unwrap()),
       fetch_events: None,
       resolv_events: None,
       cache_store: match settings.cache_store {
@@ -256,21 +272,20 @@ impl Runtime {
     rt
   }
 
-  pub fn eval(&self, filename: &str, code: &str) -> Result<(), tokio::executor::SpawnError> {
+  pub fn eval(&self, filename: &str, code: &str) {
     debug!("evaluating '{}'", filename);
     let cfilename = CString::new(filename).unwrap();
     let ccode = CString::new(code).unwrap();
     let ptr = self.ptr;
-    self.spawn(future::lazy(move || -> Result<(), ()> {
-      unsafe {
-        js_eval(ptr.0, cfilename.as_ptr(), ccode.as_ptr());
-      }
+    self.spawn(future::lazy(move || unsafe {
+      js_eval(ptr.0, cfilename.as_ptr(), ccode.as_ptr());
       debug!("finished evaluating '{}'", cfilename.to_string_lossy());
       Ok(())
-    }))
+    }));
   }
 
-  pub fn eval_file(&self, filename: &str) -> Result<(), tokio::executor::SpawnError> {
+  pub fn eval_file(&self, filename: &str) {
+    // -> Result<(), tokio::executor::SpawnError> {
     let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -296,21 +311,22 @@ impl Runtime {
 
   pub fn run(&mut self) -> oneshot::Receiver<()> {
     self.ready_ch.take().unwrap().send(()).unwrap(); //TODO: no unwrap
-    debug!("self.ready_ch = {:?}", self.ready_ch);
+                                                     // debug!("self.ready_ch = {:?}", self.ready_ch);
     self.quit_ch.take().unwrap()
   }
 
-  fn spawn<F>(&self, fut: F) -> Result<(), tokio::executor::SpawnError>
+  pub fn spawn<F>(&self, fut: F)
   where
     F: Future<Item = (), Error = ()> + Send + 'static,
   {
     let n = NEXT_FUTURE_ID.fetch_add(1, Ordering::SeqCst);
-    debug!("SPAWNING A FUTURE! id: {}", n);
+    trace!("SPAWNING A FUTURE! id: {}", n);
     self
       .event_loop
       .lock()
       .unwrap()
-      .spawn(fut.then(move |_| Ok(debug!("SPAWNED FUTURE IS DONE id: {}", n))))
+      .spawn(fut.then(move |_| Ok(trace!("SPAWNED FUTURE IS DONE id: {}", n))))
+      .unwrap();
   }
 }
 
@@ -330,6 +346,22 @@ lazy_static! {
       unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();
     bytes.into_boxed_slice()
   };
+  static ref EVENT_LOOP: (tokio::runtime::TaskExecutor, oneshot::Sender<()>) = {
+    let el = tokio::runtime::Runtime::new().unwrap();
+    let exec = el.executor();
+    let (tx, rx) = oneshot::channel::<()>();
+    thread::Builder::new()
+      .name("main-event-loop".to_string())
+      .spawn(move || {
+        el.block_on_all(rx).unwrap();
+      }).unwrap();
+    (exec, tx)
+  };
+  static ref HTTP_CLIENT: Client<HttpsConnector<HttpConnector>, Body> = {
+    Client::builder()
+      .executor(EVENT_LOOP.0.clone())
+      .build(HttpsConnector::new(4).unwrap())
+  };
 }
 
 lazy_static_include_bytes!(V8ENV_SOURCEMAP, "v8env/dist/v8env.js.map");
@@ -338,8 +370,6 @@ const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
 
 extern crate sourcemap;
 use self::sourcemap::SourceMap;
-
-pub static mut EVENT_LOOP_HANDLE: Option<tokio::runtime::TaskExecutor> = None;
 
 type SourceMapId = (u32, u32, String, String);
 
@@ -382,6 +412,10 @@ lazy_static! {
       }).unwrap();
     Mutex::new(sender)
   };
+  static ref GENERIC_EVENT_LOOP: tokio::runtime::Runtime = {
+    let el = tokio::runtime::Runtime::new().unwrap();
+    el
+  };
 }
 
 // Buf represents a byte array returned from a "Op".
@@ -390,10 +424,9 @@ lazy_static! {
 // Usually a flatbuffer message.
 pub type Buf = Option<Box<[u8]>>;
 
-// JS promises in Deno map onto a specific Future
-// which yields either a DenoError or a byte array.
+// JS promises in Fly map onto a specific Future
+// which yields either a FlyError or a byte array.
 pub type Op = Future<Item = Buf, Error = FlyError> + Send;
-
 pub type Handler = fn(JsRuntime, &msg::Base, fly_buf) -> Box<Op>;
 
 use std::slice;
@@ -448,33 +481,30 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
       }
     }
   } else {
-    debug!("DOING ASYNC MSG");
-    let fut = fut
-      .and_then(move |maybe_box_u8| {
-        let buf = match maybe_box_u8 {
-          Some(box_u8) => fly_buf_from(box_u8),
-          None => {
-            // async RPCs that return None still need to
-            // send a message back to signal completion.
-            let builder = &mut FlatBufferBuilder::new();
-            fly_buf_from(
-              serialize_response(
-                cmd_id,
-                builder,
-                msg::BaseArgs {
-                  ..Default::default()
-                },
-              ).unwrap(),
-            )
-          }
-        };
-        ptr.send(buf, None);
-        Ok(())
-      }).then(|_: Result<(), ()>| Ok(debug!("ASYNC MSG IS DONE!")));
+    // debug!("DOING ASYNC MSG");
+    let fut = fut.and_then(move |maybe_box_u8| {
+      let buf = match maybe_box_u8 {
+        Some(box_u8) => fly_buf_from(box_u8),
+        None => {
+          // async RPCs that return None still need to
+          // send a message back to signal completion.
+          let builder = &mut FlatBufferBuilder::new();
+          fly_buf_from(
+            serialize_response(
+              cmd_id,
+              builder,
+              msg::BaseArgs {
+                ..Default::default()
+              },
+            ).unwrap(),
+          )
+        }
+      };
+      ptr.send(buf, None);
+      Ok(())
+    });
     let rt = ptr.to_runtime();
-    if let Err(err) = rt.spawn(fut) {
-      ptr.send_error(cmd_id, format!("{}", err).into());
-    }
+    rt.spawn(fut);
   }
 }
 
@@ -776,7 +806,7 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
               if let JsBody::Stream(body) = jsbody {
                 let req_id = req.id;
                 let rt = ptr.to_runtime();
-                let spawnres = rt.spawn(
+                rt.spawn(
                   body
                     .map_err(|_| error!("error receiving body chunk :/"))
                     .for_each(move |bytes: Vec<u8>| {
@@ -812,15 +842,12 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                       Ok(())
                     }),
                 );
-                if let Err(err) = spawnres {
-                  error!("error spawning: {}", err);
-                }
               }
             }
 
             Ok(())
           }),
-      ).unwrap(); // TODO: don't
+      );
       rt.fetch_events = Some(tx);
     }
     msg::EventType::Resolv => {
@@ -906,7 +933,7 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             ptr.send(to_send, None);
             Ok(())
           }),
-      ).unwrap(); // TODO: don't
+      );
       rt.resolv_events = Some(tx);
     }
   };
@@ -923,14 +950,11 @@ fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let spawnres = rt.spawn(
+  rt.spawn(
     rt.cache_store
       .del(key)
       .map_err(|e| error!("error cache del future! {:?}", e)),
   );
-  if let Err(err) = spawnres {
-    return odd_future(format!("{}", err).into());
-  }
 
   ok_future(None)
 }
@@ -942,14 +966,11 @@ fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let spawnres = rt.spawn(
+  rt.spawn(
     rt.cache_store
       .expire(key, ttl)
       .map_err(|e| error!("error cache expire future! {:?}", e)),
   );
-  if let Err(err) = spawnres {
-    return odd_future(format!("{}", err).into());
-  }
 
   ok_future(None)
 }
@@ -976,14 +997,11 @@ fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let fut = rt.cache_store.set(key, Box::new(recver), ttl);
 
-  let spawnres = rt.spawn(
+  rt.spawn(
     fut
       .map_err(|e| println!("error cache set stream! {:?}", e))
       .and_then(move |_b| Ok(())),
   );
-  if let Err(err) = spawnres {
-    return odd_future(format!("{}", err).into());
-  }
 
   let builder = &mut FlatBufferBuilder::new();
   let msg = msg::CacheSetReady::create(
@@ -1055,9 +1073,7 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       Ok(())
     });
 
-    if let Err(err) = rt.spawn(fut) {
-      return odd_future(format!("{}", err).into());
-    }
+    rt.spawn(fut);
   }
 
   if let Some(stream) = maybe_stream {
@@ -1119,9 +1135,7 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         );
         Ok(())
       });
-    if let Err(err) = rt.spawn(fut) {
-      return odd_future(format!("{}", err).into());
-    }
+    rt.spawn(fut);
   }
 
   ok_future(None)
@@ -1146,162 +1160,46 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   // ))
 }
 
-fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
-  let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
+  let rt = ptr.to_runtime();
 
-  let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
-
-  let path: String = url.chars().skip(7).collect();
-
-  let meta = match fs::metadata(path.clone()) {
-    Ok(m) => m,
-    Err(e) => return odd_future(e.into()),
-  };
-
-  println!("META: {:?}", meta);
-
-  if meta.is_file() {
-    let fut = future::lazy(move || {
-      tokio_fs::File::open(path).then(
-        move |fileerr: Result<tokio_fs::File, io::Error>| -> Result<(), ()> {
-          if let Err(err) = fileerr {
-            if p.send(Err(err.into())).is_err() {
-              error!("error sending file open error");
-            }
-            return Ok(());
-          }
-
-          let file = fileerr.unwrap(); // should be safe.
-
-          let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-          let mut stream = ptr.to_runtime().streams.lock().unwrap();
-          stream.insert(req_id, tx);
-
-          if p
-            .send(Ok(JsHttpResponse {
-              headers: HeaderMap::new(),
-              status: StatusCode::OK,
-              body: Some(JsBody::Stream(rx)),
-            })).is_err()
-          {
-            error!("error sending http response");
-            return Ok(());
-          }
-
-          let rt = ptr.to_runtime(); // like a clone
-          let spawnres = rt.spawn(future::lazy(move || {
-            let innerfut = Box::new(
-              FramedRead::new(file, BytesCodec::new())
-                .map_err(|e| println!("error reading file chunk! {}", e))
-                .for_each(move |mut chunk| {
-                  let builder = &mut FlatBufferBuilder::new();
-                  let chunk_msg = msg::StreamChunk::create(
-                    builder,
-                    &msg::StreamChunkArgs {
-                      id: req_id,
-                      done: false,
-                    },
-                  );
-                  ptr.send(
-                    fly_buf_from(
-                      serialize_response(
-                        0,
-                        builder,
-                        msg::BaseArgs {
-                          msg: Some(chunk_msg.as_union_value()),
-                          msg_type: msg::Any::StreamChunk,
-                          ..Default::default()
-                        },
-                      ).unwrap(),
-                    ),
-                    Some(fly_buf {
-                      alloc_ptr: ptr::null_mut() as *mut u8,
-                      alloc_len: 0,
-                      data_ptr: chunk.as_mut_ptr(),
-                      data_len: chunk.len(),
-                    }),
-                  );
-                  Ok(())
-                }).and_then(move |_| {
-                  let builder = &mut FlatBufferBuilder::new();
-                  let chunk_msg = msg::StreamChunk::create(
-                    builder,
-                    &msg::StreamChunkArgs {
-                      id: req_id,
-                      done: true,
-                    },
-                  );
-                  ptr.send(
-                    fly_buf_from(
-                      serialize_response(
-                        0,
-                        builder,
-                        msg::BaseArgs {
-                          msg: Some(chunk_msg.as_union_value()),
-                          msg_type: msg::Any::StreamChunk,
-                          ..Default::default()
-                        },
-                      ).unwrap(),
-                    ),
-                    None,
-                  );
-                  Ok(())
-                }),
-            );
-
-            unsafe {
-              match EVENT_LOOP_HANDLE {
-                Some(ref mut elh) => {
-                  elh.spawn(innerfut);
-                }
-                None => panic!("requires a multi-threaded event loop"),
-              }
-            };
-            Ok(())
-          }));
-
-          if let Err(err) = spawnres {
-            error!("error spawning file read: {}", err);
-          }
-
-          Ok(())
-        },
-      )
-      // Ok(())
-    });
-    unsafe { EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(fut) };
-  } else {
-    let fut = tokio_fs::read_dir(path).then(move |read_dir_err| {
-      if let Err(err) = read_dir_err {
-        if p.send(Err(err.into())).is_err() {
-          error!("error sending read_dir error");
-        }
-        return Ok(());
-      }
-      let read_dir = read_dir_err.unwrap();
-      let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-      let mut streams = ptr.to_runtime().streams.lock().unwrap();
-      streams.insert(req_id, tx);
-
-      if p
-        .send(Ok(JsHttpResponse {
-          headers: HeaderMap::new(),
-          status: StatusCode::OK,
-          body: Some(JsBody::Stream(rx)),
-        })).is_err()
-      {
-        error!("error sending http response");
-        return Ok(());
-      }
-
-      let fut = read_dir
-        .map_err(|e| println!("error read_dir stream: {}", e))
-        .for_each(move |entry| {
-          let rt = ptr.to_runtime(); // like a clone
-          let spawnres = rt.spawn(future::lazy(move || {
-            let entrypath = entry.path();
-            let pathstr = format!("{}\n", entrypath.to_str().unwrap());
-            let pathbytes = pathstr.as_bytes();
+  match stream {
+    JsBody::Static(v) => {
+      rt.spawn(future::lazy(move || {
+        let builder = &mut FlatBufferBuilder::new();
+        let chunk_msg = msg::StreamChunk::create(
+          builder,
+          &msg::StreamChunkArgs {
+            id: req_id,
+            done: true,
+          },
+        );
+        ptr.send(
+          fly_buf_from(
+            serialize_response(
+              0,
+              builder,
+              msg::BaseArgs {
+                msg: Some(chunk_msg.as_union_value()),
+                msg_type: msg::Any::StreamChunk,
+                ..Default::default()
+              },
+            ).unwrap(),
+          ),
+          Some(fly_buf {
+            alloc_ptr: ptr::null_mut() as *mut u8,
+            alloc_len: 0,
+            data_ptr: v.as_ptr() as *mut u8,
+            data_len: v.len(),
+          }),
+        );
+        Ok(())
+      }));
+    }
+    JsBody::Stream(rx) => {
+      rt.spawn(
+        rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
+          .for_each(move |v| {
             let builder = &mut FlatBufferBuilder::new();
             let chunk_msg = msg::StreamChunk::create(
               builder,
@@ -1325,26 +1223,18 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
               Some(fly_buf {
                 alloc_ptr: ptr::null_mut() as *mut u8,
                 alloc_len: 0,
-                data_ptr: pathbytes.as_ptr() as *mut u8,
-                data_len: pathbytes.len(),
+                data_ptr: v.as_ptr() as *mut u8,
+                data_len: v.len(),
               }),
             );
             Ok(())
-          }));
-          if let Err(err) = spawnres {
-            error!("error spawning read_dir stream {}", err);
-          }
-          Ok(())
-        }).and_then(move |_| {
-          let rt = ptr.to_runtime(); // like a clone
-          let spawnres = rt.spawn(future::lazy(move || {
+          }).and_then(move |_| {
             let builder = &mut FlatBufferBuilder::new();
             let chunk_msg = msg::StreamChunk::create(
               builder,
               &msg::StreamChunkArgs {
                 id: req_id,
                 done: true,
-                ..Default::default()
               },
             );
             ptr.send(
@@ -1362,17 +1252,183 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
               None,
             );
             Ok(())
-          }));
-          if let Err(err) = spawnres {
-            error!("error spawning read_dir stream chunk {}", err);
-          }
-          Ok(())
-        });
-      unsafe { EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(fut) };
-      Ok(())
-    });
-    unsafe { EVENT_LOOP_HANDLE.as_mut().unwrap().spawn(fut) };
+          }),
+      );
+    }
+    JsBody::BytesStream(rx) => {
+      rt.spawn(
+        rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
+          .for_each(move |mut b| {
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: false,
+              },
+            );
+            ptr.send(
+              fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(chunk_msg.as_union_value()),
+                    msg_type: msg::Any::StreamChunk,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              ),
+              Some(fly_buf {
+                alloc_ptr: ptr::null_mut() as *mut u8,
+                alloc_len: 0,
+                data_ptr: b.as_mut_ptr() as *mut u8,
+                data_len: b.len(),
+              }),
+            );
+            Ok(())
+          }).and_then(move |_| {
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: true,
+              },
+            );
+            ptr.send(
+              fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(chunk_msg.as_union_value()),
+                    msg_type: msg::Any::StreamChunk,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              ),
+              None,
+            );
+            Ok(())
+          }),
+      );
+    }
   };
+}
+
+fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
+  let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+
+  let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
+
+  let path: String = url.chars().skip(7).collect();
+
+  let meta = match fs::metadata(path.clone()) {
+    Ok(m) => m,
+    Err(e) => return odd_future(e.into()),
+  };
+
+  println!("META: {:?}", meta);
+
+  if meta.is_file() {
+    let fut = future::lazy(move || {
+      tokio::fs::File::open(path).then(
+        move |fileerr: Result<tokio::fs::File, io::Error>| -> Result<(), ()> {
+          debug!("file opened? {}", fileerr.is_ok());
+          if let Err(err) = fileerr {
+            if p.send(Err(err.into())).is_err() {
+              error!("error sending file open error");
+            }
+            return Ok(());
+          }
+
+          let file = fileerr.unwrap(); // should be safe.
+
+          let (tx, rx) = mpsc::unbounded::<BytesMut>();
+          // let mut streams = ptr.to_runtime().streams.lock().unwrap();
+          // streams.insert(req_id, tx);
+
+          if p
+            .send(Ok(JsHttpResponse {
+              headers: HeaderMap::new(),
+              status: StatusCode::OK,
+              body: Some(JsBody::BytesStream(rx)),
+            })).is_err()
+          {
+            error!("error sending http response");
+            return Ok(());
+          }
+
+          // let rt = ptr.to_runtime(); // like a clone
+          EVENT_LOOP.0.spawn(
+            FramedRead::new(file, BytesCodec::new())
+              .map_err(|e| println!("error reading file chunk! {}", e))
+              .for_each(move |chunk| {
+                debug!("got frame chunk");
+                match tx.clone().unbounded_send(chunk) {
+                  Ok(_) => Ok(()),
+                  Err(e) => {
+                    error!("error sending chunk in channel: {}", e);
+                    Err(())
+                  }
+                }
+              }),
+          );
+          Ok(())
+        },
+      )
+    });
+    EVENT_LOOP.0.spawn(fut);
+  } else {
+    let fut = future::lazy(move || {
+      tokio::fs::read_dir(path).then(move |read_dir_err| {
+        if let Err(err) = read_dir_err {
+          if p.send(Err(err.into())).is_err() {
+            error!("error sending read_dir error");
+          }
+          return Ok(());
+        }
+        let read_dir = read_dir_err.unwrap();
+        let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
+        // let mut streams = ptr.to_runtime().streams.lock().unwrap();
+        // streams.insert(req_id, tx);
+
+        if p
+          .send(Ok(JsHttpResponse {
+            headers: HeaderMap::new(),
+            status: StatusCode::OK,
+            body: Some(JsBody::Stream(rx)),
+          })).is_err()
+        {
+          error!("error sending http response");
+          return Ok(());
+        }
+
+        EVENT_LOOP.0.spawn(
+          read_dir
+            .map_err(|e| println!("error read_dir stream: {}", e))
+            .for_each(move |entry| {
+              // let rt = ptr.to_runtime(); // like a clone
+              // rt.spawn(future::lazy(move || {
+              let entrypath = entry.path();
+              let pathstr = format!("{}\n", entrypath.to_str().unwrap());
+              // let pathbytes = pathstr.as_bytes();
+              match tx.clone().unbounded_send(pathstr.into()) {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                  error!("error sending path chunk in channel: {}", e);
+                  Err(())
+                }
+              }
+            }),
+        );
+        Ok(())
+        // Ok(())
+      })
+    });
+    EVENT_LOOP.0.spawn(fut);
+  }
 
   let fut2 = c
     .map_err(|e| {
@@ -1416,6 +1472,9 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           ..Default::default()
         },
       );
+      if let Some(stream) = res.body {
+        send_body_stream(ptr, req_id, stream);
+      }
       Ok(serialize_response(
         cmd_id,
         builder,
@@ -1443,7 +1502,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let req_body: Body;
   if msg.has_body() {
-    unimplemented!();
+    unimplemented!(); // TODO: implement
   } else {
     req_body = Body::empty();
   }
@@ -1451,7 +1510,6 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let mut req = Request::new(req_body);
   {
     let uri: hyper::Uri = url.parse().unwrap();
-    // println!("url: {:?}", uri);
     *req.uri_mut() = uri;
     *req.method_mut() = match msg.method() {
       msg::HttpMethod::Get => Method::GET,
@@ -1464,7 +1522,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let headers = req.headers_mut();
     for i in 0..msg_headers.len() {
       let h = msg_headers.get(i);
-      // println!("header: {} => {}", h.key().unwrap(), h.value().unwrap());
+      trace!("header: {} => {}", h.key().unwrap(), h.value().unwrap());
       headers.insert(
         HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
         h.value().unwrap().parse().unwrap(),
@@ -1476,7 +1534,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let fut = rt.http_client.request(req).then(move |reserr| {
+  let fut = HTTP_CLIENT.request(req).then(move |reserr| {
     debug!("got http response (or error)");
     if let Err(err) = reserr {
       if p.send(Err(err.into())).is_err() {
@@ -1512,7 +1570,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
     if !body.is_end_stream() {
       let rt = ptr.to_runtime(); // like a clone
-      let spawnres = rt.spawn(
+      rt.spawn(
         poll_fn(move || {
           while let Some(chunk) = try_ready!(body.poll_data()) {
             let mut bytes = chunk.into_bytes();
@@ -1552,9 +1610,6 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
           Ok(debug!("done with hyper body"))
         }),
       );
-      if let Err(err) = spawnres {
-        error!("error spawning http res stream: {}", err);
-      }
     }
     debug!("done with http request");
     Ok(())
@@ -1615,11 +1670,9 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       ))
     });
 
-  // unsafe { EVENT_LOOP_HANDLE.as_ref().unwrap().spawn(fut) };
-
   rt.spawn(fut.then(|_: Result<(), ()>| -> Result<(), ()> {
     Ok(warn!("WERE DEFINITELY DONE WITH THAT FUTURE"))
-  })).unwrap(); // TODO: no unwrap
+  }));
 
   Box::new(fut2)
 }
@@ -1815,25 +1868,6 @@ fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-
-  fn setup() -> tokio::runtime::Runtime {
-    let main_el = tokio::runtime::Runtime::new().unwrap();
-    unsafe {
-      EVENT_LOOP_HANDLE = Some(main_el.executor());
-    };
-    main_el
-  }
-
   #[test]
-  fn test_runtime_dispose() {
-    let main_el = setup();
-    main_el
-      .block_on_all(futures::future::lazy(move || -> Result<(), ()> {
-        let s: Settings = Default::default();
-        let rt = Runtime::new(None, &s);
-        rt.dispose();
-        Ok(())
-      })).unwrap();
-  }
+  fn test_runtime_dispose() {}
 }

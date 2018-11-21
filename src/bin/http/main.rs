@@ -105,7 +105,7 @@ impl Service for FlyServer {
                     None
                 } else {
                     let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-                    let spawnres = rt.event_loop.lock().unwrap().spawn(
+                    rt.spawn(
                         body.map_err(|e| error!("error reading body chunk: {}", e))
                             .for_each(move |chunk| {
                                 let sendres = tx.unbounded_send(chunk.into_bytes().to_vec());
@@ -115,9 +115,6 @@ impl Service for FlyServer {
                                 Ok(())
                             }),
                     );
-                    if let Err(e) = spawnres {
-                        error!("error spawning body stream: {}", e);
-                    }
                     Some(JsBody::Stream(rx))
                 },
             });
@@ -140,6 +137,9 @@ impl Service for FlyServer {
                 if let Some(js_body) = res.body {
                     body = match js_body {
                         JsBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
+                        JsBody::BytesStream(s) => {
+                            Body::wrap_stream(s.map_err(|_| RecvError {}).map(|bm| bm.freeze()))
+                        }
                         JsBody::Static(b) => Body::from(b),
                     };
                 }
@@ -185,14 +185,12 @@ fn main() {
     info!("V8 version: {}", libfly::version());
 
     let mut main_el = tokio::runtime::Runtime::new().unwrap();
-    unsafe {
-        EVENT_LOOP_HANDLE = Some(main_el.executor());
-    };
+    // unsafe {
+    //     EVENT_LOOP_HANDLE = Some(main_el.executor());
+    // };
 
     let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
-    runtime
-        .eval_file(matches.value_of("input").unwrap())
-        .unwrap();
+    runtime.eval_file(matches.value_of("input").unwrap());
     main_el.spawn(
         runtime
             .run()

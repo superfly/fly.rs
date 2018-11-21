@@ -35,14 +35,10 @@ fn main() {
   env_logger::init_from_env(env);
 
   let mut rt = Runtime::new(None, &SETTINGS.read().unwrap());
-  rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap())
-    .unwrap();
-  rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap())
-    .unwrap();
-  rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap())
-    .unwrap();
-  rt.eval("setup.js", str::from_utf8(SETUP_SOURCE).unwrap())
-    .unwrap();
+  rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap());
+  rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap());
+  rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap());
+  rt.eval("setup.js", str::from_utf8(SETUP_SOURCE).unwrap());
 
   let args: Vec<String> = env::args().collect();
 
@@ -59,12 +55,11 @@ fn main() {
   for pattern in patterns {
     for path in glob(&pattern).unwrap().filter_map(Result::ok) {
       debug!("{}", path.display());
-      rt.eval_file(path.to_str().expect("invalid path")).unwrap();
+      rt.eval_file(path.to_str().expect("invalid path"));
     }
   }
 
-  rt.eval("run.js", str::from_utf8(RUN_SOURCE).unwrap())
-    .unwrap();
+  rt.eval("run.js", str::from_utf8(RUN_SOURCE).unwrap());
 
   tokio::run(
     rt.run()

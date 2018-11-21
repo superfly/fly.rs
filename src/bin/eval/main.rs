@@ -30,11 +30,7 @@ fn main() {
     ).get_matches();
 
   let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
-  runtime
-    .eval_file(matches.value_of("input").unwrap())
-    .unwrap();
+  runtime.eval_file(matches.value_of("input").unwrap());
 
-  // tokio::run(
   runtime.run().wait().unwrap();
-  // );
 }

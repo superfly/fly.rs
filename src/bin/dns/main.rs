@@ -65,10 +65,7 @@ fn main() {
     ).get_matches();
 
   let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
-  runtime
-    .eval_file(matches.value_of("input").unwrap())
-    .unwrap();
-
+  runtime.eval_file(matches.value_of("input").unwrap());
   let port: u16 = match matches.value_of("port") {
     Some(pstr) => pstr.parse::<u16>().unwrap(),
     None => 8053,
@@ -83,18 +80,14 @@ fn main() {
     tokio::spawn(
       runtime
         .run()
-        .map_err(|_| error!("error running runtime event loop")),
+        .map_err(|_| error!("error running runtime event loop"))
+        .and_then(|_| Ok(info!("Runtime is done."))),
     );
     let handler = DnsHandler { runtime };
     let server = ServerFuture::new(handler);
     server.register_socket(udp_socket);
     Ok(())
   }))
-
-  // let _ = main_el.block_on_all(future::lazy(move || -> Result<(), ()> {
-  //   server.register_socket(udp_socket);
-  //   Ok(())
-  // }));
 }
 
 pub struct DnsHandler {
