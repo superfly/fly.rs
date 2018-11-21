@@ -43,6 +43,8 @@ type OutputCode = string;
  */
 type SourceCode = string;
 
+declare type ImportSpecifier = [ModuleSpecifier, ContainingFile];
+
 enum MediaType {
   JavaScript = 0,
   TypeScript,
@@ -121,6 +123,7 @@ export interface CompilerOptions {
 
 export class Compiler {
   private readonly moduleCache = new ModuleCache();
+  private readonly fileNameCache = new Map<ImportSpecifier, ModuleFileName>();
   private readonly runQueue: ModuleInfo[] = [];
   public scriptFileNames: string[] = [];
   private readonly globalEval: (string) => any;
@@ -145,9 +148,12 @@ export class Compiler {
 
   public resolveModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
     console.log("compiler.resolveModule()", { moduleSpecifier, containingFile })
-    const { moduleId, fileName, sourceCode } = fetchModule(moduleSpecifier, containingFile);
+    let fn = this.fileNameCache.get([moduleSpecifier, containingFile]);
+    if (fn && this.moduleCache.has(fn)) {
+      return this.moduleCache.get(fn);
+    }
+    let { moduleId, fileName, sourceCode } = fetchModule(moduleSpecifier, containingFile);
 
-    // console.log("compiler.resolveModule()", { moduleId, sourceCode })
     if (!moduleId) {
       throw new Error(`Failed to resolve '${moduleSpecifier}' from '${containingFile}'`)
     }
@@ -159,11 +165,12 @@ export class Compiler {
     const moduleInfo = new ModuleInfo(moduleId, fileName, 0, mediaType(moduleId))
     moduleInfo.inputCode = sourceCode
     this.moduleCache.set(moduleInfo)
+    this.fileNameCache.set([moduleSpecifier, containingFile], fileName);
     return moduleInfo
   }
 
   getModuleInfo(fileName: ModuleFileName): ModuleInfo {
-    console.log("compiler.getModuleInfo()", { fileName })
+    // console.log("compiler.getModuleInfo()", { fileName })
 
     if (this.moduleCache.has(fileName)) {
       return this.moduleCache.get(fileName);

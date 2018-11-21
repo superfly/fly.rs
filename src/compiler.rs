@@ -33,9 +33,7 @@ impl Compiler {
       &module_specifier, &containing_file
     );
     let (module_id, file_name) = self.resolve_module(&module_specifier, &containing_file)?;
-    info!("resolved {}, {}", &module_id, &file_name);
     let source_code = std::fs::read_to_string(&module_id)?;
-    info!("source_code: {}", &source_code);
     Ok(ModuleInfo {
       module_id: module_id,
       file_name: file_name,
@@ -114,7 +112,8 @@ mod tests {
 
   #[test]
   fn test_resolve() {
-    // TODO: these module ids should be normalized
+    // TODO: these module ids should be normalized into a URL:
+    // https://html.spec.whatwg.org/multipage/webappapis.html#resolve-a-module-specifier
     let cases = [
       (
         "./tests/hello.ts",
