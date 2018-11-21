@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 
 [dependencies]
+bytes = "0.4"
 tokio = "0.1"
 tokio-signal = "0.2"
 futures = "0.1.25"
@@ -33,8 +34,6 @@ trust-dns-server = "0.15"
 trust-dns = "0.15"
 trust-dns-resolver = "0.10"
 trust-dns-proto = "*"
-tokio-fs = "0.1"
-tokio-codec = "0.1"
 glob = "0.2"
 clap = "2.32"
 config = "0.9"
@@ -42,6 +41,17 @@ chrono = "0.4"
 serde_derive = "1"
 serde = "1"
 serde_json = "1.0"
+
+[patch.crates-io]
+tokio = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-udp = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-tcp = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-executor = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-reactor = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-io = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-timer = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-threadpool = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
+tokio-codec = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5ab2ae3795a91d8dac25bc0fdfeec2"}
 
 [workspace]
 members = [

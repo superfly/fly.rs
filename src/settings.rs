@@ -55,3 +55,12 @@ impl Settings {
     s.try_into()
   }
 }
+
+impl Default for Settings {
+  fn default() -> Self {
+    Settings {
+      data_store: None,
+      cache_store: None,
+    }
+  }
+}

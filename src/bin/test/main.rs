@@ -7,18 +7,16 @@ use env_logger::Env;
 
 extern crate libfly;
 
-use fly::runtime::{Runtime, EVENT_LOOP_HANDLE};
+use fly::runtime::Runtime;
 use fly::settings::SETTINGS;
 use std::env;
 
 extern crate futures;
-use futures::future;
+use futures::Future;
 
 extern crate tokio;
 
 use std::str;
-use std::thread::sleep;
-use std::time::Duration;
 
 extern crate glob;
 use glob::glob;
@@ -36,20 +34,11 @@ fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
   env_logger::init_from_env(env);
 
-  let mut main_el = tokio::runtime::Runtime::new().unwrap();
-  unsafe {
-    EVENT_LOOP_HANDLE = Some(main_el.executor());
-  };
-
   let mut rt = Runtime::new(None, &SETTINGS.read().unwrap());
-  rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap())
-    .unwrap();
-  rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap())
-    .unwrap();
-  rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap())
-    .unwrap();
-  rt.eval("setup.js", str::from_utf8(SETUP_SOURCE).unwrap())
-    .unwrap();
+  rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap());
+  rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap());
+  rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap());
+  rt.eval("setup.js", str::from_utf8(SETUP_SOURCE).unwrap());
 
   let args: Vec<String> = env::args().collect();
 
@@ -66,16 +55,14 @@ fn main() {
   for pattern in patterns {
     for path in glob(&pattern).unwrap().filter_map(Result::ok) {
       debug!("{}", path.display());
-      rt.eval_file(path.to_str().expect("invalid path")).unwrap();
+      rt.eval_file(path.to_str().expect("invalid path"));
     }
   }
 
-  rt.main_eval("run.js", str::from_utf8(RUN_SOURCE).unwrap())
-    .unwrap();
+  rt.eval("run.js", str::from_utf8(RUN_SOURCE).unwrap());
 
-  main_el
-    .block_on(future::lazy(|| -> Result<(), ()> {
-      sleep(Duration::from_secs(5));
-      Ok(())
-    })).unwrap();
+  tokio::run(
+    rt.run()
+      .map_err(|_| error!("error running runtime event loop")),
+  );
 }

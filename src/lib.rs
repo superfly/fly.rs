@@ -23,6 +23,7 @@ extern crate lazy_static_include;
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
 pub static NEXT_EVENT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
+pub static NEXT_FUTURE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub mod errors;
 pub mod msg;

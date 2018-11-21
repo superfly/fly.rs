@@ -77,6 +77,7 @@ extern "C" {
     pub fn js_version() -> *const c_char;
     pub fn js_runtime_new(options: js_runtime_options) -> *const js_runtime;
     pub fn js_runtime_dispose(rt: *const js_runtime) -> *const c_void;
+    pub fn js_runtime_run_micro_tasks(rt: *const js_runtime) -> *const c_void;
     pub fn js_get_data(rt: *const js_runtime) -> *const c_void;
     pub fn js_set_response(rt: *const js_runtime, buf: fly_buf);
     pub fn js_send(rt: *const js_runtime, buf: fly_buf, raw: fly_buf) -> c_int;

@@ -52,7 +52,18 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 	let reqHeaders = fbs.HttpRequest.createHeadersVector(fbb, fbbHeaders);
 	fbs.HttpRequest.startHttpRequest(fbb);
 	fbs.HttpRequest.addUrl(fbb, urlStr);
-	fbs.HttpRequest.addMethod(fbb, fbs.HttpMethod.Get);
+
+	let method: fbs.HttpMethod;
+	switch (req.method) {
+		case "GET":
+			method = fbs.HttpMethod.Get;
+			break;
+		case "HEAD":
+			method = fbs.HttpMethod.Head;
+			break;
+	}
+
+	fbs.HttpRequest.addMethod(fbb, method);
 	fbs.HttpRequest.addHeaders(fbb, reqHeaders);
 	return sendAsync(fbb, fbs.Any.HttpRequest, fbs.HttpRequest.endHttpRequest(fbb)).then((base) => {
 		let msg = new fbs.FetchHttpResponse();

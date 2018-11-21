@@ -392,6 +392,21 @@ extern "C"
 
   // }
 
+  void log_event_cb(const char *name, int event)
+  {
+    // printf("event cb, name: %s, event: %i\n", name, event);
+  }
+
+  void microtasks_completed_cb(v8::Isolate *isolate)
+  {
+    // printf("microtasks completed!\n");
+  }
+
+  void promise_rejected_cb(v8::PromiseRejectMessage message)
+  {
+    printf("!!!!!!!!! PROMISE REJECTED !!!!!!!!!\n");
+  }
+
   const js_runtime *js_runtime_new(js_runtime_options options)
   {
     js_runtime *rt = new js_runtime;
@@ -421,6 +436,10 @@ extern "C"
     // isolate->SetPromiseRejectCallback(PromiseRejectCallback);
     isolate->SetData(0, rt);
     rt->isolate = isolate;
+
+    isolate->SetEventLogger(log_event_cb);
+    isolate->AddMicrotasksCompletedCallback(microtasks_completed_cb);
+    isolate->SetPromiseRejectCallback(promise_rejected_cb);
 
     v8::Locker locker(isolate);
     v8::Isolate::Scope isolate_scope(isolate);
@@ -502,6 +521,11 @@ extern "C"
     rt->context.Reset();
     rt->isolate->Dispose();
     free(rt);
+  }
+
+  void js_runtime_run_micro_tasks(const js_runtime *rt)
+  {
+    rt->isolate->RunMicrotasks();
   }
 
   bool js_eval(const js_runtime *rt, const char *filename, const char *code)
