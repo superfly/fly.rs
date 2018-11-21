@@ -20,6 +20,7 @@ import { FlyRequest } from "./request";
 import flyData from './fly/data';
 import flyCache from './fly/cache';
 import { loadModule } from "./module_loader";
+import { installDevTools } from "./dev-tools";
 
 declare global {
   interface Window {
@@ -75,6 +76,8 @@ export const window = globalEval("this");
 window.window = window;
 
 window.libfly = null;
+
+window.installDevTools = installDevTools;
 
 window.setTimeout = timers.setTimeout;
 window.clearTimeout = timers.clearTimer;

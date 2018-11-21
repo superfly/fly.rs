@@ -13,13 +13,13 @@ use fly::runtime::{Runtime, EVENT_LOOP_HANDLE};
 use fly::settings::SETTINGS;
 
 fn main() {
-  let env = Env::default().filter_or("LOG_LEVEL", "info");
+  let env = Env::default().filter_or("LOG_LEVEL", "debug");
   env_logger::init_from_env(env);
   debug!("V8 version: {}", libfly::version());
 
-  let matches = clap::App::new("fly-eval")
+  let matches = clap::App::new("fly-tsc")
     .version("0.0.1-alpha")
-    .about("Fly eval playground")
+    .about("Fly typescript compiler")
     .arg(
       clap::Arg::with_name("input")
         .help("Sets the input file to use")
@@ -35,8 +35,18 @@ fn main() {
   main_el
     .block_on_all(futures::future::lazy(move || -> Result<(), ()> {
       let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
+
+      debug!("Loading dev tools");
+      runtime.eval_file("v8env/dist/dev-tools.js").unwrap();
       runtime
-        .main_eval_file(matches.value_of("input").unwrap())
+        .eval("<installDevTools>", "installDevTools();")
+        .unwrap();
+      debug!("Loading dev tools done");
+
+      let entry_file = matches.value_of("input").unwrap();
+
+      runtime
+        .main_eval(entry_file, &format!("dev.run('{}')", entry_file))
         .unwrap();
       Ok(())
     })).unwrap();

@@ -116,11 +116,11 @@ export default [
     ]
   },
   {
-    input: "src/compiler/main.ts",
+    input: "src/dev-tools/index.ts",
     output: {
-      file: 'dist/compiler.js',
+      file: 'dist/dev-tools.js',
       format: 'iife',
-      name: 'flyCompiler',
+      name: 'devTools',
       sourcemap: true,
       sourcemapExcludeSources: true,
       globals: {
@@ -131,10 +131,6 @@ export default [
       'rollup'
     ],
     plugins: [
-      // would prefer to use `rollup-plugin-virtual` to inject the empty module, but there
-      // is an issue with `rollup-plugin-commonjs` which causes errors when using the
-      // virtual plugin (see: rollup/rollup-plugin-commonjs#315), this means we have to use
-      // a physical module to substitute
       virtual({
         fs: mock,
         path: mock,

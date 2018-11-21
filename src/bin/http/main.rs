@@ -188,10 +188,17 @@ fn main() {
     unsafe {
         EVENT_LOOP_HANDLE = Some(main_el.executor());
     };
-
+    let entry_file = &matches.value_of("input").unwrap();
     let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
+    debug!("Loading dev tools");
+    runtime.eval_file("v8env/dist/dev-tools.js").unwrap();
     runtime
-        .main_eval_file(matches.value_of("input").unwrap())
+        .eval("<installDevTools>", "installDevTools();")
+        .unwrap();
+    debug!("Loading dev tools done");
+
+    runtime
+        .main_eval(entry_file, &format!("dev.run('{}')", entry_file))
         .unwrap();
     unsafe {
         RUNTIME = Some(runtime);
