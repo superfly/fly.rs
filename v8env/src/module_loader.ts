@@ -3,8 +3,9 @@ import * as fbs from "./msg_generated";
 import * as flatbuffers from "./flatbuffers"
 
 export interface ModuleInfo {
-  moduleId: string,
-  sourceCode: string,
+  moduleId: string;
+  fileName: string;
+  sourceCode: string;
 }
 
 export function loadModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
@@ -19,6 +20,7 @@ export function loadModule(moduleSpecifier: string, containingFile: string): Mod
   resp.msg(msg);
   return {
     moduleId: msg.moduleId(),
+    fileName: msg.fileName(),
     sourceCode: msg.sourceCode(),
   }
 }

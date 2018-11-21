@@ -1812,12 +1812,14 @@ fn op_load_module(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
   Box::new(future::lazy(move || {
     let builder = &mut FlatBufferBuilder::new();
     let module_id = builder.create_string(&module.module_id);
+    let file_name = builder.create_string(&module.file_name);
     let source_code = builder.create_string(&module.source_code);
 
     let msg = msg::LoadModuleResp::create(
       builder,
       &msg::LoadModuleRespArgs {
         module_id: Some(module_id),
+        file_name: Some(file_name),
         source_code: Some(source_code),
       },
     );

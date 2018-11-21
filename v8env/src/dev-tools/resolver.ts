@@ -4,6 +4,7 @@ import { loadModule } from "../module_loader";
 
 interface LoadModuleResult {
   moduleId: string,
+  fileName: string,
   sourceCode: string,
 }
 
@@ -15,8 +16,8 @@ export function fetchModule(moduleSpecifier: string, containingFile: string): Lo
     assert(assetName in assetSourceCode, `No such asset "${assetName}"`);
 
     return {
-      // filename: `${ContainerName}/${assetName}`,
       moduleId: `${ContainerName}/${assetName}`,
+      fileName: `${ContainerName}/${assetName}`,
       sourceCode: assetSourceCode[assetName]
     }
   }
@@ -29,8 +30,3 @@ function isAsset(moduleSpecifier: string, containingFile: string): boolean {
     containingFile.startsWith(ContainerName);
 }
 
-const absolutePathPattern = /^(?:\/|(?:[A-Za-z]:)?[\\|/])/;
-
-function isAbsolute(modulePath: string) {
-  return absolutePathPattern.test(modulePath);
-}

@@ -8,6 +8,7 @@ pub struct Compiler {
 
 pub struct ModuleInfo {
   pub module_id: String,
+  pub file_name: String,
   pub source_code: String,
 }
 
@@ -31,12 +32,13 @@ impl Compiler {
       "fetch_module {} from {}",
       &module_specifier, &containing_file
     );
-    let module_id = self.resolve_module(&module_specifier, &containing_file)?;
-    info!("resolved {}", &module_id);
+    let (module_id, file_name) = self.resolve_module(&module_specifier, &containing_file)?;
+    info!("resolved {}, {}", &module_id, &file_name);
     let source_code = std::fs::read_to_string(&module_id)?;
     info!("source_code: {}", &source_code);
     Ok(ModuleInfo {
       module_id: module_id,
+      file_name: file_name,
       source_code: source_code,
     })
   }
@@ -46,7 +48,7 @@ impl Compiler {
     self: &Self,
     module_specifier: &str,
     containing_file: &str,
-  ) -> FlyResult<String> {
+  ) -> FlyResult<(String, String)> {
     println!(
       "resolve_module {} from {}",
       module_specifier, containing_file
@@ -59,39 +61,43 @@ impl Compiler {
 
     let mut module_id = base.join(module_specifier); //.canonicalize().unwrap();
     info!("trying module {}", module_id.display());
+
     if module_id.is_file() {
-      return Ok(
+      return Ok((
+        module_id.to_str().unwrap().to_string(),
         module_id
           .canonicalize()
           .unwrap()
           .to_str()
           .unwrap()
           .to_owned(),
-      );
+      ));
     }
     let did_set = module_id.set_extension("ts");
     info!("trying module {} ({})", module_id.display(), did_set);
     if module_id.is_file() {
-      return Ok(
+      return Ok((
+        module_id.to_str().unwrap().to_string(),
         module_id
           .canonicalize()
           .unwrap()
           .to_str()
           .unwrap()
           .to_owned(),
-      );
+      ));
     }
     let did_set = module_id.set_extension("js");
     info!("trying module {} ({})", module_id.display(), did_set);
     if module_id.is_file() {
-      return Ok(
+      return Ok((
+        module_id.to_str().unwrap().to_string(),
         module_id
           .canonicalize()
           .unwrap()
           .to_str()
           .unwrap()
           .to_owned(),
-      );
+      ));
     }
     error!("NOPE");
 
@@ -108,15 +114,32 @@ mod tests {
 
   #[test]
   fn test_resolve() {
+    // TODO: these module ids should be normalized
     let cases = [
-      ("./tests/hello.ts", ".", "<cwd>/tests/hello.ts"),
-      ("./hello.ts", "./tests/main.ts", "<cwd>/tests/hello.ts"),
+      (
+        "./tests/hello.ts",
+        ".",
+        "././tests/hello.ts",
+        "<cwd>/tests/hello.ts",
+      ),
+      (
+        "./hello.ts",
+        "./tests/main.ts",
+        "./tests/./hello.ts",
+        "<cwd>/tests/hello.ts",
+      ),
       (
         "../hello.ts",
         "./tests/subdir/index.ts",
+        "./tests/subdir/../hello.ts",
         "<cwd>/tests/hello.ts",
       ),
-      ("<cwd>/tests/hello.ts", ".", "<cwd>/tests/hello.ts"),
+      (
+        "<cwd>/tests/hello.ts",
+        ".",
+        "<cwd>/tests/hello.ts",
+        "<cwd>/tests/hello.ts",
+      ),
     ];
     let current_dir = std::env::current_dir().expect("current_dir failed");
     let compiler = Compiler::new(None);
@@ -125,12 +148,16 @@ mod tests {
       let specifier = String::from(test.0).replace("<cwd>", current_dir.to_str().unwrap());
       let containing_file = String::from(test.1).replace("<cwd>", current_dir.to_str().unwrap());
       ;
-      let module_id = compiler
+      let (module_id, filename) = compiler
         .resolve_module(&specifier, &containing_file)
         .unwrap();
       assert_eq!(
         String::from(test.2).replace("<cwd>", current_dir.to_str().unwrap()),
         module_id,
+      );
+      assert_eq!(
+        String::from(test.3).replace("<cwd>", current_dir.to_str().unwrap()),
+        filename,
       );
     }
   }

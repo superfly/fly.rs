@@ -51,7 +51,8 @@ enum MediaType {
 }
 
 class ModuleInfo implements ts.IScriptSnapshot {
-  public moduleId: ModuleId;
+  public readonly moduleId: ModuleId;
+  public readonly fileName: ModuleFileName;
   public version: number = 1;
   public inputCode: SourceCode = "";
   public outputCode?: OutputCode;
@@ -62,9 +63,10 @@ class ModuleInfo implements ts.IScriptSnapshot {
   public deps?: ModuleId[];
   public readonly mediaType: MediaType;
 
-  public constructor(moduleId: ModuleId, version?: number, type?: MediaType)
+  public constructor(moduleId: ModuleId, fileName: ModuleFileName, version?: number, type?: MediaType)
   {
     this.moduleId = moduleId;
+    this.fileName = fileName;
     this.version = version || 1;
     this.mediaType = type;
   }
@@ -77,10 +79,6 @@ class ModuleInfo implements ts.IScriptSnapshot {
     this.deps = undefined
     this.version += 1
     this.outputCode = undefined
-  }
-
-  get fileName() {
-    return this.moduleId
   }
 
   getText(start: number, end: number): string {
@@ -99,24 +97,20 @@ class ModuleInfo implements ts.IScriptSnapshot {
 class ModuleCache {
   private readonly moduleIndex = new Map<string, ModuleInfo>();
 
-  public get(moduleId: string): ModuleInfo {
-    const moduleInfo = this.moduleIndex.get(moduleId);
+  public get(fileName: ModuleFileName): ModuleInfo {
+    const moduleInfo = this.moduleIndex.get(fileName);
     if (!moduleInfo) {
-      throw new Error(`Module ${moduleId} not found`)
+      throw new Error(`Module ${fileName} not found`)
     }
     return moduleInfo
   }
 
   public set(moduleInfo: ModuleInfo) {
-    this.moduleIndex.set(moduleInfo.moduleId, moduleInfo);
+    this.moduleIndex.set(moduleInfo.fileName, moduleInfo);
   }
   
-  public has(moduleId: string): boolean {
-    return this.moduleIndex.has(moduleId);
-  }
-
-  public moduleIds(): string[] {
-    return Array.from(this.moduleIndex.keys());
+  public has(fileName: ModuleFileName): boolean {
+    return this.moduleIndex.has(fileName);
   }
 }
 
@@ -151,30 +145,30 @@ export class Compiler {
 
   public resolveModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
     console.log("compiler.resolveModule()", { moduleSpecifier, containingFile })
-    const { moduleId, sourceCode } = fetchModule(moduleSpecifier, containingFile);
+    const { moduleId, fileName, sourceCode } = fetchModule(moduleSpecifier, containingFile);
 
-    console.log("compiler.resolveModule()", { moduleId, sourceCode })
+    // console.log("compiler.resolveModule()", { moduleId, sourceCode })
     if (!moduleId) {
       throw new Error(`Failed to resolve '${moduleSpecifier}' from '${containingFile}'`)
     }
 
-    if (this.moduleCache.has(moduleId)) {
-      return this.moduleCache.get(moduleId)
+    if (this.moduleCache.has(fileName)) {
+      return this.moduleCache.get(fileName)
     }
 
-    const moduleInfo = new ModuleInfo(moduleId, 0, mediaType(moduleId))
+    const moduleInfo = new ModuleInfo(moduleId, fileName, 0, mediaType(moduleId))
     moduleInfo.inputCode = sourceCode
     this.moduleCache.set(moduleInfo)
     return moduleInfo
   }
 
-  getModuleInfo(moduleId: string): ModuleInfo {
-    console.log("compiler.getModuleInfo()", { moduleId })
+  getModuleInfo(fileName: ModuleFileName): ModuleInfo {
+    console.log("compiler.getModuleInfo()", { fileName })
 
-    if (this.moduleCache.has(moduleId)) {
-      return this.moduleCache.get(moduleId);
+    if (this.moduleCache.has(fileName)) {
+      return this.moduleCache.get(fileName);
     }
-    const moduleInfo = this.resolveModule(moduleId, "")
+    const moduleInfo = this.resolveModule(fileName, "")
     this.moduleCache.set(moduleInfo)
     return moduleInfo
   }

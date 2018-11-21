@@ -244,6 +244,7 @@ table LoadModule {
 
 table LoadModuleResp {
   module_id: string;
+  file_name: string;
   source_code: string;
 }
 
