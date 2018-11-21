@@ -185,17 +185,21 @@ fn main() {
     info!("V8 version: {}", libfly::version());
 
     let mut main_el = tokio::runtime::Runtime::new().unwrap();
-    // unsafe {
-    //     EVENT_LOOP_HANDLE = Some(main_el.executor());
-    // };
-
+    let entry_file = &matches.value_of("input").unwrap();
     let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
-    runtime.eval_file(matches.value_of("input").unwrap());
+    debug!("Loading dev tools");
+    runtime.eval_file("v8env/dist/dev-tools.js");
+    runtime.eval("<installDevTools>", "installDevTools();");
+    debug!("Loading dev tools done");
+
+    runtime.eval(entry_file, &format!("dev.run('{}')", entry_file));
+
     main_el.spawn(
         runtime
             .run()
-            .map_err(|_| error!("error running runtime event loop")),
+            .map_err(|e| error!("error running runtime event loop: {}", e)),
     );
+
     unsafe {
         RUNTIME = Some(runtime);
     };

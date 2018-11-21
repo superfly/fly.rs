@@ -64,8 +64,15 @@ fn main() {
         .index(1),
     ).get_matches();
 
+  let entry_file = matches.value_of("input").unwrap();
   let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
-  runtime.eval_file(matches.value_of("input").unwrap());
+
+  debug!("Loading dev tools");
+  runtime.eval_file("v8env/dist/dev-tools.js");
+  runtime.eval("<installDevTools>", "installDevTools();");
+  debug!("Loading dev tools done");
+  runtime.eval(entry_file, &format!("dev.run('{}')", entry_file));
+
   let port: u16 = match matches.value_of("port") {
     Some(pstr) => pstr.parse::<u16>().unwrap(),
     None => 8053,

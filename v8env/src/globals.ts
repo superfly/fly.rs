@@ -19,6 +19,8 @@ import * as url from './url';
 import { FlyRequest } from "./request";
 import flyData from './fly/data';
 import flyCache from './fly/cache';
+import { loadModule } from "./module_loader";
+import { installDevTools } from "./dev-tools";
 
 declare global {
   interface Window {
@@ -75,6 +77,8 @@ window.window = window;
 
 window.libfly = null;
 
+window.installDevTools = installDevTools;
+
 window.setTimeout = timers.setTimeout;
 window.clearTimeout = timers.clearTimer;
 window.setInterval = timers.setInterval;
@@ -95,6 +99,7 @@ window.fetch = fetch_.fetch;
 window.resolv = resolv_.resolv;
 window.crypto = crypto_.crypto;
 window.cache = cache_;
+window.loadModule = loadModule;
 
 window.fly = {
   cache: flyCache,
