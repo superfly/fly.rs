@@ -148,7 +148,6 @@ pub struct Runtime {
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
-  // pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
   pub cache_store: Box<cache_store::CacheStore + 'static + Send>,
   pub data_store: Box<data_store::DataStore + 'static + Send>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
@@ -175,23 +174,11 @@ fn init_event_loop() -> (
       "runtime-loop-{}",
       NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
     )).spawn(move || {
-      // let mut el = tokio::runtime::Builder::new()
-      //   .keep_alive(Some(Duration::from_secs(60)))
-      //   .core_threads(1)
-      //   .build()
-      //   .unwrap();
       let mut el = current_thread::Runtime::new().unwrap();
       let (txready, rxready) = oneshot::channel::<()>();
       let (txquit, rxquit) = oneshot::channel::<()>();
 
       c.send((el.handle(), txready, rxquit)).unwrap();
-
-      debug!("sent loop handle");
-
-      // match el.block_on(rxready.map_err(|_| error!("error recving ready signal for runtime"))) {
-      //   Ok(_) => warn!("stopped blocking on ready chan"),
-      //   Err(_) => error!("error blocking on ready chan!"),
-      // };
 
       // keep it alive at least until all scripts are evaled
       el.spawn(
@@ -199,12 +186,6 @@ fn init_event_loop() -> (
           .map_err(|_| error!("error recving ready signal for runtime"))
           .and_then(|_| Ok(warn!("ready ch received!"))),
       );
-
-      // el.block_on_all(
-      //   rxready
-      //     .map_err(|_| error!("error recving ready signal for runtime"))
-      //     .and_then(|_| Ok(warn!("ready ch received!"))),
-      // ).unwrap();
 
       match el.run() {
         Ok(_) => warn!("runtime event loop ran fine"),
@@ -288,7 +269,6 @@ impl Runtime {
   }
 
   pub fn eval_file(&self, filename: &str) {
-    // -> Result<(), tokio::executor::SpawnError> {
     let mut file = File::open(filename).unwrap();
     let mut contents = String::new();
     file.read_to_string(&mut contents).unwrap();
@@ -314,7 +294,6 @@ impl Runtime {
 
   pub fn run(&mut self) -> oneshot::Receiver<()> {
     self.ready_ch.take().unwrap().send(()).unwrap(); //TODO: no unwrap
-                                                     // debug!("self.ready_ch = {:?}", self.ready_ch);
     self.quit_ch.take().unwrap()
   }
 
@@ -440,7 +419,6 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
   let msg_type = base.msg_type();
   debug!("MSG TYPE: {:?}", msg_type);
   let cmd_id = base.cmd_id();
-  // println!("msg id {}", cmd_id);
   let handler: Handler = match msg_type {
     msg::Any::TimerStart => op_timer_start,
     msg::Any::TimerClear => op_timer_clear,
