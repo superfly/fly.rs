@@ -17,7 +17,6 @@ use hyper::service::{service_fn, Service};
 use hyper::{Body, Request, Response, Server, StatusCode};
 
 extern crate futures;
-use futures::sync::mpsc;
 use futures::sync::oneshot;
 use std::sync::mpsc::RecvError;
 
@@ -104,18 +103,7 @@ impl Service for FlyServer {
                 body: if body.is_end_stream() {
                     None
                 } else {
-                    let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-                    rt.spawn(
-                        body.map_err(|e| error!("error reading body chunk: {}", e))
-                            .for_each(move |chunk| {
-                                let sendres = tx.unbounded_send(chunk.into_bytes().to_vec());
-                                if let Err(e) = sendres {
-                                    error!("error sending js body chunk: {}", e);
-                                }
-                                Ok(())
-                            }),
-                    );
-                    Some(JsBody::Stream(rx))
+                    Some(JsBody::HyperBody(body))
                 },
             });
 

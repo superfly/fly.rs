@@ -803,47 +803,8 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
             ptr.send(to_send, None);
 
-            if let Some(jsbody) = req.body {
-              if let JsBody::Stream(body) = jsbody {
-                let req_id = req.id;
-                let rt = ptr.to_runtime();
-                rt.spawn(
-                  body
-                    .map_err(|_| error!("error receiving body chunk :/"))
-                    .for_each(move |bytes: Vec<u8>| {
-                      let builder = &mut FlatBufferBuilder::new();
-                      // let fb_bytes = builder.create_vector(&bytes);
-                      let chunk_msg = msg::StreamChunk::create(
-                        builder,
-                        &msg::StreamChunkArgs {
-                          id: req_id,
-                          done: false,
-                        },
-                      );
-                      let to_send = fly_buf_from(
-                        serialize_response(
-                          0,
-                          builder,
-                          msg::BaseArgs {
-                            msg: Some(chunk_msg.as_union_value()),
-                            msg_type: msg::Any::StreamChunk,
-                            ..Default::default()
-                          },
-                        ).unwrap(),
-                      );
-                      ptr.send(
-                        to_send,
-                        Some(fly_buf {
-                          alloc_ptr: ptr::null_mut() as *mut u8,
-                          alloc_len: 0,
-                          data_ptr: (*bytes).as_ptr() as *mut u8,
-                          data_len: bytes.len(),
-                        }),
-                      );
-                      Ok(())
-                    }),
-                );
-              }
+            if let Some(stream) = req.body {
+              send_body_stream(ptr, req.id, stream);
             }
 
             Ok(())
@@ -1077,6 +1038,7 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     rt.spawn(fut);
   }
 
+  // TODO: use send_body_stream somehow
   if let Some(stream) = maybe_stream {
     let fut = stream
       .map_err(|e| println!("error cache stream: {:?}", e))
@@ -1140,25 +1102,6 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   }
 
   ok_future(None)
-
-  // let builder = &mut FlatBufferBuilder::new();
-  // let msg = msg::CacheGetReady::create(
-  //   builder,
-  //   &msg::CacheGetReadyArgs {
-  //     id: stream_id,
-  //     stream: got,
-  //     ..Default::default()
-  //   },
-  // );
-  // ok_future(serialize_response(
-  //   cmd_id,
-  //   builder,
-  //   msg::BaseArgs {
-  //     msg: Some(msg.as_union_value()),
-  //     msg_type: msg::Any::CacheGetReady,
-  //     ..Default::default()
-  //   },
-  // ))
 }
 
 fn send_done_stream(ptr: JsRuntime, req_id: u32) {
