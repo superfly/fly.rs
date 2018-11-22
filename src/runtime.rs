@@ -2,7 +2,6 @@ extern crate http;
 extern crate libc;
 
 use tokio;
-use tokio::prelude::*;
 
 use tokio::runtime::current_thread;
 
@@ -49,7 +48,7 @@ extern crate hyper;
 use self::hyper::body::Payload;
 use self::hyper::client::HttpConnector;
 use self::hyper::header::HeaderName;
-use self::hyper::rt::{poll_fn, Future, Stream};
+use self::hyper::rt::{Future, Stream};
 use self::hyper::HeaderMap;
 use self::hyper::{Body, Client, Method, Request, StatusCode};
 
@@ -89,6 +88,7 @@ extern crate trust_dns as dns;
 pub enum JsBody {
   Stream(mpsc::UnboundedReceiver<Vec<u8>>),
   BytesStream(mpsc::UnboundedReceiver<BytesMut>),
+  HyperBody(Body),
   Static(Vec<u8>),
 }
 
@@ -346,7 +346,7 @@ lazy_static! {
       unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();
     bytes.into_boxed_slice()
   };
-  static ref EVENT_LOOP: (tokio::runtime::TaskExecutor, oneshot::Sender<()>) = {
+  pub static ref EVENT_LOOP: (tokio::runtime::TaskExecutor, oneshot::Sender<()>) = {
     let el = tokio::runtime::Runtime::new().unwrap();
     let exec = el.executor();
     let (tx, rx) = oneshot::channel::<()>();
@@ -1315,6 +1315,66 @@ fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
           }),
       );
     }
+    JsBody::HyperBody(b) => {
+      rt.spawn(
+        b.map_err(|e| error!("error in hyper body stream read: {:?}", e))
+          .for_each(move |chunk| {
+            let bytes = chunk.into_bytes();
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: false,
+              },
+            );
+            ptr.send(
+              fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(chunk_msg.as_union_value()),
+                    msg_type: msg::Any::StreamChunk,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              ),
+              Some(fly_buf {
+                alloc_ptr: ptr::null_mut() as *mut u8,
+                alloc_len: 0,
+                data_ptr: (*bytes).as_ptr() as *mut u8,
+                data_len: bytes.len(),
+              }),
+            );
+            Ok(())
+          }).and_then(move |_| {
+            let builder = &mut FlatBufferBuilder::new();
+            let chunk_msg = msg::StreamChunk::create(
+              builder,
+              &msg::StreamChunkArgs {
+                id: req_id,
+                done: true,
+              },
+            );
+            ptr.send(
+              fly_buf_from(
+                serialize_response(
+                  0,
+                  builder,
+                  msg::BaseArgs {
+                    msg: Some(chunk_msg.as_union_value()),
+                    msg_type: msg::Any::StreamChunk,
+                    ..Default::default()
+                  },
+                ).unwrap(),
+              ),
+              None,
+            );
+            Ok(())
+          }),
+      );
+    }
   };
 }
 
@@ -1546,14 +1606,12 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
     let res = reserr.unwrap(); // should be safe.
 
-    let (parts, mut body) = res.into_parts();
+    let (parts, body) = res.into_parts();
 
     let mut stream_rx: Option<JsBody> = None;
-    if !body.is_end_stream() {
-      let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-      stream_rx = Some(JsBody::Stream(rx));
-      let mut streams = ptr.to_runtime().streams.lock().unwrap();
-      streams.insert(req_id, tx);
+    let has_body = !body.is_end_stream();
+    if has_body {
+      stream_rx = Some(JsBody::HyperBody(body));
     }
 
     if p
@@ -1567,51 +1625,51 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       return Ok(());
     }
 
-    debug!("body is end stream? {}", body.is_end_stream());
+    // debug!("body is end stream? {}", body.is_end_stream());
 
-    if !body.is_end_stream() {
-      let rt = ptr.to_runtime(); // like a clone
-      rt.spawn(
-        poll_fn(move || {
-          while let Some(chunk) = try_ready!(body.poll_data()) {
-            let mut bytes = chunk.into_bytes();
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: body.is_end_stream(),
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              Some(fly_buf {
-                alloc_ptr: ptr::null_mut() as *mut u8,
-                alloc_len: 0,
-                data_ptr: (*bytes).as_ptr() as *mut u8,
-                data_len: bytes.len(),
-              }),
-            );
-          }
-          Ok(Async::Ready(()))
-        }).map_err(|e: hyper::Error| error!("hyper error: {}", e))
-        .and_then(move |_| {
-          let mut streams = ptr.to_runtime().streams.lock().unwrap();
-          streams.remove(&req_id);
-          Ok(debug!("done with hyper body"))
-        }),
-      );
-    }
+    // if !body.is_end_stream() {
+    //   let rt = ptr.to_runtime(); // like a clone
+    //   rt.spawn(
+    //     poll_fn(move || {
+    //       while let Some(chunk) = try_ready!(body.poll_data()) {
+    //         let mut bytes = chunk.into_bytes();
+    //         let builder = &mut FlatBufferBuilder::new();
+    //         let chunk_msg = msg::StreamChunk::create(
+    //           builder,
+    //           &msg::StreamChunkArgs {
+    //             id: req_id,
+    //             done: body.is_end_stream(),
+    //           },
+    //         );
+    //         ptr.send(
+    //           fly_buf_from(
+    //             serialize_response(
+    //               0,
+    //               builder,
+    //               msg::BaseArgs {
+    //                 msg: Some(chunk_msg.as_union_value()),
+    //                 msg_type: msg::Any::StreamChunk,
+    //                 ..Default::default()
+    //               },
+    //             ).unwrap(),
+    //           ),
+    //           Some(fly_buf {
+    //             alloc_ptr: ptr::null_mut() as *mut u8,
+    //             alloc_len: 0,
+    //             data_ptr: (*bytes).as_ptr() as *mut u8,
+    //             data_len: bytes.len(),
+    //           }),
+    //         );
+    //       }
+    //       Ok(Async::Ready(()))
+    //     }).map_err(|e: hyper::Error| error!("hyper error: {}", e))
+    //     .and_then(move |_| {
+    //       let mut streams = ptr.to_runtime().streams.lock().unwrap();
+    //       streams.remove(&req_id);
+    //       Ok(debug!("done with hyper body"))
+    //     }),
+    //   );
+    // }
     debug!("done with http request");
     Ok(())
   });
@@ -1659,7 +1717,9 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
           ..Default::default()
         },
       );
-      debug!("done with http response!!!!!");
+      if let Some(stream) = res.body {
+        send_body_stream(ptr, req_id, stream);
+      }
       Ok(serialize_response(
         cmd_id,
         builder,
@@ -1671,10 +1731,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       ))
     });
 
-  rt.spawn(fut.then(|_: Result<(), ()>| -> Result<(), ()> {
-    Ok(warn!("WERE DEFINITELY DONE WITH THAT FUTURE"))
-  }));
-
+  rt.spawn(fut);
   Box::new(fut2)
 }
 
@@ -1867,7 +1924,7 @@ fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
   )
 }
 
-fn op_load_module(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_load_module().unwrap();
   let module_specifier = msg.module_specifier().unwrap().to_string();

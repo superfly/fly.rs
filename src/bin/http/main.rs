@@ -141,6 +141,7 @@ impl Service for FlyServer {
                             Body::wrap_stream(s.map_err(|_| RecvError {}).map(|bm| bm.freeze()))
                         }
                         JsBody::Static(b) => Body::from(b),
+                        _ => unimplemented!(),
                     };
                 }
 
