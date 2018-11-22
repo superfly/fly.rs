@@ -1,0 +1,19 @@
+[package]
+name = "distributed-fly"
+version = "0.1.0"
+authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
+
+[dependencies]
+fly = { path="../" }
+env_logger = "*"
+log = "*"
+lazy_static = "1.1"
+tokio = "0.1"
+futures = "0.1"
+hyper = "0.12"
+r2d2 = "*"
+redis = "*"
+r2d2_redis = "*"
+rmp-serde = "0.13.7"
+serde = "*"
+serde_derive = "*"

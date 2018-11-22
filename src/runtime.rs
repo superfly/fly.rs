@@ -71,7 +71,7 @@ use self::bytes::BytesMut;
 
 use cache_store;
 use data_store;
-use ops; // src/ops/
+use ops;
 use utils::*;
 
 use postgres_data;
@@ -79,7 +79,6 @@ use redis_cache;
 use sqlite_cache;
 use sqlite_data;
 
-// use settings::{};
 use settings::{CacheStore, DataStore, Settings};
 
 use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
@@ -148,8 +147,8 @@ pub struct Runtime {
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
-  pub cache_store: Box<cache_store::CacheStore + 'static + Send>,
-  pub data_store: Box<data_store::DataStore + 'static + Send>,
+  pub cache_store: Box<cache_store::CacheStore + 'static + Send + Sync>,
+  pub data_store: Box<data_store::DataStore + 'static + Send + Sync>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   ready_ch: Option<oneshot::Sender<()>>,
@@ -261,11 +260,10 @@ impl Runtime {
     let cfilename = CString::new(filename).unwrap();
     let ccode = CString::new(code).unwrap();
     let ptr = self.ptr;
-    self.spawn(future::lazy(move || unsafe {
+    unsafe {
       js_eval(ptr.0, cfilename.as_ptr(), ccode.as_ptr());
-      debug!("finished evaluating '{}'", cfilename.to_string_lossy());
-      Ok(())
-    }));
+    }
+    debug!("finished evaluating '{}'", cfilename.to_string_lossy());
   }
 
   pub fn eval_file(&self, filename: &str) {

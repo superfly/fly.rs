@@ -57,4 +57,5 @@ tokio-codec = {git = "https://github.com/tokio-rs/tokio.git", rev = "ed3ece266b5
 members = [
     "libfly",
     "vips",
+    "distributed-fly",
 ]
