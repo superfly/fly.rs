@@ -1,0 +1,26 @@
+table CacheGet {
+  key: string;
+}
+
+table CacheGetReady {
+  id: uint;
+  stream: bool;
+}
+
+table CacheSet {
+  key: string;
+  ttl: uint;
+}
+
+table CacheSetReady {
+  id: uint;
+}
+
+table CacheDel {
+  key: string;
+}
+
+table CacheExpire {
+  key: string;
+  ttl: uint;
+}

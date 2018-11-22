@@ -1,4 +1,5 @@
 include "src/ops/dns.fbs";
+include "src/ops/cache.fbs";
 
 union Any {
   TimerStart,
@@ -148,33 +149,6 @@ table FetchHttpResponse {
   headers: [HttpHeader];
   status: ushort;
   has_body: bool;
-}
-
-table CacheGet {
-  key: string;
-}
-
-table CacheGetReady {
-  id: uint;
-  stream: bool;
-}
-
-table CacheSet {
-  key: string;
-  ttl: uint;
-}
-
-table CacheSetReady {
-  id: uint;
-}
-
-table CacheDel {
-  key: string;
-}
-
-table CacheExpire {
-  key: string;
-  ttl: uint;
 }
 
 table CryptoDigest {

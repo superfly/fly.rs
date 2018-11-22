@@ -31,8 +31,8 @@ pub mod runtime;
 
 pub mod utils;
 
-pub mod cache;
-pub mod data;
+pub mod cache_store;
+pub mod data_store;
 
 pub mod settings;
 

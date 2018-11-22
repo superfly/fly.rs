@@ -69,8 +69,8 @@ use tokio::codec::{BytesCodec, FramedRead};
 extern crate bytes;
 use self::bytes::BytesMut;
 
-use cache;
-use data;
+use cache_store;
+use data_store;
 use ops; // src/ops/
 use utils::*;
 
@@ -81,6 +81,9 @@ use sqlite_data;
 
 // use settings::{};
 use settings::{CacheStore, DataStore, Settings};
+
+use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
+use std::str;
 
 extern crate trust_dns as dns;
 
@@ -146,8 +149,8 @@ pub struct Runtime {
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
   // pub http_client: Client<HttpsConnector<HttpConnector>, Body>,
-  pub cache_store: Box<cache::CacheStore + 'static + Send>,
-  pub data_store: Box<data::DataStore + 'static + Send>,
+  pub cache_store: Box<cache_store::CacheStore + 'static + Send>,
+  pub data_store: Box<data_store::DataStore + 'static + Send>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   ready_ch: Option<oneshot::Sender<()>>,
@@ -444,10 +447,10 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::HttpRequest => op_http_request,
     msg::Any::HttpResponse => op_http_response,
     msg::Any::StreamChunk => op_stream_chunk,
-    msg::Any::CacheGet => op_cache_get,
-    msg::Any::CacheSet => op_cache_set,
-    msg::Any::CacheDel => op_cache_del,
-    msg::Any::CacheExpire => op_cache_expire,
+    msg::Any::CacheGet => ops::cache::op_cache_get,
+    msg::Any::CacheSet => ops::cache::op_cache_set,
+    msg::Any::CacheDel => ops::cache::op_cache_del,
+    msg::Any::CacheExpire => ops::cache::op_cache_expire,
     msg::Any::CryptoDigest => op_crypto_digest,
     msg::Any::CryptoRandomValues => op_crypto_random_values,
     msg::Any::SourceMap => op_source_map,
@@ -899,207 +902,6 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       rt.resolv_events = Some(tx);
     }
   };
-
-  ok_future(None)
-}
-
-use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
-use std::str;
-
-fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let msg = base.msg_as_cache_del().unwrap();
-  let key = msg.key().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
-
-  rt.spawn(
-    rt.cache_store
-      .del(key)
-      .map_err(|e| error!("error cache del future! {:?}", e)),
-  );
-
-  ok_future(None)
-}
-
-fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let msg = base.msg_as_cache_expire().unwrap();
-  let key = msg.key().unwrap().to_string();
-  let ttl = msg.ttl();
-
-  let rt = ptr.to_runtime();
-
-  rt.spawn(
-    rt.cache_store
-      .expire(key, ttl)
-      .map_err(|e| error!("error cache expire future! {:?}", e)),
-  );
-
-  ok_future(None)
-}
-
-fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let cmd_id = base.cmd_id();
-  let msg = base.msg_as_cache_set().unwrap();
-  let key = msg.key().unwrap().to_string();
-
-  let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-
-  let rt = ptr.to_runtime();
-
-  let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
-  {
-    rt.streams.lock().unwrap().insert(stream_id, sender);
-  }
-
-  let ttl = if msg.ttl() == 0 {
-    None
-  } else {
-    Some(msg.ttl())
-  };
-
-  let fut = rt.cache_store.set(key, Box::new(recver), ttl);
-
-  rt.spawn(
-    fut
-      .map_err(|e| println!("error cache set stream! {:?}", e))
-      .and_then(move |_b| Ok(())),
-  );
-
-  let builder = &mut FlatBufferBuilder::new();
-  let msg = msg::CacheSetReady::create(
-    builder,
-    &msg::CacheSetReadyArgs {
-      id: stream_id,
-      ..Default::default()
-    },
-  );
-  ok_future(serialize_response(
-    cmd_id,
-    builder,
-    msg::BaseArgs {
-      msg: Some(msg.as_union_value()),
-      msg_type: msg::Any::CacheSetReady,
-      ..Default::default()
-    },
-  ))
-}
-
-fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let cmd_id = base.cmd_id();
-  let msg = base.msg_as_cache_get().unwrap();
-
-  let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-
-  let key = msg.key().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
-
-  let maybe_stream = match rt.cache_store.get(key) {
-    Ok(s) => s,
-    Err(e) => match e {
-      cache::CacheError::NotFound => return odd_future("not found".to_string().into()),
-      cache::CacheError::IoErr(ioe) => return odd_future(ioe.into()),
-      cache::CacheError::Unknown => return odd_future("unknown error".to_string().into()),
-      cache::CacheError::Failure(e) => return odd_future(e.into()),
-    },
-  };
-
-  let got = maybe_stream.is_some();
-
-  {
-    // need to hijack the order here.
-    let fut = future::lazy(move || {
-      let builder = &mut FlatBufferBuilder::new();
-      let msg = msg::CacheGetReady::create(
-        builder,
-        &msg::CacheGetReadyArgs {
-          id: stream_id,
-          stream: got,
-          ..Default::default()
-        },
-      );
-      ptr.send(
-        fly_buf_from(
-          serialize_response(
-            cmd_id,
-            builder,
-            msg::BaseArgs {
-              msg: Some(msg.as_union_value()),
-              msg_type: msg::Any::CacheGetReady,
-              ..Default::default()
-            },
-          ).unwrap(),
-        ),
-        None,
-      );
-      Ok(())
-    });
-
-    rt.spawn(fut);
-  }
-
-  // TODO: use send_body_stream somehow
-  if let Some(stream) = maybe_stream {
-    let fut = stream
-      .map_err(|e| println!("error cache stream: {:?}", e))
-      .for_each(move |bytes| {
-        let builder = &mut FlatBufferBuilder::new();
-        let chunk_msg = msg::StreamChunk::create(
-          builder,
-          &msg::StreamChunkArgs {
-            id: stream_id,
-            done: false,
-            ..Default::default()
-          },
-        );
-        ptr.send(
-          fly_buf_from(
-            serialize_response(
-              0,
-              builder,
-              msg::BaseArgs {
-                msg: Some(chunk_msg.as_union_value()),
-                msg_type: msg::Any::StreamChunk,
-                ..Default::default()
-              },
-            ).unwrap(),
-          ),
-          Some(fly_buf {
-            alloc_ptr: ptr::null_mut() as *mut u8,
-            alloc_len: 0,
-            data_ptr: (*bytes).as_ptr() as *mut u8,
-            data_len: bytes.len(),
-          }),
-        );
-        Ok(())
-      }).and_then(move |_| {
-        let builder = &mut FlatBufferBuilder::new();
-        let chunk_msg = msg::StreamChunk::create(
-          builder,
-          &msg::StreamChunkArgs {
-            id: stream_id,
-            done: true,
-            ..Default::default()
-          },
-        );
-        ptr.send(
-          fly_buf_from(
-            serialize_response(
-              0,
-              builder,
-              msg::BaseArgs {
-                msg: Some(chunk_msg.as_union_value()),
-                msg_type: msg::Any::StreamChunk,
-                ..Default::default()
-              },
-            ).unwrap(),
-          ),
-          None,
-        );
-        Ok(())
-      });
-    rt.spawn(fut);
-  }
 
   ok_future(None)
 }

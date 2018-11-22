@@ -3,7 +3,7 @@ use std::sync::Arc;
 use futures::{future, stream, Future, Stream};
 use std::ops::Deref;
 
-use cache::*;
+use cache_store::*;
 
 extern crate r2d2_redis;
 use self::r2d2_redis::{r2d2, redis, RedisConnectionManager};
