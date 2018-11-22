@@ -136,7 +136,7 @@ export class Compiler {
   }
 
   public run(moduleSpecifier: ModuleSpecifier, containingFile: ContainingFile) {
-    console.log("compiler.run", { moduleSpecifier, containingFile });
+    trace("run()", { moduleSpecifier, containingFile });
     const moduleMetaData = this.resolveModule(moduleSpecifier, containingFile);
     this.scriptFileNames = [moduleMetaData.fileName];
     if (!moduleMetaData.deps) {
@@ -147,7 +147,7 @@ export class Compiler {
   }
 
   public resolveModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
-    console.log("compiler.resolveModule()", { moduleSpecifier, containingFile })
+    trace("resolveModule()", { moduleSpecifier, containingFile })
     let fn = this.fileNameCache.get([moduleSpecifier, containingFile]);
     if (fn && this.moduleCache.has(fn)) {
       return this.moduleCache.get(fn);
@@ -170,8 +170,6 @@ export class Compiler {
   }
 
   getModuleInfo(fileName: ModuleFileName): ModuleInfo {
-    // console.log("compiler.getModuleInfo()", { fileName })
-
     if (this.moduleCache.has(fileName)) {
       return this.moduleCache.get(fileName);
     }
@@ -190,9 +188,7 @@ export class Compiler {
       return moduleInfo.outputCode;
     }
     const { fileName, inputCode, moduleId } = moduleInfo;
-    console.warn("Compiling", { moduleId, fileName });
     const output = this.languageService.getEmitOutput(fileName);
-    console.warn("COMPILING DONE EMIT", { output })
     // Get the relevant diagnostics - this is 3x faster than
     // `getPreEmitDiagnostics`.
     const diagnostics = [
@@ -228,7 +224,7 @@ export class Compiler {
   }
 
   public transform(moduleId: string): string {
-    console.log("compiler.transform()", { moduleId });
+    trace("transform()", { moduleId });
     const moduleMetaData = this.resolveModule(moduleId, "");
     this.scriptFileNames = [moduleId];
     return this.compile(moduleMetaData)
@@ -239,8 +235,8 @@ export class Compiler {
    * factory and calling the module's factory.
    */
   drainRunQueue(): void {
-    console.log(
-      "compiler.drainRunQueue",
+    trace(
+      "drainRunQueue()",
       this.runQueue.map(moduleInfo => moduleInfo.moduleId)
     );
     let moduleMetaData: ModuleInfo | undefined;
@@ -261,7 +257,7 @@ export class Compiler {
    * just add the module factory to the run queue.
    */
   instantiateModule(moduleInfo: ModuleInfo): void {
-    console.log("compiler.instantiateModule", moduleInfo.moduleId);
+    trace("instantiateModule()", moduleInfo.moduleId);
 
     // if the module has already run, we can short circuit.
     // it is intentional though that if we have already resolved dependencies,
@@ -273,9 +269,7 @@ export class Compiler {
     }
 
     this.global.define = this.makeDefine(moduleInfo);
-    console.log("START COMPILE", { moduleInfo })
     this.globalEval(this.compile(moduleInfo));
-    console.log("END COMPILE", { moduleInfo })
     this.global.define = undefined;
   }
 
@@ -309,7 +303,7 @@ export class Compiler {
    */
   makeDefine(moduleInfo: ModuleInfo): AmdDefine {
     return (deps: ModuleSpecifier[], factory: AmdFactory): void => {
-      console.log("compiler.localDefine", moduleInfo.fileName);
+      console.trace("compiler.localDefine", moduleInfo.fileName);
       moduleInfo.factory = factory;
       // when there are circular dependencies, we need to skip recursing the
       // dependencies
@@ -360,7 +354,6 @@ export class Compiler {
       }
     };
   }
-
 }
 
 const settings: ts.CompilerOptions = {
@@ -383,7 +376,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       return compiler.scriptFileNames;
     },
     getScriptVersion(fileName: string): string {
-      console.log("compiler.getScriptVersion()", { fileName })
+      trace("getScriptVersion()", { fileName })
       const moduleInfo = compiler.getModuleInfo(fileName);
       if (!moduleInfo) {
         return ""
@@ -391,14 +384,14 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       return moduleInfo.version.toString();
     },
     getScriptSnapshot(fileName: string): ts.IScriptSnapshot | undefined {
-      console.log("compiler.getScriptSnapshot()", { fileName })
+      trace("getScriptSnapshot()", { fileName })
       return compiler.getModuleInfo(fileName)
     },
     getCurrentDirectory(): string {
       return ""
     },
     getDefaultLibFileName(options: ts.CompilerOptions): string {
-      console.log("getDefaultLibFileName()");
+      trace("getDefaultLibFileName()");
       const moduleSpecifier = "lib.fly.runtime.d.ts";
       const moduleInfo = compiler.resolveModule(moduleSpecifier, ContainerName);
       return moduleInfo.fileName;
@@ -416,20 +409,18 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       console.error("[compilerHost]", s)
     },
     resolveModuleNames(moduleNames: string[], containingFile: string, reusedNames?: string[]): ts.ResolvedModule[] {
-      console.log("[compiler] resolveModuleNames", { moduleNames, containingFile, reusedNames })
+      trace("resolveModuleNames()", { moduleNames, containingFile, reusedNames });
 
       return moduleNames.map(moduleName => {
-        console.log("RESOLVING", { moduleName })
         const moduleInfo = compiler.resolveModule(moduleName, containingFile)
         // an empty string will cause typescript to bomb, maybe fail here instead?
         const resolvedFileName = moduleInfo && moduleInfo.moduleId || ""
         const isExternal = false; // need cwd/cjs logic for this maybe?
-        console.log("ENDED UP WOTH", { moduleName, isExternal, resolvedFileName });
         return { resolvedFileName, isExternal }
       })
     },
     getScriptKind(fileName: string): ts.ScriptKind {
-      console.log("getScriptKind()", fileName);
+      trace("getScriptKind()", { fileName });
       const moduleMetaData = compiler.getModuleInfo(fileName);
       if (moduleMetaData) {
         switch (moduleMetaData.mediaType) {
@@ -452,7 +443,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
     fileExists(path: string): boolean {
       const info = compiler.getModuleInfo(path);
       const exists = info != null;
-      console.log("fileExists()", path, exists);
+      trace("fileExists()", { path, exists });
       return exists;
     },
   })
@@ -472,4 +463,8 @@ function mediaType(moduleId): MediaType {
     case ".json": return MediaType.Json;
   }
   return MediaType.Unknown;
+}
+
+function trace(...args: any[]) {
+  console.trace("[compiler]", ...args);
 }

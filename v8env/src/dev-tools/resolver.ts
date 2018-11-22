@@ -9,7 +9,7 @@ interface LoadModuleResult {
 }
 
 export function fetchModule(moduleSpecifier: string, containingFile: string): LoadModuleResult | null {  
-  console.log("resolver.fetchModule()", { moduleSpecifier, containingFile });
+  console.trace("[resolver] fetchModule()", { moduleSpecifier, containingFile });
   if (isAsset(moduleSpecifier, containingFile)) {
     let moduleId = moduleSpecifier.split("/").pop()!;
     const assetName = moduleId.includes(".") ? moduleId : `${moduleId}.d.ts`;
