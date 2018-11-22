@@ -1161,39 +1161,68 @@ fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   // ))
 }
 
+fn send_done_stream(ptr: JsRuntime, req_id: u32) {
+  let builder = &mut FlatBufferBuilder::new();
+  let chunk_msg = msg::StreamChunk::create(
+    builder,
+    &msg::StreamChunkArgs {
+      id: req_id,
+      done: true,
+    },
+  );
+  ptr.send(
+    fly_buf_from(
+      serialize_response(
+        0,
+        builder,
+        msg::BaseArgs {
+          msg: Some(chunk_msg.as_union_value()),
+          msg_type: msg::Any::StreamChunk,
+          ..Default::default()
+        },
+      ).unwrap(),
+    ),
+    None,
+  );
+}
+
+fn send_stream_chunk(ptr: JsRuntime, req_id: u32, chunk: *mut u8, len: usize, done: bool) {
+  let builder = &mut FlatBufferBuilder::new();
+  let chunk_msg = msg::StreamChunk::create(
+    builder,
+    &msg::StreamChunkArgs {
+      id: req_id,
+      done: done,
+    },
+  );
+  ptr.send(
+    fly_buf_from(
+      serialize_response(
+        0,
+        builder,
+        msg::BaseArgs {
+          msg: Some(chunk_msg.as_union_value()),
+          msg_type: msg::Any::StreamChunk,
+          ..Default::default()
+        },
+      ).unwrap(),
+    ),
+    Some(fly_buf {
+      alloc_ptr: ptr::null_mut() as *mut u8,
+      alloc_len: 0,
+      data_ptr: chunk,
+      data_len: len,
+    }),
+  );
+}
+
 fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
   let rt = ptr.to_runtime();
 
   match stream {
     JsBody::Static(v) => {
       rt.spawn(future::lazy(move || {
-        let builder = &mut FlatBufferBuilder::new();
-        let chunk_msg = msg::StreamChunk::create(
-          builder,
-          &msg::StreamChunkArgs {
-            id: req_id,
-            done: true,
-          },
-        );
-        ptr.send(
-          fly_buf_from(
-            serialize_response(
-              0,
-              builder,
-              msg::BaseArgs {
-                msg: Some(chunk_msg.as_union_value()),
-                msg_type: msg::Any::StreamChunk,
-                ..Default::default()
-              },
-            ).unwrap(),
-          ),
-          Some(fly_buf {
-            alloc_ptr: ptr::null_mut() as *mut u8,
-            alloc_len: 0,
-            data_ptr: v.as_ptr() as *mut u8,
-            data_len: v.len(),
-          }),
-        );
+        send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), true);
         Ok(())
       }));
     }
@@ -1201,57 +1230,10 @@ fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
       rt.spawn(
         rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
           .for_each(move |v| {
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: false,
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              Some(fly_buf {
-                alloc_ptr: ptr::null_mut() as *mut u8,
-                alloc_len: 0,
-                data_ptr: v.as_ptr() as *mut u8,
-                data_len: v.len(),
-              }),
-            );
+            send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), false);
             Ok(())
           }).and_then(move |_| {
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: true,
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              None,
-            );
+            send_done_stream(ptr, req_id);
             Ok(())
           }),
       );
@@ -1260,57 +1242,10 @@ fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
       rt.spawn(
         rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
           .for_each(move |mut b| {
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: false,
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              Some(fly_buf {
-                alloc_ptr: ptr::null_mut() as *mut u8,
-                alloc_len: 0,
-                data_ptr: b.as_mut_ptr() as *mut u8,
-                data_len: b.len(),
-              }),
-            );
+            send_stream_chunk(ptr, req_id, b.as_mut_ptr() as *mut u8, b.len(), false);
             Ok(())
           }).and_then(move |_| {
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: true,
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              None,
-            );
+            send_done_stream(ptr, req_id);
             Ok(())
           }),
       );
@@ -1320,57 +1255,16 @@ fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
         b.map_err(|e| error!("error in hyper body stream read: {:?}", e))
           .for_each(move |chunk| {
             let bytes = chunk.into_bytes();
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: false,
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              Some(fly_buf {
-                alloc_ptr: ptr::null_mut() as *mut u8,
-                alloc_len: 0,
-                data_ptr: (*bytes).as_ptr() as *mut u8,
-                data_len: bytes.len(),
-              }),
+            send_stream_chunk(
+              ptr,
+              req_id,
+              (*bytes).as_ptr() as *mut u8,
+              bytes.len(),
+              false,
             );
             Ok(())
           }).and_then(move |_| {
-            let builder = &mut FlatBufferBuilder::new();
-            let chunk_msg = msg::StreamChunk::create(
-              builder,
-              &msg::StreamChunkArgs {
-                id: req_id,
-                done: true,
-              },
-            );
-            ptr.send(
-              fly_buf_from(
-                serialize_response(
-                  0,
-                  builder,
-                  msg::BaseArgs {
-                    msg: Some(chunk_msg.as_union_value()),
-                    msg_type: msg::Any::StreamChunk,
-                    ..Default::default()
-                  },
-                ).unwrap(),
-              ),
-              None,
-            );
+            send_done_stream(ptr, req_id);
             Ok(())
           }),
       );
@@ -1393,7 +1287,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
   println!("META: {:?}", meta);
 
   if meta.is_file() {
-    let fut = future::lazy(move || {
+    EVENT_LOOP.0.spawn(future::lazy(move || {
       tokio::fs::File::open(path).then(
         move |fileerr: Result<tokio::fs::File, io::Error>| -> Result<(), ()> {
           debug!("file opened? {}", fileerr.is_ok());
@@ -1407,8 +1301,6 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           let file = fileerr.unwrap(); // should be safe.
 
           let (tx, rx) = mpsc::unbounded::<BytesMut>();
-          // let mut streams = ptr.to_runtime().streams.lock().unwrap();
-          // streams.insert(req_id, tx);
 
           if p
             .send(Ok(JsHttpResponse {
@@ -1421,7 +1313,6 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
             return Ok(());
           }
 
-          // let rt = ptr.to_runtime(); // like a clone
           EVENT_LOOP.0.spawn(
             FramedRead::new(file, BytesCodec::new())
               .map_err(|e| println!("error reading file chunk! {}", e))
@@ -1439,10 +1330,9 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           Ok(())
         },
       )
-    });
-    EVENT_LOOP.0.spawn(fut);
+    }));
   } else {
-    let fut = future::lazy(move || {
+    EVENT_LOOP.0.spawn(future::lazy(move || {
       tokio::fs::read_dir(path).then(move |read_dir_err| {
         if let Err(err) = read_dir_err {
           if p.send(Err(err.into())).is_err() {
@@ -1452,8 +1342,6 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
         }
         let read_dir = read_dir_err.unwrap();
         let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-        // let mut streams = ptr.to_runtime().streams.lock().unwrap();
-        // streams.insert(req_id, tx);
 
         if p
           .send(Ok(JsHttpResponse {
@@ -1470,11 +1358,8 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
           read_dir
             .map_err(|e| println!("error read_dir stream: {}", e))
             .for_each(move |entry| {
-              // let rt = ptr.to_runtime(); // like a clone
-              // rt.spawn(future::lazy(move || {
               let entrypath = entry.path();
               let pathstr = format!("{}\n", entrypath.to_str().unwrap());
-              // let pathbytes = pathstr.as_bytes();
               match tx.clone().unbounded_send(pathstr.into()) {
                 Ok(_) => Ok(()),
                 Err(e) => {
@@ -1485,13 +1370,11 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
             }),
         );
         Ok(())
-        // Ok(())
       })
-    });
-    EVENT_LOOP.0.spawn(fut);
+    }));
   }
 
-  let fut2 = c
+  let fut = c
     .map_err(|e| {
       FlyError::from(io::Error::new(
         io::ErrorKind::Other,
@@ -1547,7 +1430,7 @@ fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
       ))
     });
 
-  Box::new(fut2)
+  Box::new(fut)
 }
 
 fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
@@ -1595,7 +1478,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
   let rt = ptr.to_runtime();
 
-  let fut = HTTP_CLIENT.request(req).then(move |reserr| {
+  rt.spawn(HTTP_CLIENT.request(req).then(move |reserr| {
     debug!("got http response (or error)");
     if let Err(err) = reserr {
       if p.send(Err(err.into())).is_err() {
@@ -1624,57 +1507,11 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       error!("error sending http response");
       return Ok(());
     }
-
-    // debug!("body is end stream? {}", body.is_end_stream());
-
-    // if !body.is_end_stream() {
-    //   let rt = ptr.to_runtime(); // like a clone
-    //   rt.spawn(
-    //     poll_fn(move || {
-    //       while let Some(chunk) = try_ready!(body.poll_data()) {
-    //         let mut bytes = chunk.into_bytes();
-    //         let builder = &mut FlatBufferBuilder::new();
-    //         let chunk_msg = msg::StreamChunk::create(
-    //           builder,
-    //           &msg::StreamChunkArgs {
-    //             id: req_id,
-    //             done: body.is_end_stream(),
-    //           },
-    //         );
-    //         ptr.send(
-    //           fly_buf_from(
-    //             serialize_response(
-    //               0,
-    //               builder,
-    //               msg::BaseArgs {
-    //                 msg: Some(chunk_msg.as_union_value()),
-    //                 msg_type: msg::Any::StreamChunk,
-    //                 ..Default::default()
-    //               },
-    //             ).unwrap(),
-    //           ),
-    //           Some(fly_buf {
-    //             alloc_ptr: ptr::null_mut() as *mut u8,
-    //             alloc_len: 0,
-    //             data_ptr: (*bytes).as_ptr() as *mut u8,
-    //             data_len: bytes.len(),
-    //           }),
-    //         );
-    //       }
-    //       Ok(Async::Ready(()))
-    //     }).map_err(|e: hyper::Error| error!("hyper error: {}", e))
-    //     .and_then(move |_| {
-    //       let mut streams = ptr.to_runtime().streams.lock().unwrap();
-    //       streams.remove(&req_id);
-    //       Ok(debug!("done with hyper body"))
-    //     }),
-    //   );
-    // }
     debug!("done with http request");
     Ok(())
-  });
+  }));
 
-  let fut2 = c
+  let fut = c
     .map_err(|e| {
       FlyError::from(io::Error::new(
         io::ErrorKind::Other,
@@ -1731,8 +1568,7 @@ fn op_http_request(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       ))
     });
 
-  rt.spawn(fut);
-  Box::new(fut2)
+  Box::new(fut)
 }
 
 fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
