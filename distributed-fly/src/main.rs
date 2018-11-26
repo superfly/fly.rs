@@ -44,8 +44,17 @@ use env_logger::Env;
 mod release;
 use release::Release;
 
+mod kms;
+
+extern crate rusoto_core;
+extern crate rusoto_credential;
+
+use rusoto_credential::{AwsCredentials, EnvironmentProvider, ProvideAwsCredentials};
+
 lazy_static! {
     static ref RUNTIMES: RwLock<HashMap<String, Box<Runtime>>> = RwLock::new(HashMap::new());
+    pub static ref AWS_CREDENTIALS: AwsCredentials =
+        EnvironmentProvider::default().credentials().wait().unwrap();
 }
 
 fn main() {
@@ -56,7 +65,7 @@ fn main() {
 
     tokio::run(future::lazy(move || {
         tokio::spawn(
-            Interval::new_interval(Duration::from_secs(5))
+            Interval::new_interval(Duration::from_secs(30))
                 .map_err(|e| error!("timer error: {}", e))
                 .for_each(|_| {
                     RUNTIMES.read().unwrap().iter().for_each(|(k, rt)| {
@@ -125,12 +134,24 @@ fn server_fn(
                 })), // TODO: use redis store
             };
             let mut rt = Runtime::new(Some(rel.app.clone()), &settings);
+            let merged_conf = rel.clone().parsed_config().unwrap();
+            rt.eval(
+                "<app config>",
+                &format!("window.app = {{ config: {} }};", merged_conf),
+            );
             rt.eval("app.js", &rel.source);
             let app = rel.app;
             let app_id = rel.app_id;
             let version = rel.version;
-            tokio::spawn(rt.run().map_err(move |_e| {
-                error!("app: {} ({}) v{} ended abruptly", app, app_id, version)
+
+            // TODO: ughh, refactor!
+            let key2 = key.clone();
+            tokio::spawn(rt.run().then(move |res: Result<(), _>| {
+                if let Err(_) = res {
+                    error!("app: {} ({}) v{} ended abruptly", app, app_id, version);
+                }
+                RUNTIMES.write().unwrap().remove(&key2);
+                Ok(())
             }));
             {
                 debug!("writing runtime in hashmap");

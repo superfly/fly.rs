@@ -8,6 +8,15 @@ use serde::Deserialize;
 use r2d2_redis::RedisConnectionManager;
 use redis::Commands;
 
+extern crate serde_json;
+
+extern crate rmpv;
+use self::rmpv::Value;
+
+use kms::decrypt;
+
+extern crate base64;
+
 lazy_static! {
   static ref RELEASES: RwLock<HashMap<String, Release>> = RwLock::new(HashMap::new());
   static ref REDIS_POOL: r2d2::Pool<RedisConnectionManager> = r2d2::Pool::builder()
@@ -15,7 +24,7 @@ lazy_static! {
     .unwrap();
 }
 
-#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub struct Release {
   pub id: i32,
   pub app: String,
@@ -23,6 +32,8 @@ pub struct Release {
   pub version: i32,
   pub files: Vec<String>,
   pub source: String,
+  pub config: Value,
+  pub secrets: Value,
 }
 
 impl Release {
@@ -76,6 +87,101 @@ impl Release {
         }
       }
     }
+  }
+
+  pub fn parsed_config(&self) -> Result<String, serde_json::Error> {
+    let mut conf: Vec<(Value, Value)> = vec![];
+
+    match self.config {
+      Value::Map(ref map) => {
+        for tup in map {
+          conf.push(parse_config_entry(&tup, &self.secrets));
+        }
+      }
+      _ => warn!("config is not a msgpack map..."),
+    };
+
+    serde_json::to_string(&Value::Map(conf))
+  }
+}
+
+fn parse_config_entry(entry: &(Value, Value), secrets: &Value) -> (Value, Value) {
+  if let Value::Map(ref map) = entry.1 {
+    if map.len() == 1 {
+      if let Value::String(ref name) = map[0].0 {
+        if name.as_str() == Some("fromSecret") {
+          if let Value::String(ref secret_utf8_name) = map[0].1 {
+            if let Some(secret_name) = secret_utf8_name.as_str() {
+              if let Some(plaintext) = get_secret(secrets, secret_name) {
+                (entry.0.clone(), plaintext.into())
+              } else {
+                entry.clone()
+              }
+            } else {
+              entry.clone()
+            }
+          } else {
+            entry.clone()
+          }
+        } else {
+          entry.clone()
+        }
+      } else {
+        entry.clone()
+      }
+    } else {
+      let mut new_entry: Vec<(Value, Value)> = Vec::with_capacity(map.len());
+      for t in map {
+        new_entry.push(parse_config_entry(t, secrets));
+      }
+      (entry.0.clone(), Value::Map(new_entry))
+    }
+  } else {
+    entry.clone()
+  }
+  // if map.len() == 1 {
+  //   if let Value::String(ref name) = map[0].0 {
+  //     if name.as_str() == Some("fromSecret") {
+  //       info!("{} is a secret! value: {}", k, map[0].1)
+
+  //     }
+  //   }
+  // } else {
+  //   for (k,v) in map {
+  //     parse_config_map()
+  //   }
+  // }
+}
+
+fn get_secret<'a>(secrets: &'a Value, name: &str) -> Option<String> {
+  match secrets {
+    Value::Map(s) => {
+      for (k, v) in s {
+        if let Value::String(ks) = k {
+          if let Some(sname) = ks.as_str() {
+            if sname == name {
+              if let Value::String(vs) = v {
+                return match base64::decode(vs.as_bytes()) {
+                  Ok(b64) => match String::from_utf8(decrypt(b64)) {
+                    Ok(s) => Some(s),
+                    Err(e) => {
+                      error!("error decoding decrypted plaintext into string: {}", e);
+                      None
+                    }
+                  },
+                  Err(e) => {
+                    error!("error decoding base64: {}", e);
+                    None
+                  }
+                };
+              }
+            }
+          }
+        }
+      }
+      None
+    }
+    _ => None,
   }
 }
 
