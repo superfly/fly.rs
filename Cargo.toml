@@ -2,7 +2,6 @@
 name = "fly"
 version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
-edition = "2018"
 
 [dependencies]
 bytes = "0.4"
