@@ -1,4 +1,4 @@
-use data_store::*;
+use crate::data_store::*;
 use std::sync::Arc;
 
 extern crate postgres;
@@ -12,7 +12,7 @@ use self::postgres::tls::openssl::openssl::x509::X509_FILETYPE_PEM;
 use self::postgres::types::ToSql;
 use self::postgres::Connection;
 
-use settings::PostgresStoreConfig;
+use crate::settings::PostgresStoreConfig;
 
 extern crate serde_json;
 

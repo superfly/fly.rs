@@ -1,4 +1,4 @@
-use data_store::*;
+use crate::data_store::*;
 use std::sync::Arc;
 
 extern crate r2d2;

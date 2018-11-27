@@ -56,9 +56,9 @@ extern crate hyper_tls;
 use self::hyper_tls::HttpsConnector;
 
 use flatbuffers::FlatBufferBuilder;
-use msg;
+use crate::msg;
 
-use errors::{FlyError, FlyResult};
+use crate::errors::{FlyError, FlyResult};
 
 extern crate log;
 
@@ -69,17 +69,17 @@ use tokio::codec::{BytesCodec, FramedRead};
 extern crate bytes;
 use self::bytes::BytesMut;
 
-use cache_store;
-use data_store;
-use ops;
-use utils::*;
+use crate::cache_store;
+use crate::data_store;
+use crate::ops;
+use crate::utils::*;
 
-use postgres_data;
-use redis_cache;
-use sqlite_cache;
-use sqlite_data;
+use crate::postgres_data;
+use crate::redis_cache;
+use crate::sqlite_cache;
+use crate::sqlite_data;
 
-use settings::{CacheStore, DataStore, Settings};
+use crate::settings::{CacheStore, DataStore, Settings};
 
 use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
 use std::str;
@@ -1488,7 +1488,7 @@ fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let containing_file = msg.containing_file().unwrap().to_string();
 
   let module =
-    match ::compiler::Compiler::new(None).fetch_module(&module_specifier, &containing_file) {
+    match crate::compiler::Compiler::new(None).fetch_module(&module_specifier, &containing_file) {
       Ok(m) => m,
       Err(e) => return odd_future(e.into()),
     };

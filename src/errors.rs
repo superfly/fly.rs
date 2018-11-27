@@ -1,5 +1,5 @@
 use hyper;
-pub use msg::ErrorKind;
+pub use crate::msg::ErrorKind;
 use std;
 use std::fmt;
 use std::io;

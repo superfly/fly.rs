@@ -1,10 +1,10 @@
 use flatbuffers::FlatBufferBuilder;
 use libfly::*;
-use msg;
+use crate::msg;
 
-use errors::FlyError;
+use crate::errors::FlyError;
 
-use runtime::{Buf, Op};
+use crate::runtime::{Buf, Op};
 
 use futures::future;
 

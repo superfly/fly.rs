@@ -13,7 +13,7 @@ use std::ops::Deref;
 
 use std::io::{Read, Seek, SeekFrom};
 
-use cache_store::*;
+use crate::cache_store::*;
 
 impl From<rusqlite::Error> for CacheError {
   #[inline]

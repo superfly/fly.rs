@@ -1,5 +1,5 @@
 use flatbuffers::FlatBufferBuilder;
-use msg;
+use crate::msg;
 
 extern crate trust_dns as dns;
 extern crate trust_dns_proto as dns_proto;
@@ -11,8 +11,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use libfly::*;
-use runtime::{JsRuntime, Op, EVENT_LOOP};
-use utils::*;
+use crate::runtime::{JsRuntime, Op, EVENT_LOOP};
+use crate::utils::*;
 
 use futures::Future;
 
