@@ -10,6 +10,7 @@ table CacheGetReady {
 table CacheSet {
   key: string;
   ttl: uint;
+  tags: [string];
 }
 
 table CacheSetReady {

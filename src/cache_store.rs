@@ -11,11 +11,13 @@ pub trait CacheStore {
     &self,
     key: String,
     data_stream: Box<Stream<Item = Vec<u8>, Error = ()> + Send>,
-    maybe_ttl: Option<u32>,
+    opts: CacheSetOptions,
   ) -> Box<Future<Item = (), Error = CacheError> + Send>;
 
   fn del(&self, key: String) -> Box<Future<Item = (), Error = CacheError> + Send>;
   fn expire(&self, key: String, ttl: u32) -> Box<Future<Item = (), Error = CacheError> + Send>;
+  fn ttl(&self, key: String) -> Box<Future<Item = i32, Error = CacheError> + Send>;
+  fn purge_tag(&self, tag: String) -> Box<Future<Item = (), Error = CacheError> + Send>;
 }
 
 #[derive(Debug)]
@@ -24,6 +26,12 @@ pub enum CacheError {
   NotFound,
   Failure(String),
   IoErr(io::Error),
+}
+
+#[derive(Debug)]
+pub struct CacheSetOptions {
+  pub ttl: Option<u32>,
+  pub tags: Option<Vec<String>>,
 }
 
 impl From<io::Error> for CacheError {

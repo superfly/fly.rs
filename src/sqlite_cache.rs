@@ -122,12 +122,9 @@ impl CacheStore for SqliteCacheStore {
     &self,
     key: String,
     data_stream: Box<Stream<Item = Vec<u8>, Error = ()> + Send>,
-    maybe_ttl: Option<u32>,
+    opts: CacheSetOptions,
   ) -> Box<Future<Item = (), Error = CacheError> + Send> {
-    debug!(
-      "sqlite cache set with key: {} and ttl: {:?}",
-      key, maybe_ttl
-    );
+    debug!("sqlite cache set with key: {} and ttl: {:?}", key, opts.ttl);
 
     let pool = Arc::clone(&self.pool);
 
@@ -140,7 +137,7 @@ impl CacheStore for SqliteCacheStore {
         }).and_then(move |b| {
           let conn = pool.get().unwrap(); // TODO: no unwrap
 
-          if let Some(ttl) = maybe_ttl {
+          if let Some(ttl) = opts.ttl {
             let mut stmt = conn
               .prepare(
                 "INSERT INTO cache(key, value, expires_at)
@@ -245,7 +242,11 @@ mod tests {
   ) {
     let setfut = {
       let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
-      let setfut = store.set(key.to_string(), Box::new(recver), ttl);
+      let setfut = store.set(
+        key.to_string(),
+        Box::new(recver),
+        CacheSetOptions { ttl, tags: None },
+      );
       sender.unbounded_send(value.to_vec()).unwrap();
       setfut
     };

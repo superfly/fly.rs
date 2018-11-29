@@ -1,11 +1,11 @@
 use futures::sync::mpsc;
 
-use flatbuffers::FlatBufferBuilder;
 use crate::msg;
+use flatbuffers::FlatBufferBuilder;
 
-use libfly::*;
 use crate::runtime::{JsRuntime, Op};
 use crate::utils::*;
+use libfly::*;
 
 use crate::NEXT_EVENT_ID;
 
@@ -13,7 +13,7 @@ use futures::{future, Future, Stream};
 
 use std::sync::atomic::Ordering;
 
-use crate::cache_store;
+use crate::cache_store::*;
 
 use std::ptr;
 
@@ -68,7 +68,20 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
     Some(msg.ttl())
   };
 
-  let fut = rt.cache_store.set(key, Box::new(recver), ttl);
+  let tags = match msg.tags() {
+    Some(raw_tags) => {
+      let mut tags: Vec<String> = vec![];
+      for i in 0..raw_tags.len() {
+        tags.push(i.to_string());
+      }
+      Some(tags)
+    }
+    None => None,
+  };
+
+  let fut = rt
+    .cache_store
+    .set(key, Box::new(recver), CacheSetOptions { ttl, tags });
 
   rt.spawn(
     fut
@@ -108,10 +121,10 @@ pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   let maybe_stream = match rt.cache_store.get(key) {
     Ok(s) => s,
     Err(e) => match e {
-      cache_store::CacheError::NotFound => return odd_future("not found".to_string().into()),
-      cache_store::CacheError::IoErr(ioe) => return odd_future(ioe.into()),
-      cache_store::CacheError::Unknown => return odd_future("unknown error".to_string().into()),
-      cache_store::CacheError::Failure(e) => return odd_future(e.into()),
+      CacheError::NotFound => return odd_future("not found".to_string().into()),
+      CacheError::IoErr(ioe) => return odd_future(ioe.into()),
+      CacheError::Unknown => return odd_future("unknown error".to_string().into()),
+      CacheError::Failure(e) => return odd_future(e.into()),
     },
   };
 
