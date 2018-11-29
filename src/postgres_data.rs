@@ -6,9 +6,12 @@ extern crate r2d2;
 extern crate r2d2_postgres;
 use self::r2d2_postgres::{PostgresConnectionManager, TlsMode};
 
+extern crate postgres_openssl;
+extern crate openssl;
+
 use self::postgres::params::{Builder, ConnectParams, IntoConnectParams};
-use self::postgres::tls::openssl::openssl::ssl::{SslConnectorBuilder, SslMethod};
-use self::postgres::tls::openssl::openssl::x509::X509_FILETYPE_PEM;
+use self::postgres_openssl::openssl::ssl::{SslMethod};
+use self::openssl::ssl::{SslFiletype,SslConnector};
 use self::postgres::types::ToSql;
 use self::postgres::Connection;
 
@@ -40,19 +43,19 @@ impl PostgresDataStore {
     let params = builder.build(params.host().clone());
 
     let maybe_tls = if conf.tls_client_crt.is_some() {
-      let mut connbuilder = SslConnectorBuilder::new(SslMethod::tls()).unwrap();
+      let mut connbuilder = SslConnector::builder(SslMethod::tls()).unwrap();
       if let Some(ref ca) = conf.tls_ca_crt {
         connbuilder.set_ca_file(ca).unwrap();
       }
       connbuilder
-        .set_certificate_file(conf.tls_client_crt.as_ref().unwrap(), X509_FILETYPE_PEM)
+        .set_certificate_file(conf.tls_client_crt.as_ref().unwrap(), SslFiletype::PEM)
         .unwrap();
       connbuilder
-        .set_private_key_file(conf.tls_client_key.as_ref().unwrap(), X509_FILETYPE_PEM)
+        .set_private_key_file(conf.tls_client_key.as_ref().unwrap(), SslFiletype::PEM)
         .unwrap();
       // connbuilder.
       // connbuilder.set_verify(postgres::tls::openssl::openssl::ssl::);
-      Some(postgres::tls::openssl::OpenSsl::from(connbuilder.build()))
+      Some(postgres_openssl::OpenSsl::from(connbuilder.build()))
     } else {
       None
     };
