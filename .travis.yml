@@ -11,6 +11,7 @@ matrix:
 
 services:
   - postgresql
+  - redis
 
 env:
   global:
