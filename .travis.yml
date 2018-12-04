@@ -23,6 +23,7 @@ cache:
   - node_modules
   - v8env/node_modules
   - third_party/flatbuffers
+  - $HOME/Library/Caches/Homebrew
 
 addons:
   postgresql: "9.6" # required for JSONB
@@ -76,6 +77,9 @@ before_script:
 
 script:
 - RUST_BACKTRACE=1 cargo test
+
+before_cache:
+  - brew cleanup
 
 before_deploy:
 - cargo build --release --bin create_snapshot
