@@ -45,7 +45,7 @@ before_install:
     fi
 
 install:
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then homebrew update && homebrew install redis; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install redis; fi
 - |
   cd third_party/flatbuffers
   cmake -G "Unix Makefiles"
