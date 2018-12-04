@@ -1,19 +1,18 @@
 use crate::data_store::*;
-use std::sync::Arc;
 
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_postgres;
 use self::r2d2_postgres::{PostgresConnectionManager, TlsMode};
 
-extern crate postgres_openssl;
 extern crate openssl;
+extern crate postgres_openssl;
 
+use self::openssl::ssl::{SslConnector, SslFiletype};
 use self::postgres::params::{Builder, ConnectParams, IntoConnectParams};
-use self::postgres_openssl::openssl::ssl::{SslMethod};
-use self::openssl::ssl::{SslFiletype,SslConnector};
 use self::postgres::types::ToSql;
 use self::postgres::Connection;
+use self::postgres_openssl::openssl::ssl::SslMethod;
 
 use crate::settings::PostgresStoreConfig;
 
@@ -22,7 +21,7 @@ extern crate serde_json;
 use futures::{future, Future};
 
 pub struct PostgresDataStore {
-  pool: Arc<r2d2::Pool<PostgresConnectionManager>>,
+  pool: r2d2::Pool<PostgresConnectionManager>,
 }
 
 impl PostgresDataStore {
@@ -53,8 +52,6 @@ impl PostgresDataStore {
       connbuilder
         .set_private_key_file(conf.tls_client_key.as_ref().unwrap(), SslFiletype::PEM)
         .unwrap();
-      // connbuilder.
-      // connbuilder.set_verify(postgres::tls::openssl::openssl::ssl::);
       Some(postgres_openssl::OpenSsl::from(connbuilder.build()))
     } else {
       None
@@ -101,9 +98,7 @@ impl PostgresDataStore {
       ).unwrap();
       r2d2::Pool::builder().build(manager).unwrap()
     };
-    PostgresDataStore {
-      pool: Arc::new(pool),
-    }
+    PostgresDataStore { pool }
   }
 }
 
@@ -123,7 +118,7 @@ impl DataStore for PostgresDataStore {
     key: String,
   ) -> Box<Future<Item = Option<String>, Error = DataError> + Send> {
     debug!("postgres data store get coll: {}, key: {}", coll, key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<Option<String>> {
       let conn = pool.get().unwrap(); // TODO: no unwrap
 
@@ -146,7 +141,7 @@ impl DataStore for PostgresDataStore {
 
   fn del(&self, coll: String, key: String) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("postgres data store del coll: {}, key: {}", coll, key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<()> {
       let conn = pool.get().unwrap(); // TODO: no unwrap
 
@@ -169,7 +164,7 @@ impl DataStore for PostgresDataStore {
     data: String,
   ) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("postgres data store put coll: {}, key: {}", coll, key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<()> {
       let conn = pool.get().unwrap(); // TODO: no unwrap
 
@@ -189,7 +184,7 @@ impl DataStore for PostgresDataStore {
 
   fn drop_coll(&self, coll: String) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("postgres data store drop coll: {}", coll);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<()> {
       let con = pool.get().unwrap(); // TODO: no unwrap
       match con.execute(format!("DROP TABLE IF EXISTS {}", coll).as_str(), NO_PARAMS) {
@@ -267,8 +262,7 @@ mod tests {
     let dbname = "testflydata";
     let res: String = {
       let store = setup(Some(dbname.to_string()));
-      let pool = Arc::clone(&store.pool);
-      let conn = pool.get().unwrap();
+      let conn = store.pool.get().unwrap();
 
       conn
         .query(
