@@ -82,6 +82,7 @@ use crate::sqlite_data;
 use crate::settings::{CacheStore, DataStore, Settings};
 
 use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
+use std::net::SocketAddr;
 use std::str;
 
 extern crate trust_dns as dns;
@@ -103,6 +104,7 @@ pub struct JsHttpResponse {
 pub struct JsHttpRequest {
   pub id: u32,
   pub method: http::Method,
+  pub remote_addr: SocketAddr,
   pub url: String,
   pub headers: HeaderMap,
   pub body: Option<JsBody>,

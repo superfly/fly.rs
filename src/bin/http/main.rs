@@ -13,7 +13,8 @@ extern crate hyper;
 use hyper::body::Payload;
 use hyper::header;
 use hyper::rt::{Future, Stream};
-use hyper::service::{service_fn, Service};
+use hyper::server::conn::AddrStream;
+use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server, StatusCode};
 
 extern crate futures;
@@ -33,116 +34,111 @@ use std::alloc::System;
 #[global_allocator]
 static A: System = System;
 
+use std::net::SocketAddr;
 use std::sync::atomic::Ordering;
 
 pub static mut RUNTIME: Option<Box<Runtime>> = None;
-
-pub struct FlyServer;
-
-impl Service for FlyServer {
-    type ReqBody = Body;
-    type ResBody = Body;
-    type Error = futures::Canceled;
-    type Future = Box<dyn Future<Item = Response<Body>, Error = Self::Error> + Send>;
-
-    fn call(&mut self, req: Request<Body>) -> Self::Future {
-        let (parts, body) = req.into_parts();
-        let host = {
-            match parts.headers.get(header::HOST) {
-                Some(v) => match v.to_str() {
-                    Ok(s) => s,
-                    Err(e) => {
-                        error!("error stringifying host: {}", e);
-                        return Box::new(future::ok(
-                            Response::builder()
-                                .status(StatusCode::BAD_REQUEST)
-                                .body(Body::from("Bad host header"))
-                                .unwrap(),
-                        ));
-                    }
-                },
-                None => {
+fn server_fn(
+    req: Request<Body>,
+    remote_addr: SocketAddr,
+) -> Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send> {
+    let (parts, body) = req.into_parts();
+    let host = {
+        match parts.headers.get(header::HOST) {
+            Some(v) => match v.to_str() {
+                Ok(s) => s,
+                Err(e) => {
+                    error!("error stringifying host: {}", e);
                     return Box::new(future::ok(
                         Response::builder()
-                            .status(StatusCode::NOT_FOUND)
-                            .body(Body::empty())
+                            .status(StatusCode::BAD_REQUEST)
+                            .body(Body::from("Bad host header"))
                             .unwrap(),
-                    ))
+                    ));
                 }
+            },
+            None => {
+                return Box::new(future::ok(
+                    Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Body::empty())
+                        .unwrap(),
+                ))
             }
+        }
+    };
+
+    // TODO: match host with appropriate runtime when multiple apps are supported.
+    let rt = unsafe { RUNTIME.as_ref().unwrap() };
+
+    if rt.fetch_events.is_none() {
+        return Box::new(future::ok(
+            Response::builder()
+                .status(StatusCode::SERVICE_UNAVAILABLE)
+                .body(Body::empty())
+                .unwrap(),
+        ));
+    }
+
+    let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+
+    let url = format!("http://{}{}", host, parts.uri.path_and_query().unwrap());
+
+    // double checking, could've been removed since last check (maybe not? may need a lock)
+    if let Some(ref ch) = rt.fetch_events {
+        let rx = {
+            let (tx, rx) = oneshot::channel::<JsHttpResponse>();
+            rt.responses.lock().unwrap().insert(req_id, tx);
+            rx
         };
+        let sendres = ch.unbounded_send(JsHttpRequest {
+            id: req_id,
+            method: parts.method,
+            remote_addr: remote_addr,
+            url: url,
+            headers: parts.headers.clone(),
+            body: if body.is_end_stream() {
+                None
+            } else {
+                Some(JsBody::HyperBody(body))
+            },
+        });
 
-        // TODO: match host with appropriate runtime when multiple apps are supported.
-        let rt = unsafe { RUNTIME.as_ref().unwrap() };
-
-        if rt.fetch_events.is_none() {
+        if let Err(e) = sendres {
+            error!("error sending js http request: {}", e);
             return Box::new(future::ok(
                 Response::builder()
-                    .status(StatusCode::SERVICE_UNAVAILABLE)
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .body(Body::empty())
                     .unwrap(),
             ));
         }
 
-        let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+        Box::new(rx.and_then(|res: JsHttpResponse| {
+            let (mut parts, mut body) = Response::<Body>::default().into_parts();
+            parts.headers = res.headers;
+            parts.status = res.status;
 
-        let url = format!("http://{}{}", host, parts.uri.path_and_query().unwrap());
-
-        // double checking, could've been removed since last check (maybe not? may need a lock)
-        if let Some(ref ch) = rt.fetch_events {
-            let rx = {
-                let (tx, rx) = oneshot::channel::<JsHttpResponse>();
-                rt.responses.lock().unwrap().insert(req_id, tx);
-                rx
-            };
-            let sendres = ch.unbounded_send(JsHttpRequest {
-                id: req_id,
-                method: parts.method,
-                url: url,
-                headers: parts.headers.clone(),
-                body: if body.is_end_stream() {
-                    None
-                } else {
-                    Some(JsBody::HyperBody(body))
-                },
-            });
-
-            if let Err(e) = sendres {
-                error!("error sending js http request: {}", e);
-                return Box::new(future::ok(
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Body::empty())
-                        .unwrap(),
-                ));
+            if let Some(js_body) = res.body {
+                body = match js_body {
+                    JsBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
+                    JsBody::BytesStream(s) => {
+                        Body::wrap_stream(s.map_err(|_| RecvError {}).map(|bm| bm.freeze()))
+                    }
+                    JsBody::Static(b) => Body::from(b),
+                    _ => unimplemented!(),
+                };
             }
 
-            Box::new(rx.and_then(|res: JsHttpResponse| {
-                let (mut parts, mut body) = Response::<Body>::default().into_parts();
-                parts.headers = res.headers;
-                parts.status = res.status;
-
-                if let Some(js_body) = res.body {
-                    body = match js_body {
-                        JsBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
-                        JsBody::BytesStream(s) => {
-                            Body::wrap_stream(s.map_err(|_| RecvError {}).map(|bm| bm.freeze()))
-                        }
-                        JsBody::Static(b) => Body::from(b),
-                        _ => unimplemented!(),
-                    };
-                }
-
-                future::ok(Response::from_parts(parts, body))
-            }))
-        } else {
-            Box::new(future::ok(
-                Response::builder()
-                    .status(StatusCode::SERVICE_UNAVAILABLE)
-                    .body(Body::empty())
-                    .unwrap(),
-            ))
-        }
+            future::ok(Response::from_parts(parts, body))
+        }))
+    } else {
+        Box::new(future::ok(
+            Response::builder()
+                .status(StatusCode::SERVICE_UNAVAILABLE)
+                .body(Body::empty())
+                .unwrap(),
+        ))
     }
 }
 
@@ -205,8 +201,10 @@ fn main() {
     info!("Listening on {}", addr);
 
     let server = Server::bind(&addr)
-        .serve(move || service_fn(move |req| FlyServer {}.call(req)))
-        .map_err(|e| eprintln!("server error: {}", e));
+        .serve(make_service_fn(|conn: &AddrStream| {
+            let remote_addr = conn.remote_addr();
+            service_fn(move |req| server_fn(req, remote_addr))
+        })).map_err(|e| eprintln!("server error: {}", e));
 
     let _ = main_el.block_on(server);
     main_el.shutdown_on_idle();
