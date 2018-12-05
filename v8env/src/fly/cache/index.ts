@@ -25,6 +25,7 @@ import * as flatbuffers from "../../flatbuffers";
 export interface CacheSetOptions {
   ttl?: number;
   tags?: string[];
+  meta?: string;
   onlyIfEmpty?: boolean;
 }
 
@@ -121,6 +122,17 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
 
   const fbb = flatbuffers.createBuilder()
   const keyFbb = fbb.createString(key)
+
+  let tags: number;
+  let meta: number;
+
+  if (typeof options === 'object') {
+    if (Array.isArray(options.tags))
+      tags = fbs.CacheSet.createTagsVector(fbb, options.tags.map(t => fbb.createString(t)));
+    if (typeof options.meta === 'string')
+      meta = fbb.createString(options.meta);
+  }
+
   fbs.CacheSet.startCacheSet(fbb);
   fbs.CacheSet.addKey(fbb, keyFbb);
 
@@ -128,6 +140,10 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
     fbs.CacheSet.addTtl(fbb, options)
   else if (typeof options === 'object' && typeof options.ttl === 'number')
     fbs.CacheSet.addTtl(fbb, options.ttl)
+
+  if (typeof meta != 'undefined')
+    fbs.CacheSet.addMeta(fbb, meta);
+  fbs.CacheSet.addTags(fbb, tags);
 
   return sendAsync(fbb, fbs.Any.CacheSet, fbs.CacheSet.endCacheSet(fbb)).then(async baseMsg => {
     let msg = new fbs.CacheSetReady()

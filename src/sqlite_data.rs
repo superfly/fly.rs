@@ -1,5 +1,4 @@
 use crate::data_store::*;
-use std::sync::Arc;
 
 extern crate r2d2;
 extern crate r2d2_sqlite;
@@ -10,15 +9,13 @@ use self::rusqlite::NO_PARAMS;
 use futures::{future, Future};
 
 pub struct SqliteDataStore {
-  pool: Arc<r2d2::Pool<SqliteConnectionManager>>,
+  pool: r2d2::Pool<SqliteConnectionManager>,
 }
 
 impl SqliteDataStore {
   pub fn new(filename: String) -> Self {
-    let manager = SqliteConnectionManager::file(filename);
-    let pool = r2d2::Pool::builder().build(manager).unwrap();
     SqliteDataStore {
-      pool: Arc::new(pool),
+      pool: r2d2::Pool::new(SqliteConnectionManager::file(filename)).unwrap(),
     }
   }
 }
@@ -37,7 +34,7 @@ impl DataStore for SqliteDataStore {
     key: String,
   ) -> Box<Future<Item = Option<String>, Error = DataError> + Send> {
     debug!("sqlite data store get coll: {}, key: {}", coll, key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<Option<String>> {
       let con = pool.get().unwrap(); // TODO: no unwrap
 
@@ -62,7 +59,7 @@ impl DataStore for SqliteDataStore {
 
   fn del(&self, coll: String, key: String) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("sqlite data store del coll: {}, key: {}", coll, key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<()> {
       let con = pool.get().unwrap(); // TODO: no unwrap
 
@@ -85,7 +82,7 @@ impl DataStore for SqliteDataStore {
     data: String,
   ) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("sqlite data store put coll: {}, key: {}", coll, key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<()> {
       let con = pool.get().unwrap(); // TODO: no unwrap
 
@@ -102,7 +99,7 @@ impl DataStore for SqliteDataStore {
 
   fn drop_coll(&self, coll: String) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("sqlite data store drop coll: {}", coll);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> DataResult<()> {
       let con = pool.get().unwrap(); // TODO: no unwrap
       match con.execute(

@@ -1,21 +1,19 @@
 use futures::sync::mpsc;
 
-use flatbuffers::FlatBufferBuilder;
 use crate::msg;
+use flatbuffers::FlatBufferBuilder;
 
-use libfly::*;
-use crate::runtime::{JsRuntime, Op};
+use crate::runtime::{JsBody, JsRuntime, Op};
 use crate::utils::*;
+use libfly::*;
 
 use crate::NEXT_EVENT_ID;
 
-use futures::{future, Future, Stream};
+use futures::{Future, Stream};
 
 use std::sync::atomic::Ordering;
 
-use crate::cache_store;
-
-use std::ptr;
+use crate::cache_store::*;
 
 pub fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_del().unwrap();
@@ -68,7 +66,26 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
     Some(msg.ttl())
   };
 
-  let fut = rt.cache_store.set(key, Box::new(recver), ttl);
+  let tags = match msg.tags() {
+    Some(raw_tags) => {
+      let mut tags: Vec<String> = vec![];
+      for i in 0..raw_tags.len() {
+        tags.push(i.to_string());
+      }
+      Some(tags)
+    }
+    None => None,
+  };
+
+  let fut = rt.cache_store.set(
+    key,
+    Box::new(recver),
+    CacheSetOptions {
+      ttl,
+      tags,
+      meta: None,
+    },
+  );
 
   rt.spawn(
     fut
@@ -104,113 +121,38 @@ pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   let key = msg.key().unwrap().to_string();
 
   let rt = ptr.to_runtime();
-
-  let maybe_stream = match rt.cache_store.get(key) {
-    Ok(s) => s,
-    Err(e) => match e {
-      cache_store::CacheError::NotFound => return odd_future("not found".to_string().into()),
-      cache_store::CacheError::IoErr(ioe) => return odd_future(ioe.into()),
-      cache_store::CacheError::Unknown => return odd_future("unknown error".to_string().into()),
-      cache_store::CacheError::Failure(e) => return odd_future(e.into()),
-    },
-  };
-
-  let got = maybe_stream.is_some();
-
-  {
-    // need to hijack the order here.
-    let fut = future::lazy(move || {
-      let builder = &mut FlatBufferBuilder::new();
-      let msg = msg::CacheGetReady::create(
-        builder,
-        &msg::CacheGetReadyArgs {
-          id: stream_id,
-          stream: got,
-          ..Default::default()
-        },
-      );
-      ptr.send(
-        fly_buf_from(
-          serialize_response(
-            cmd_id,
-            builder,
-            msg::BaseArgs {
-              msg: Some(msg.as_union_value()),
-              msg_type: msg::Any::CacheGetReady,
-              ..Default::default()
-            },
-          ).unwrap(),
-        ),
-        None,
-      );
-      Ok(())
-    });
-
-    rt.spawn(fut);
-  }
-
-  // TODO: use send_body_stream somehow
-  if let Some(stream) = maybe_stream {
-    let fut = stream
-      .map_err(|e| println!("error cache stream: {:?}", e))
-      .for_each(move |bytes| {
+  Box::new(
+    rt.cache_store
+      .get(key)
+      .map_err(|e| format!("cache error: {:?}", e).into())
+      .and_then(move |maybe_entry| {
         let builder = &mut FlatBufferBuilder::new();
-        let chunk_msg = msg::StreamChunk::create(
+        let msg = msg::CacheGetReady::create(
           builder,
-          &msg::StreamChunkArgs {
+          &msg::CacheGetReadyArgs {
             id: stream_id,
-            done: false,
+            stream: maybe_entry.is_some(),
             ..Default::default()
           },
         );
-        ptr.send(
-          fly_buf_from(
-            serialize_response(
-              0,
-              builder,
-              msg::BaseArgs {
-                msg: Some(chunk_msg.as_union_value()),
-                msg_type: msg::Any::StreamChunk,
-                ..Default::default()
-              },
-            ).unwrap(),
-          ),
-          Some(fly_buf {
-            alloc_ptr: ptr::null_mut() as *mut u8,
-            alloc_len: 0,
-            data_ptr: (*bytes).as_ptr() as *mut u8,
-            data_len: bytes.len(),
-          }),
-        );
-        Ok(())
-      }).and_then(move |_| {
-        let builder = &mut FlatBufferBuilder::new();
-        let chunk_msg = msg::StreamChunk::create(
+        if let Some(entry) = maybe_entry {
+          send_body_stream(
+            ptr,
+            stream_id,
+            JsBody::BoxedStream(Box::new(
+              entry.stream.map_err(|e| format!("{:?}", e).into()),
+            )),
+          );
+        }
+        Ok(serialize_response(
+          cmd_id,
           builder,
-          &msg::StreamChunkArgs {
-            id: stream_id,
-            done: true,
+          msg::BaseArgs {
+            msg: Some(msg.as_union_value()),
+            msg_type: msg::Any::CacheGetReady,
             ..Default::default()
           },
-        );
-        ptr.send(
-          fly_buf_from(
-            serialize_response(
-              0,
-              builder,
-              msg::BaseArgs {
-                msg: Some(chunk_msg.as_union_value()),
-                msg_type: msg::Any::StreamChunk,
-                ..Default::default()
-              },
-            ).unwrap(),
-          ),
-          None,
-        );
-        Ok(())
-      });
-    rt.spawn(fut);
-  }
-
-  ok_future(None)
+        ))
+      }),
+  )
 }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 extern crate r2d2;
 extern crate r2d2_sqlite;
 extern crate rusqlite;
@@ -23,13 +21,13 @@ impl From<rusqlite::Error> for CacheError {
 }
 
 pub struct SqliteCacheStore {
-  pool: Arc<r2d2::Pool<SqliteConnectionManager>>,
+  pool: r2d2::Pool<SqliteConnectionManager>,
 }
 
 impl SqliteCacheStore {
   pub fn new(filename: String) -> Self {
     let manager = SqliteConnectionManager::file(filename);
-    let pool = r2d2::Pool::builder().build(manager).unwrap();
+    let pool = r2d2::Pool::new(manager).unwrap();
     let con = pool.get().unwrap(); // TODO: no unwrap
     con
       .execute(
@@ -43,93 +41,96 @@ impl SqliteCacheStore {
         NO_PARAMS,
       ).unwrap();
 
-    SqliteCacheStore {
-      pool: Arc::new(pool),
-    }
+    SqliteCacheStore { pool }
   }
 }
 
 impl CacheStore for SqliteCacheStore {
-  fn get(
-    &self,
-    key: String,
-  ) -> CacheResult<Option<Box<Stream<Item = Vec<u8>, Error = CacheError> + Send>>> {
+  fn get(&self, key: String) -> Box<Future<Item = Option<CacheEntry>, Error = CacheError> + Send> {
     debug!("sqlite cache get with key: {}", key);
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     let conn = pool.get().unwrap(); // TODO: no unwrap
-    let size = 256 * 1024;
 
-    let mut stmt = conn
-      .prepare(
-        "SELECT rowid FROM cache
+    Box::new(future::lazy(move || {
+      let size = 256 * 1024;
+
+      let mut stmt = conn
+        .prepare(
+          "SELECT rowid FROM cache
       WHERE key = ? AND
         (
           expires_at IS NULL OR
           expires_at >= datetime('now')
         ) LIMIT 1",
-      ).unwrap();
+        ).unwrap();
 
-    let mut rows = stmt.query(&[&key])?;
+      let mut rows = stmt.query(&[&key])?;
 
-    let rowid: i64 = match rows.next() {
-      Some(res) => res?.get(0),
-      None => {
-        debug!("row not found");
-        return Ok(None);
-      }
-    };
+      let rowid: i64 = match rows.next() {
+        Some(res) => match res {
+          Ok(row) => row.get(0),
+          Err(e) => return Err(CacheError::Failure(format!("{}", e))),
+        },
+        None => {
+          debug!("row not found");
+          return Ok(None);
+        }
+      };
 
-    Ok(Some(Box::new(stream::unfold(0, move |pos| {
-      debug!("sqlite cache get in stream future, pos: {}", pos);
+      Ok(Some(CacheEntry {
+        meta: None,
+        stream: Box::new(stream::unfold(0, move |pos| {
+          debug!("sqlite cache get in stream future, pos: {}", pos);
 
-      // End early given some rules!
-      // not a multiple of size, means we're done.
-      if pos > 0 && pos % size > 0 {
-        return None;
-      }
-
-      let conn = pool.get().unwrap();
-
-      let mut blob =
-        match conn
-          .deref()
-          .blob_open(rusqlite::DatabaseName::Main, "cache", "value", rowid, true)
-        {
-          Ok(b) => b,
-          Err(e) => return Some(future::err(e.into())),
-        };
-
-      if let Err(e) = blob.seek(SeekFrom::Start(pos)) {
-        return Some(future::err(e.into()));
-      }
-      let mut buf = [0u8; 256 * 1024];
-      match blob.read(&mut buf[..]) {
-        Ok(bytes_read) => {
-          if bytes_read == 0 {
+          // End early given some rules!
+          // not a multiple of size, means we're done.
+          if pos > 0 && pos % size > 0 {
             return None;
           }
-          Some(future::ok::<(Vec<u8>, u64), _>((
-            buf[..bytes_read].to_vec(),
-            pos + bytes_read as u64,
-          )))
-        }
-        Err(e) => Some(future::err(e.into())),
-      }
-    }))))
+
+          let conn = pool.get().unwrap();
+
+          let mut blob = match conn.deref().blob_open(
+            rusqlite::DatabaseName::Main,
+            "cache",
+            "value",
+            rowid,
+            true,
+          ) {
+            Ok(b) => b,
+            Err(e) => return Some(future::err(e.into())),
+          };
+
+          if let Err(e) = blob.seek(SeekFrom::Start(pos)) {
+            return Some(future::err(e.into()));
+          }
+          let mut buf = [0u8; 256 * 1024];
+          match blob.read(&mut buf[..]) {
+            Ok(bytes_read) => {
+              if bytes_read == 0 {
+                return None;
+              }
+              Some(future::ok::<(Vec<u8>, u64), _>((
+                buf[..bytes_read].to_vec(),
+                pos + bytes_read as u64,
+              )))
+            }
+            Err(e) => Some(future::err(e.into())),
+          }
+        })),
+      }))
+    }))
   }
 
   fn set(
     &self,
     key: String,
     data_stream: Box<Stream<Item = Vec<u8>, Error = ()> + Send>,
-    maybe_ttl: Option<u32>,
-  ) -> Box<Future<Item = (), Error = CacheError> + Send> {
-    debug!(
-      "sqlite cache set with key: {} and ttl: {:?}",
-      key, maybe_ttl
-    );
+    opts: CacheSetOptions,
+  ) -> EmptyCacheFuture {
+    debug!("sqlite cache set with key: {} and ttl: {:?}", key, opts.ttl);
 
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
 
     Box::new(
       data_stream
@@ -140,7 +141,7 @@ impl CacheStore for SqliteCacheStore {
         }).and_then(move |b| {
           let conn = pool.get().unwrap(); // TODO: no unwrap
 
-          if let Some(ttl) = maybe_ttl {
+          if let Some(ttl) = opts.ttl {
             let mut stmt = conn
               .prepare(
                 "INSERT INTO cache(key, value, expires_at)
@@ -173,10 +174,10 @@ impl CacheStore for SqliteCacheStore {
     )
   }
 
-  fn del(&self, key: String) -> Box<Future<Item = (), Error = CacheError> + Send> {
+  fn del(&self, key: String) -> EmptyCacheFuture {
     debug!("sqlite cache del key: {}", key);
 
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> Result<(), CacheError> {
       let conn = pool.get().unwrap(); // TODO: no unwrap
 
@@ -193,10 +194,10 @@ impl CacheStore for SqliteCacheStore {
     }))
   }
 
-  fn expire(&self, key: String, ttl: u32) -> Box<Future<Item = (), Error = CacheError> + Send> {
+  fn expire(&self, key: String, ttl: u32) -> EmptyCacheFuture {
     debug!("sqlite cache expire key: {} w/ ttl: {}", key, ttl);
 
-    let pool = Arc::clone(&self.pool);
+    let pool = self.pool.clone();
     Box::new(future::lazy(move || -> CacheResult<()> {
       let conn = pool.get().unwrap(); // TODO: no unwrap
 
@@ -216,12 +217,23 @@ impl CacheStore for SqliteCacheStore {
       Ok(())
     }))
   }
+
+  fn ttl(&self, _key: String) -> Box<Future<Item = i32, Error = CacheError> + Send> {
+    unimplemented!()
+  }
+
+  fn purge_tag(&self, _tag: String) -> EmptyCacheFuture {
+    unimplemented!()
+  }
+
+  fn set_tags(&self, _key: String, _tags: Vec<String>) -> EmptyCacheFuture {
+    unimplemented!()
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use futures::sync::mpsc;
 
   extern crate chrono;
   use self::chrono::{DateTime, Utc};
@@ -236,40 +248,35 @@ mod tests {
     SqliteCacheStore::new("testcache.db".to_string())
   }
 
-  fn set_value(
-    store: &SqliteCacheStore,
-    key: &str,
-    value: &[u8],
-    ttl: Option<u32>,
-    maybe_el: Option<&mut tokio::runtime::Runtime>,
-  ) {
-    let setfut = {
-      let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
-      let setfut = store.set(key.to_string(), Box::new(recver), ttl);
-      sender.unbounded_send(value.to_vec()).unwrap();
-      setfut
-    };
-
-    let res = match maybe_el {
-      Some(el) => el.block_on(setfut).unwrap(),
-      None => tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(setfut)
-        .unwrap(),
-    };
-    assert_eq!(res, ());
+  fn set_value(store: &SqliteCacheStore, key: &str, value: &[u8], opts: CacheSetOptions) {
+    store
+      .set(
+        key.to_string(),
+        Box::new(stream::once::<Vec<u8>, ()>(Ok(value.to_vec()))),
+        opts,
+      ).wait()
+      .unwrap();
   }
 
   #[test]
-  fn test_set() {
+  fn test_sqlite_cache_set() {
     let store = setup();
     let mut v = [0u8; 1000000];
     thread_rng().fill_bytes(&mut v);
     let key = "test";
 
-    set_value(&store, key, &v, None, None);
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: None,
+        meta: None,
+        tags: None,
+      },
+    );
 
-    let pool = Arc::clone(&store.pool);
+    let pool = &store.pool.clone();
     let conn = pool.get().unwrap(); // TODO: no unwrap
 
     let mut stmt = conn
@@ -289,15 +296,24 @@ mod tests {
   }
 
   #[test]
-  fn test_set_ttl() {
+  fn test_sqlite_cache_set_ttl() {
     let store = setup();
     let mut v = [0u8; 1000000];
     thread_rng().fill_bytes(&mut v);
     let key = "test:ttl";
 
-    set_value(&store, key, &v, Some(10), None);
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: Some(10),
+        meta: None,
+        tags: None,
+      },
+    );
 
-    let pool = Arc::clone(&store.pool);
+    let pool = &store.pool.clone();
     let conn = pool.get().unwrap(); // TODO: no unwrap
 
     let mut stmt = conn
@@ -317,16 +333,34 @@ mod tests {
   }
 
   #[test]
-  fn test_update_ttl() {
+  fn test_sqlite_cache_update_ttl() {
     let store = setup();
     let mut v = [0u8; 1000000];
     thread_rng().fill_bytes(&mut v);
     let key = "test:ttl";
 
-    set_value(&store, key, &v, None, None);
-    set_value(&store, key, &v, Some(10), None);
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: None,
+        meta: None,
+        tags: None,
+      },
+    );
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: Some(10),
+        meta: None,
+        tags: None,
+      },
+    );
 
-    let pool = Arc::clone(&store.pool);
+    let pool = &store.pool.clone();
     let conn = pool.get().unwrap(); // TODO: no unwrap
 
     let mut stmt = conn
@@ -346,79 +380,132 @@ mod tests {
   }
 
   #[test]
-  fn test_get() {
+  fn test_sqlite_cache_get() {
     let store = setup();
     let mut v = [0u8; 1000000];
     thread_rng().fill_bytes(&mut v);
     let key = "test:get";
 
-    let mut el = tokio::runtime::Runtime::new().unwrap();
-    set_value(&store, key, &v, None, Some(&mut el));
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: None,
+        meta: None,
+        tags: None,
+      },
+    );
 
-    let got = el
-      .block_on(store.get(key.to_string()).unwrap().unwrap().concat2())
+    let got = store
+      .get(key.to_string())
+      .wait()
+      .unwrap()
+      .unwrap()
+      .stream
+      .concat2()
+      .wait()
       .unwrap();
 
     assert_eq!(got, v.to_vec());
   }
 
   #[test]
-  fn test_get_ttl() {
+  fn test_sqlite_cache_get_ttl() {
     let store = setup();
     let mut v = [0u8; 1000000];
     thread_rng().fill_bytes(&mut v);
     let key = "test:get:ttl";
 
-    let mut el = tokio::runtime::Runtime::new().unwrap();
-    set_value(&store, key, &v, Some(10), Some(&mut el));
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: Some(10),
+        meta: None,
+        tags: None,
+      },
+    );
 
-    let got = el
-      .block_on(store.get(key.to_string()).unwrap().unwrap().concat2())
+    let got = store
+      .get(key.to_string())
+      .wait()
+      .unwrap()
+      .unwrap()
+      .stream
+      .concat2()
+      .wait()
       .unwrap();
 
     assert_eq!(got, v.to_vec());
   }
 
   #[test]
-  fn test_get_expired() {
+  fn test_sqlite_cache_get_expired() {
     let store = setup();
     let v = [0u8; 1];
     let key = "test:get:expired";
-    set_value(&store, key, &v, Some(1), None);
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: Some(1),
+        meta: None,
+        tags: None,
+      },
+    );
 
     sleep(Duration::from_secs(2)); // inefficient, but these are just tests
 
-    let stream = store.get(key.to_string()).unwrap();
+    let entry = store.get(key.to_string()).wait().unwrap();
 
-    assert!(stream.is_none());
+    assert!(entry.is_none());
   }
 
   #[test]
-  fn test_del() {
+  fn test_sqlite_cache_del() {
     let store = setup();
     let v = [0u8; 1];
     let key = "test:del";
 
-    let mut el = tokio::runtime::Runtime::new().unwrap();
-    set_value(&store, key, &v, None, Some(&mut el));
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: None,
+        meta: None,
+        tags: None,
+      },
+    );
 
-    el.block_on(store.del(key.to_string())).unwrap();
+    store.del(key.to_string()).wait().unwrap();
 
-    let stream = store.get(key.to_string()).unwrap();
+    let entry = store.get(key.to_string()).wait().unwrap();
 
-    assert!(stream.is_none());
+    assert!(entry.is_none());
   }
 
   #[test]
-  fn test_expire() {
+  fn test_sqlite_cache_expire() {
     let store = setup();
     let v = [0u8; 1];
     let key = "test:expire";
 
-    let mut el = tokio::runtime::Runtime::new().unwrap();
-    set_value(&store, key, &v, None, Some(&mut el));
+    set_value(
+      &store,
+      key,
+      &v,
+      CacheSetOptions {
+        ttl: None,
+        meta: None,
+        tags: None,
+      },
+    );
 
-    let pool = Arc::clone(&store.pool);
+    let pool = &store.pool.clone();
     let conn = pool.get().unwrap(); // TODO: no unwrap
 
     let mut stmt = conn
@@ -434,11 +521,7 @@ mod tests {
       assert_eq!(gotex, rusqlite::types::Value::Null);
     }
 
-    el.block_on(store.expire(key.to_string(), 10)).unwrap();
-
-    // let mut stmt = conn
-    //   .prepare("SELECT expires_at FROM cache WHERE key = ? LIMIT 1;")
-    //   .unwrap();
+    store.expire(key.to_string(), 10).wait().unwrap();
 
     let mut rows = stmt.query(&[key]).unwrap();
     let row = rows.next().unwrap().unwrap();

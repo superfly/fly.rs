@@ -1,21 +1,24 @@
 use futures::{Future, Stream};
 use std::io;
 
+pub type CacheStream = Box<Stream<Item = Vec<u8>, Error = CacheError> + Send>;
+pub type EmptyCacheFuture = Box<Future<Item = (), Error = CacheError> + Send>;
+
 pub trait CacheStore {
-  fn get(
-    &self,
-    key: String,
-  ) -> CacheResult<Option<Box<Stream<Item = Vec<u8>, Error = CacheError> + Send>>>;
+  fn get(&self, key: String) -> Box<Future<Item = Option<CacheEntry>, Error = CacheError> + Send>;
 
   fn set(
     &self,
     key: String,
     data_stream: Box<Stream<Item = Vec<u8>, Error = ()> + Send>,
-    maybe_ttl: Option<u32>,
-  ) -> Box<Future<Item = (), Error = CacheError> + Send>;
+    opts: CacheSetOptions,
+  ) -> EmptyCacheFuture;
 
-  fn del(&self, key: String) -> Box<Future<Item = (), Error = CacheError> + Send>;
-  fn expire(&self, key: String, ttl: u32) -> Box<Future<Item = (), Error = CacheError> + Send>;
+  fn del(&self, key: String) -> EmptyCacheFuture;
+  fn expire(&self, key: String, ttl: u32) -> EmptyCacheFuture;
+  fn ttl(&self, key: String) -> Box<Future<Item = i32, Error = CacheError> + Send>;
+  fn purge_tag(&self, tag: String) -> EmptyCacheFuture;
+  fn set_tags(&self, key: String, tags: Vec<String>) -> EmptyCacheFuture;
 }
 
 #[derive(Debug)]
@@ -24,6 +27,18 @@ pub enum CacheError {
   NotFound,
   Failure(String),
   IoErr(io::Error),
+}
+
+#[derive(Debug)]
+pub struct CacheSetOptions {
+  pub ttl: Option<u32>,
+  pub tags: Option<Vec<String>>,
+  pub meta: Option<String>,
+}
+
+pub struct CacheEntry {
+  pub meta: Option<String>,
+  pub stream: CacheStream,
 }
 
 impl From<io::Error> for CacheError {

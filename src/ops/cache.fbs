@@ -2,14 +2,22 @@ table CacheGet {
   key: string;
 }
 
+table CacheMeta {
+  key: string;
+  value: string;
+}
+
 table CacheGetReady {
   id: uint;
   stream: bool;
+  meta: string;
 }
 
 table CacheSet {
   key: string;
   ttl: uint;
+  tags: [string];
+  meta: string;
 }
 
 table CacheSetReady {

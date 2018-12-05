@@ -55,8 +55,8 @@ use self::hyper::{Body, Client, Method, Request, StatusCode};
 extern crate hyper_tls;
 use self::hyper_tls::HttpsConnector;
 
-use flatbuffers::FlatBufferBuilder;
 use crate::msg;
+use flatbuffers::FlatBufferBuilder;
 
 use crate::errors::{FlyError, FlyResult};
 
@@ -82,29 +82,29 @@ use crate::sqlite_data;
 use crate::settings::{CacheStore, DataStore, Settings};
 
 use super::{NEXT_EVENT_ID, NEXT_FUTURE_ID};
+use std::net::SocketAddr;
 use std::str;
 
 extern crate trust_dns as dns;
 
-#[derive(Debug)]
 pub enum JsBody {
+  BoxedStream(Box<Stream<Item = Vec<u8>, Error = FlyError> + Send>),
   Stream(mpsc::UnboundedReceiver<Vec<u8>>),
   BytesStream(mpsc::UnboundedReceiver<BytesMut>),
   HyperBody(Body),
   Static(Vec<u8>),
 }
 
-#[derive(Debug)]
 pub struct JsHttpResponse {
   pub headers: HeaderMap,
   pub status: StatusCode,
   pub body: Option<JsBody>,
 }
 
-#[derive(Debug)]
 pub struct JsHttpRequest {
   pub id: u32,
   pub method: http::Method,
+  pub remote_addr: SocketAddr,
   pub url: String,
   pub headers: HeaderMap,
   pub body: Option<JsBody>,
@@ -326,22 +326,6 @@ lazy_static! {
       unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();
     bytes.into_boxed_slice()
   };
-  pub static ref EVENT_LOOP: (tokio::runtime::TaskExecutor, oneshot::Sender<()>) = {
-    let el = tokio::runtime::Runtime::new().unwrap();
-    let exec = el.executor();
-    let (tx, rx) = oneshot::channel::<()>();
-    thread::Builder::new()
-      .name("main-event-loop".to_string())
-      .spawn(move || {
-        el.block_on_all(rx).unwrap();
-      }).unwrap();
-    (exec, tx)
-  };
-  static ref HTTP_CLIENT: Client<HttpsConnector<HttpConnector>, Body> = {
-    Client::builder()
-      .executor(EVENT_LOOP.0.clone())
-      .build(HttpsConnector::new(4).unwrap())
-  };
 }
 
 lazy_static_include_bytes!(V8ENV_SOURCEMAP, "v8env/dist/v8env.js.map");
@@ -395,6 +379,22 @@ lazy_static! {
   static ref GENERIC_EVENT_LOOP: tokio::runtime::Runtime = {
     let el = tokio::runtime::Runtime::new().unwrap();
     el
+  };
+  pub static ref EVENT_LOOP: (tokio::runtime::TaskExecutor, oneshot::Sender<()>) = {
+    let el = tokio::runtime::Runtime::new().unwrap();
+    let exec = el.executor();
+    let (tx, rx) = oneshot::channel::<()>();
+    thread::Builder::new()
+      .name("main-event-loop".to_string())
+      .spawn(move || {
+        el.block_on_all(rx).unwrap();
+      }).unwrap();
+    (exec, tx)
+  };
+  static ref HTTP_CLIENT: Client<HttpsConnector<HttpConnector>, Body> = {
+    Client::builder()
+      .executor(EVENT_LOOP.0.clone())
+      .build(HttpsConnector::new(4).unwrap())
   };
 }
 
@@ -880,117 +880,6 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   };
 
   ok_future(None)
-}
-
-fn send_done_stream(ptr: JsRuntime, req_id: u32) {
-  let builder = &mut FlatBufferBuilder::new();
-  let chunk_msg = msg::StreamChunk::create(
-    builder,
-    &msg::StreamChunkArgs {
-      id: req_id,
-      done: true,
-    },
-  );
-  ptr.send(
-    fly_buf_from(
-      serialize_response(
-        0,
-        builder,
-        msg::BaseArgs {
-          msg: Some(chunk_msg.as_union_value()),
-          msg_type: msg::Any::StreamChunk,
-          ..Default::default()
-        },
-      ).unwrap(),
-    ),
-    None,
-  );
-}
-
-fn send_stream_chunk(ptr: JsRuntime, req_id: u32, chunk: *mut u8, len: usize, done: bool) {
-  let builder = &mut FlatBufferBuilder::new();
-  let chunk_msg = msg::StreamChunk::create(
-    builder,
-    &msg::StreamChunkArgs {
-      id: req_id,
-      done: done,
-    },
-  );
-  ptr.send(
-    fly_buf_from(
-      serialize_response(
-        0,
-        builder,
-        msg::BaseArgs {
-          msg: Some(chunk_msg.as_union_value()),
-          msg_type: msg::Any::StreamChunk,
-          ..Default::default()
-        },
-      ).unwrap(),
-    ),
-    Some(fly_buf {
-      alloc_ptr: ptr::null_mut() as *mut u8,
-      alloc_len: 0,
-      data_ptr: chunk,
-      data_len: len,
-    }),
-  );
-}
-
-fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
-  let rt = ptr.to_runtime();
-
-  match stream {
-    JsBody::Static(v) => {
-      rt.spawn(future::lazy(move || {
-        send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), true);
-        Ok(())
-      }));
-    }
-    JsBody::Stream(rx) => {
-      rt.spawn(
-        rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
-          .for_each(move |v| {
-            send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), false);
-            Ok(())
-          }).and_then(move |_| {
-            send_done_stream(ptr, req_id);
-            Ok(())
-          }),
-      );
-    }
-    JsBody::BytesStream(rx) => {
-      rt.spawn(
-        rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
-          .for_each(move |mut b| {
-            send_stream_chunk(ptr, req_id, b.as_mut_ptr() as *mut u8, b.len(), false);
-            Ok(())
-          }).and_then(move |_| {
-            send_done_stream(ptr, req_id);
-            Ok(())
-          }),
-      );
-    }
-    JsBody::HyperBody(b) => {
-      rt.spawn(
-        b.map_err(|e| error!("error in hyper body stream read: {:?}", e))
-          .for_each(move |chunk| {
-            let bytes = chunk.into_bytes();
-            send_stream_chunk(
-              ptr,
-              req_id,
-              (*bytes).as_ptr() as *mut u8,
-              bytes.len(),
-              false,
-            );
-            Ok(())
-          }).and_then(move |_| {
-            send_done_stream(ptr, req_id);
-            Ok(())
-          }),
-      );
-    }
-  };
 }
 
 fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {

@@ -405,6 +405,8 @@ extern "C"
   void promise_rejected_cb(v8::PromiseRejectMessage message)
   {
     printf("!!!!!!!!! PROMISE REJECTED !!!!!!!!!\n");
+    auto exception = message.GetValue();
+    printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), exception));
   }
 
   const js_runtime *js_runtime_new(js_runtime_options options)

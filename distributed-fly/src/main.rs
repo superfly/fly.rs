@@ -34,12 +34,15 @@ use futures::sync::oneshot;
 use futures::{future, Future, Stream};
 
 use hyper::body::Payload;
-use hyper::service::service_fn;
+use hyper::server::conn::AddrStream;
+use hyper::service::{make_service_fn, service_fn};
 use hyper::{header, Body, Request, Response, Server, StatusCode};
 
 use std::sync::atomic::Ordering;
 
 use env_logger::Env;
+
+use std::net::SocketAddr;
 
 mod release;
 use release::Release;
@@ -75,14 +78,11 @@ fn main() {
                 }),
         );
 
-        let new_service = move || {
-            // Move a clone of `client` into the `service_fn`.
-            service_fn(move |req| server_fn(req))
-        };
-
         let server = Server::bind(&addr)
-            .serve(new_service)
-            .map_err(|e| eprintln!("server error: {}", e));
+            .serve(make_service_fn(|conn: &AddrStream| {
+                let remote_addr = conn.remote_addr();
+                service_fn(move |req| server_fn(req, remote_addr))
+            })).map_err(|e| eprintln!("server error: {}", e));
 
         info!("Listening on http://{}", addr);
 
@@ -92,6 +92,7 @@ fn main() {
 
 fn server_fn(
     req: Request<Body>,
+    remote_addr: SocketAddr,
 ) -> Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send> {
     let (parts, body) = req.into_parts();
     let host = {
@@ -186,6 +187,7 @@ fn server_fn(
         let sendres = ch.unbounded_send(JsHttpRequest {
             id: req_id,
             method: parts.method,
+            remote_addr: remote_addr,
             url: url,
             headers: parts.headers.clone(),
             body: if body.is_end_stream() {
