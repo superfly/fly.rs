@@ -28,6 +28,13 @@ pub struct RedisStoreConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
+pub enum FsStore {
+  Redis(RedisStoreConfig),
+  Disk,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum DataStore {
   Sqlite(SqliteStoreConfig),
   Postgres(PostgresStoreConfig),
@@ -44,6 +51,7 @@ pub enum CacheStore {
 pub struct Settings {
   pub data_store: Option<DataStore>,
   pub cache_store: Option<CacheStore>,
+  pub fs_store: Option<FsStore>,
 }
 
 impl Settings {
@@ -61,6 +69,7 @@ impl Default for Settings {
     Settings {
       data_store: None,
       cache_store: None,
+      fs_store: None,
     }
   }
 }

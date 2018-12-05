@@ -46,10 +46,10 @@ addEventListener("fetch", function (event) {
     crypto.getRandomValues(arr);
     console.log("some random values:", arr);
 
-    fetch("file://.").then(res => {
+    fetch("file://README.md").then(res => {
       console.log("file res:", res);
       res.text().then(p => { console.log("p", p) })
-    }).catch(err => { console.log("err fetching file://.:", err.stack) })
+    }).catch(err => { console.log("err fetching file://:", err.stack) })
 
     resolv("fly.io").then(res => {
       console.log("got dns res:", res)
