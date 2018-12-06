@@ -1,5 +1,5 @@
-use runtime::Runtime;
-use {RuntimeSelector, SelectorError};
+use crate::runtime::Runtime;
+use crate::{RuntimeSelector, SelectorError};
 
 pub struct FixedRuntimeSelector {
     runtime: Box<Runtime>,

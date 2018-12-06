@@ -336,7 +336,7 @@ pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
       }
     }
     let (stream, handle) = dns::udp::UdpClientStream::new(sockaddr.clone());
-    let (bg, mut client) = dns::client::ClientFuture::new(stream, handle, None);
+    let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
     EVENT_LOOP.0.spawn(bg);
     {
       DNS_RESOLVERS

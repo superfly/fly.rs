@@ -1,4 +1,4 @@
-use runtime::Runtime;
+use crate::runtime::Runtime;
 
 pub trait RuntimeSelector {
     fn get_by_hostname(&self, hostname: &str) -> Result<Option<&mut Runtime>, SelectorError>;

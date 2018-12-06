@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use r2d2;
-use rmps::Deserializer;
+use crate::rmps::Deserializer;
 use serde::Deserialize;
 
 use self::redis::Commands;
@@ -13,11 +13,11 @@ extern crate serde_json;
 extern crate rmpv;
 use self::rmpv::Value;
 
-use kms::decrypt;
+use crate::kms::decrypt;
 
 extern crate base64;
 
-use settings::GLOBAL_SETTINGS;
+use crate::settings::GLOBAL_SETTINGS;
 
 use std::thread;
 

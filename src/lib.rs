@@ -38,7 +38,7 @@ pub mod fs_store;
 pub mod settings;
 
 pub mod runtime_selector;
-pub use runtime_selector::{RuntimeSelector, SelectorError};
+pub use crate::runtime_selector::{RuntimeSelector, SelectorError};
 
 pub mod dns_server;
 pub mod fixed_runtime_selector;

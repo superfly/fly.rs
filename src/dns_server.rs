@@ -24,8 +24,8 @@ extern crate flatbuffers;
 
 use tokio::prelude::*;
 
-use ops::dns::*;
-use {RuntimeSelector, NEXT_EVENT_ID};
+use crate::ops::dns::*;
+use crate::{RuntimeSelector, NEXT_EVENT_ID};
 
 use std::sync::atomic::Ordering;
 

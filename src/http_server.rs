@@ -1,8 +1,8 @@
 use futures::{future, sync::oneshot, Future, Stream};
 use std::net::SocketAddr;
 
-use runtime::{JsBody, JsHttpRequest, JsHttpResponse};
-use {RuntimeSelector, NEXT_EVENT_ID};
+use crate::runtime::{JsBody, JsHttpRequest, JsHttpResponse};
+use crate::{RuntimeSelector, NEXT_EVENT_ID};
 
 use std::sync::atomic::Ordering;
 

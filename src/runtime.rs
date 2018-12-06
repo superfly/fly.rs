@@ -589,13 +589,13 @@ fn op_source_map(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
       None => "",
     };
 
-    let mut filename = match f.filename() {
+    let filename = match f.filename() {
       Some(f) => f,
       None => "",
     };
 
-    let mut line = f.line();
-    let mut col = f.col();
+    let line = f.line();
+    let col = f.col();
 
     frames.insert(i, (line, col, String::from(name), String::from(filename)));
   }

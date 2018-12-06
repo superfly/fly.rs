@@ -37,12 +37,12 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 mod release;
 
 mod settings;
-use settings::GLOBAL_SETTINGS;
+use crate::settings::GLOBAL_SETTINGS;
 
 use fly::http_server::serve_http;
 
 mod runtime_selector;
-use runtime_selector::DistributedRuntimeSelector;
+use crate::runtime_selector::DistributedRuntimeSelector;
 mod kms;
 
 extern crate rusoto_core;

@@ -5,8 +5,8 @@ use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use release::Release;
-use settings::GLOBAL_SETTINGS;
+use crate::release::Release;
+use crate::settings::GLOBAL_SETTINGS;
 
 pub struct DistributedRuntimeSelector {
     pub runtimes: RwLock<HashMap<String, Box<Runtime>>>,
