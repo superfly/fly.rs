@@ -5,8 +5,8 @@ use r2d2;
 use rmps::Deserializer;
 use serde::Deserialize;
 
-use r2d2_redis::RedisConnectionManager;
-use redis::Commands;
+use self::redis::Commands;
+use r2d2_redis::{redis, RedisConnectionManager};
 
 extern crate serde_json;
 
@@ -17,10 +17,15 @@ use kms::decrypt;
 
 extern crate base64;
 
+use settings::GLOBAL_SETTINGS;
+
+use std::thread;
+
 lazy_static! {
-  static ref RELEASES: RwLock<HashMap<String, Release>> = RwLock::new(HashMap::new());
+  static ref RELEASES_BY_APP: RwLock<HashMap<String, Release>> = RwLock::new(HashMap::new());
+  static ref APP_BY_HOSTNAME: RwLock<HashMap<String, String>> = RwLock::new(HashMap::new());
   static ref REDIS_POOL: r2d2::Pool<RedisConnectionManager> = r2d2::Pool::builder()
-    .build(RedisConnectionManager::new("redis://localhost").unwrap())
+    .build(RedisConnectionManager::new(GLOBAL_SETTINGS.read().unwrap().redis_url.as_str()).unwrap())
     .unwrap();
 }
 
@@ -45,45 +50,32 @@ impl Release {
           Ok(c) => c,
           Err(e) => return Err(format!("{}", e)),
         };
-        let k: String = match conn.hget("app_hosts", host) {
+        let app_key: String = match conn.hget("app_hosts", host) {
           Ok(s) => s,
           Err(e) => return Err(format!("{}", e)),
         };
-        if k.is_empty() {
-          // return future::ok(
-          //   Response::builder()
-          //     .status(StatusCode::NOT_FOUND)
-          //     .body(Body::from("app not found"))
-          //     .unwrap(),
-          // );
+        if app_key.is_empty() {
           return Ok(None);
         }
-        info!("got key! {}", k);
-        let buf: Vec<u8> = match conn.get(format!("{}:release:latest", k)) {
-          Ok(v) => v,
-          Err(e) => return Err(format!("{}", e)),
-        };
-        if buf.is_empty() {
-          // TODO: Maybe this should be an error
-          return Ok(None);
-          // return future::ok(
-          //   Response::builder()
-          //     .status(StatusCode::NOT_FOUND)
-          //     .body(Body::from("release not found"))
-          //     .unwrap(),
-          // );
+        info!("got key! {}", app_key);
+        {
+          match APP_BY_HOSTNAME.write() {
+            Ok(mut w) => {
+              w.insert(host.to_string(), app_key.clone());
+              debug!("inserted {} => {} in app_by_hostname", host, app_key);
+            }
+            Err(e) => error!("could not acquire app_by_hostname lock: {}", e),
+          }
         }
-        let mut de = Deserializer::new(&buf[..]);
-        match Deserialize::deserialize(&mut de) {
-          Ok(rel) => {
-            let rel: Release = rel; // type annotation required at the moment.
-            RELEASES
+        match get_by_app_key(&*conn, app_key.as_str())? {
+          Some(rel) => {
+            RELEASES_BY_APP
               .write()
               .unwrap()
-              .insert(host.to_string(), rel.clone());
+              .insert(app_key, rel.clone());
             Ok(Some(rel))
           }
-          Err(e) => return Err(format!("{}", e)),
+          None => Ok(None),
         }
       }
     }
@@ -102,6 +94,22 @@ impl Release {
     };
 
     serde_json::to_string(&Value::Map(conf))
+  }
+}
+
+fn get_by_app_key(conn: &redis::Connection, app_key: &str) -> Result<Option<Release>, String> {
+  let buf: Vec<u8> = match conn.get(format!("{}:release:latest", app_key)) {
+    Ok(v) => v,
+    Err(e) => return Err(format!("{}", e)),
+  };
+  if buf.is_empty() {
+    // TODO: Maybe this should be an error
+    return Ok(None);
+  }
+  let mut de = Deserializer::new(&buf[..]);
+  match Deserialize::deserialize(&mut de) {
+    Ok(rel) => Ok(Some(rel)),
+    Err(e) => return Err(format!("{}", e)),
   }
 }
 
@@ -139,18 +147,6 @@ fn parse_config_entry(entry: &(Value, Value), secrets: &Value) -> (Value, Value)
   } else {
     entry.clone()
   }
-  // if map.len() == 1 {
-  //   if let Value::String(ref name) = map[0].0 {
-  //     if name.as_str() == Some("fromSecret") {
-  //       info!("{} is a secret! value: {}", k, map[0].1)
-
-  //     }
-  //   }
-  // } else {
-  //   for (k,v) in map {
-  //     parse_config_map()
-  //   }
-  // }
 }
 
 fn get_secret<'a>(secrets: &'a Value, name: &str) -> Option<String> {
@@ -186,14 +182,153 @@ fn get_secret<'a>(secrets: &'a Value, name: &str) -> Option<String> {
 }
 
 fn find_cached_release(host: &str) -> Option<Release> {
-  match RELEASES.read() {
+  match APP_BY_HOSTNAME.read() {
     Err(e) => {
-      error!("error acquiring lock on releases cache: {}", e);
+      error!("error acquiring lock on app key cache: {}", e);
       None
     }
     Ok(guard) => match guard.get(host) {
-      Some(r) => Some(r.clone()),
+      Some(key) => match RELEASES_BY_APP.read() {
+        Err(e) => {
+          error!("error acquiring lock on releases cache: {}", e);
+          None
+        }
+        Ok(r) => match r.get(key) {
+          Some(r) => Some(r.clone()),
+          None => None,
+        },
+      },
       None => None,
     },
   }
+}
+
+use std::time;
+
+pub fn start_new_release_check() {
+  thread::Builder::new()
+    .name("redis-release-pubsub".to_string())
+    .spawn(|| {
+      let redis_url = { GLOBAL_SETTINGS.read().unwrap().redis_url.clone() };
+      let client = redis::Client::open(redis_url.as_str()).unwrap();
+      let mut con = client.get_connection().unwrap();
+      let mut pubsub = con.as_pubsub();
+      pubsub.subscribe("__keyspace@0__:notifications").unwrap();
+      info!("subscribed to keyspace notifications");
+
+      let mut last_updated_at = time::SystemTime::now()
+        .duration_since(time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+
+      loop {
+        let msg = pubsub.get_message().unwrap();
+        let payload: String = msg.get_payload().unwrap();
+        info!("channel '{}': {}", msg.get_channel_name(), payload,);
+        let now = time::SystemTime::now()
+          .duration_since(time::UNIX_EPOCH)
+          .unwrap()
+          .as_secs();
+        match REDIS_POOL.get() {
+          Err(e) => error!("could not acquire redis conn: {}", e),
+          Ok(conn) => match redis::cmd("ZRANGEBYSCORE")
+            .arg("notifications")
+            .arg(last_updated_at)
+            .arg(now)
+            .query::<Vec<String>>(&*conn)
+          {
+            Err(e) => error!("error getting notifications range: {}", e),
+            Ok(notifications) => {
+              for n in notifications.iter() {
+                match serde_json::from_str::<ReleaseNotification>(n.as_str()) {
+                  Err(e) => error!("could not parse notification: {}", e),
+                  Ok(notif) => {
+                    use self::NotificationAction::*;
+                    if notif.key.starts_with("app:") {
+                      match notif.action {
+                        Delete => match RELEASES_BY_APP.write() {
+                          Ok(mut guard) => {
+                            guard.remove(notif.key.as_str());
+                          }
+                          Err(e) => error!("error getting RELEASES_BY_APP write lock: {}", e),
+                        },
+                        Update => match get_by_app_key(&*conn, notif.key.as_str()) {
+                          Ok(maybe_rel) => match maybe_rel {
+                            Some(rel) => match RELEASES_BY_APP.write() {
+                              Ok(mut guard) => {
+                                guard.insert(notif.key.clone(), rel);
+                              }
+                              Err(e) => error!("error getting RELEASES_BY_APP write lock: {}", e),
+                            },
+                            None => {}
+                          },
+                          Err(e) => error!("error getting app by key: {}", e),
+                        },
+                      }
+                    } else if notif.key.starts_with("app_hosts") {
+                      use self::serde_json::Value;
+                      match notif.context {
+                        Value::Array(arr) => {
+                          let hostnames: Vec<String> = arr
+                            .iter()
+                            .map(|v| match v {
+                              Value::String(h) => h.clone(),
+                              _ => unimplemented!(),
+                            }).collect();
+                          match notif.action {
+                            Delete => match APP_BY_HOSTNAME.write() {
+                              Ok(mut guard) => {
+                                for h in hostnames.iter() {
+                                  guard.remove(h);
+                                }
+                              }
+                              Err(e) => error!("error acquiring APP_BY_HOSTNAME write lock: {}", e),
+                            },
+                            Update => {
+                              for h in hostnames.iter() {
+                                match redis::cmd("HGET")
+                                  .arg("app_hosts")
+                                  .arg(h)
+                                  .query::<String>(&*conn)
+                                {
+                                  Ok(app_key) => match APP_BY_HOSTNAME.write() {
+                                    Ok(mut guard) => {
+                                      guard.insert(h.clone(), app_key);
+                                    }
+                                    Err(e) => {
+                                      error!("error acquiring APP_BY_HOSTNAME write lock: {}", e)
+                                    }
+                                  },
+                                  Err(e) => error!("could not get app_hosts for {}: {}", h, e),
+                                }
+                              }
+                            }
+                          }
+                        }
+                        _ => unimplemented!(),
+                      }
+                    }
+                  }
+                }
+              }
+              last_updated_at = now;
+            }
+          },
+        };
+      }
+    }).unwrap();
+}
+
+#[derive(Debug, Deserialize)]
+struct ReleaseNotification {
+  action: NotificationAction,
+  key: String,
+  context: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum NotificationAction {
+  Delete,
+  Update,
 }

@@ -167,7 +167,8 @@ fn init_event_loop() -> (
     .name(format!(
       "runtime-loop-{}",
       NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
-    )).spawn(move || {
+    ))
+    .spawn(move || {
       let mut el = current_thread::Runtime::new().unwrap();
       let (txready, rxready) = oneshot::channel::<()>();
       let (txquit, rxquit) = oneshot::channel::<()>();
@@ -190,7 +191,8 @@ fn init_event_loop() -> (
         Ok(_) => warn!("Sent quit () in channel successfully."),
         Err(_) => error!("error sending quit signal for runtime"),
       };
-    }).unwrap();
+    })
+    .unwrap();
   p.wait().unwrap()
 }
 
@@ -372,10 +374,13 @@ lazy_static! {
                   };
                 }
                 (*line, *col, name.clone(), filename.clone())
-              }).collect(),
-          ).unwrap();
+              })
+              .collect(),
+          )
+          .unwrap();
         }
-      }).unwrap();
+      })
+      .unwrap();
     Mutex::new(sender)
   };
   static ref GENERIC_EVENT_LOOP: tokio::runtime::Runtime = {
@@ -390,7 +395,8 @@ lazy_static! {
       .name("main-event-loop".to_string())
       .spawn(move || {
         el.block_on_all(rx).unwrap();
-      }).unwrap();
+      })
+      .unwrap();
     (exec, tx)
   };
 }
@@ -473,7 +479,8 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
               msg::BaseArgs {
                 ..Default::default()
               },
-            ).unwrap(),
+            )
+            .unwrap(),
           )
         }
       };
@@ -616,7 +623,8 @@ fn op_source_map(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                 col: *col,
               },
             )
-          }).collect();
+          })
+          .collect();
         let ret_frames = builder.create_vector(&framed);
 
         let ret_msg = msg::SourceMapReady::create(
@@ -749,7 +757,8 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                     ..Default::default()
                   },
                 )
-              }).collect();
+              })
+              .collect();
 
             let req_headers = builder.create_vector(&headers);
 
@@ -774,7 +783,8 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                   msg_type: msg::Any::HttpRequest,
                   ..Default::default()
                 },
-              ).unwrap(),
+              )
+              .unwrap(),
             );
 
             ptr.send(to_send, None);
@@ -784,7 +794,8 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             }
 
             Ok(())
-          }),
+          })
+          .and_then(|_| Ok(info!("done listening to http events."))),
       );
       rt.fetch_events = Some(tx);
     }
@@ -839,7 +850,8 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                     ..Default::default()
                   },
                 )
-              }).collect();
+              })
+              .collect();
 
             let req_queries = builder.create_vector(&queries);
 
@@ -865,7 +877,8 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                   msg_type: msg::Any::DnsRequest,
                   ..Default::default()
                 },
-              ).unwrap(),
+              )
+              .unwrap(),
             );
 
             ptr.send(to_send, None);
@@ -917,7 +930,8 @@ where
     .and_then(|_| {
       cb();
       Ok(())
-    }).select(cancel_rx)
+    })
+    .select(cancel_rx)
     .map(|_| ())
     .map_err(|_| ());
 

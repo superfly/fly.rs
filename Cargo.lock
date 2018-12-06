@@ -390,15 +390,16 @@ name = "distributed-fly"
 version = "0.1.0"
 dependencies = [
  "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fly 0.1.0",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hyperlocal 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2_redis 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "redis 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rmp-serde 0.13.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rmpv 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_core 0.35.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -408,6 +409,11 @@ dependencies = [
  "serde_derive 1.0.58 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-udp 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns-proto 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns-resolver 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trust-dns-server 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -703,6 +709,19 @@ dependencies = [
  "hyper 0.12.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "native-tls 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-io 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "hyperlocal"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hyper 0.12.16 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-io 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2576,6 +2595,7 @@ dependencies = [
 "checksum humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ca7e5f2e110db35f93b837c81797f3714500b81d517bf20c431b16d3ca4f114"
 "checksum hyper 0.12.16 (registry+https://github.com/rust-lang/crates.io-index)" = "0aeedb8ca5f0f96be00f84073c6d0d5f962ecad020ef543dff99a7c12717a60e"
 "checksum hyper-tls 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "32cd73f14ad370d3b4d4b7dce08f69b81536c82e39fcc89731930fe5788cd661"
+"checksum hyperlocal 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d063d6d5658623c6ef16f452e11437c0e7e23a6d327470573fe78892dafbc4fb"
 "checksum idna 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "38f09e0f0b1fb55fdee1f17470ad800da77af5186a1a76c026b679358b7e844e"
 "checksum if_chain 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4bac95d9aa0624e7b78187d6fb8ab012b41d9f6f54b1bcb61e61c4845f8357ec"
 "checksum indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7e81a7c05f79578dbc15793d8b619db9ba32b4577003ef3af1a91c416798c58d"

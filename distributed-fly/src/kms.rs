@@ -3,8 +3,6 @@ use self::rusoto_kms::{DecryptRequest, Kms, KmsClient};
 
 use rusoto_core::Region;
 
-// use AWS_CREDENTIALS;
-
 lazy_static! {
   static ref KMS_CLIENT: KmsClient = KmsClient::new(Region::UsEast1);
 }

@@ -10,137 +10,23 @@ extern crate tokio;
 extern crate libfly;
 
 extern crate hyper;
-use hyper::body::Payload;
-use hyper::header;
-use hyper::rt::{Future, Stream};
+use hyper::rt::Future;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::Server;
 
 extern crate futures;
-use futures::sync::oneshot;
-use std::sync::mpsc::RecvError;
 
 use tokio::prelude::*;
 
+use fly::fixed_runtime_selector::FixedRuntimeSelector;
+use fly::http_server::serve_http;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
 
 use env_logger::Env;
 
-extern crate flatbuffers;
-
-use std::alloc::System;
-#[global_allocator]
-static A: System = System;
-
-use std::net::SocketAddr;
-use std::sync::atomic::Ordering;
-
-pub static mut RUNTIME: Option<Box<Runtime>> = None;
-fn server_fn(
-    req: Request<Body>,
-    remote_addr: SocketAddr,
-) -> Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send> {
-    let (parts, body) = req.into_parts();
-    let host = {
-        match parts.headers.get(header::HOST) {
-            Some(v) => match v.to_str() {
-                Ok(s) => s,
-                Err(e) => {
-                    error!("error stringifying host: {}", e);
-                    return Box::new(future::ok(
-                        Response::builder()
-                            .status(StatusCode::BAD_REQUEST)
-                            .body(Body::from("Bad host header"))
-                            .unwrap(),
-                    ));
-                }
-            },
-            None => {
-                return Box::new(future::ok(
-                    Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Body::empty())
-                        .unwrap(),
-                ))
-            }
-        }
-    };
-
-    // TODO: match host with appropriate runtime when multiple apps are supported.
-    let rt = unsafe { RUNTIME.as_ref().unwrap() };
-
-    if rt.fetch_events.is_none() {
-        return Box::new(future::ok(
-            Response::builder()
-                .status(StatusCode::SERVICE_UNAVAILABLE)
-                .body(Body::empty())
-                .unwrap(),
-        ));
-    }
-
-    let req_id = fly::NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-
-    let url = format!("http://{}{}", host, parts.uri.path_and_query().unwrap());
-
-    // double checking, could've been removed since last check (maybe not? may need a lock)
-    if let Some(ref ch) = rt.fetch_events {
-        let rx = {
-            let (tx, rx) = oneshot::channel::<JsHttpResponse>();
-            rt.responses.lock().unwrap().insert(req_id, tx);
-            rx
-        };
-        let sendres = ch.unbounded_send(JsHttpRequest {
-            id: req_id,
-            method: parts.method,
-            remote_addr: remote_addr,
-            url: url,
-            headers: parts.headers.clone(),
-            body: if body.is_end_stream() {
-                None
-            } else {
-                Some(JsBody::HyperBody(body))
-            },
-        });
-
-        if let Err(e) = sendres {
-            error!("error sending js http request: {}", e);
-            return Box::new(future::ok(
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::empty())
-                    .unwrap(),
-            ));
-        }
-
-        Box::new(rx.and_then(|res: JsHttpResponse| {
-            let (mut parts, mut body) = Response::<Body>::default().into_parts();
-            parts.headers = res.headers;
-            parts.status = res.status;
-
-            if let Some(js_body) = res.body {
-                body = match js_body {
-                    JsBody::Stream(s) => Body::wrap_stream(s.map_err(|_| RecvError {})),
-                    JsBody::BytesStream(s) => {
-                        Body::wrap_stream(s.map_err(|_| RecvError {}).map(|bm| bm.freeze()))
-                    }
-                    JsBody::Static(b) => Body::from(b),
-                    _ => unimplemented!(),
-                };
-            }
-
-            future::ok(Response::from_parts(parts, body))
-        }))
-    } else {
-        Box::new(future::ok(
-            Response::builder()
-                .status(StatusCode::SERVICE_UNAVAILABLE)
-                .body(Body::empty())
-                .unwrap(),
-        ))
-    }
-}
+static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
@@ -155,39 +41,31 @@ fn main() {
                 .short("p")
                 .long("port")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             clap::Arg::with_name("bind")
                 .short("b")
                 .long("bind")
                 .takes_value(true),
-        ).arg(
+        )
+        .arg(
             clap::Arg::with_name("input")
                 .help("Sets the input file to use")
                 .required(true)
                 .index(1),
-        ).get_matches();
+        )
+        .get_matches();
 
     info!("V8 version: {}", libfly::version());
 
-    let mut main_el = tokio::runtime::Runtime::new().unwrap();
-    let entry_file = &matches.value_of("input").unwrap();
+    let entry_file = matches.value_of("input").unwrap();
     let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
+
     debug!("Loading dev tools");
     runtime.eval_file("v8env/dist/dev-tools.js");
     runtime.eval("<installDevTools>", "installDevTools();");
     debug!("Loading dev tools done");
-
     runtime.eval(entry_file, &format!("dev.run('{}')", entry_file));
-
-    main_el.spawn(
-        runtime
-            .run()
-            .map_err(|e| error!("error running runtime event loop: {}", e)),
-    );
-
-    unsafe {
-        RUNTIME = Some(runtime);
-    };
 
     let bind = match matches.value_of("bind") {
         Some(b) => b,
@@ -197,15 +75,26 @@ fn main() {
         Some(pstr) => pstr.parse::<u16>().unwrap(),
         None => 8080,
     };
+
     let addr = format!("{}:{}", bind, port).parse().unwrap();
-    info!("Listening on {}", addr);
 
-    let server = Server::bind(&addr)
-        .serve(make_service_fn(|conn: &AddrStream| {
-            let remote_addr = conn.remote_addr();
-            service_fn(move |req| server_fn(req, remote_addr))
-        })).map_err(|e| eprintln!("server error: {}", e));
+    tokio::run(future::lazy(move || {
+        tokio::spawn(
+            runtime
+                .run()
+                .map_err(|e| error!("error running runtime event loop: {}", e)),
+        );
+        unsafe { SELECTOR = Some(FixedRuntimeSelector::new(runtime)) }
+        let server = Server::bind(&addr)
+            .serve(make_service_fn(move |conn: &AddrStream| {
+                let remote_addr = conn.remote_addr();
+                service_fn(move |req| {
+                    serve_http(req, unsafe { SELECTOR.as_ref().unwrap() }, remote_addr)
+                })
+            }))
+            .map_err(|e| eprintln!("server error: {}", e));
 
-    let _ = main_el.block_on(server);
-    main_el.shutdown_on_idle();
+        info!("Listening on http://{}", addr);
+        server
+    }));
 }
