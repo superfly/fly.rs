@@ -387,18 +387,18 @@ async function handleRes(id: number, res: FlyResponse) {
     fbs.HttpResponse.addHeaders(fbb, resHeaders);
     fbs.HttpResponse.addStatus(fbb, res.status);
     let resBody = res.body;
-    fbs.HttpResponse.addHasBody(fbb, resBody != null)
+    let hasBody = resBody != null && (!res.isStatic || res.isStatic && res.staticBody.length > 0)
+    fbs.HttpResponse.addHasBody(fbb, hasBody)
 
     const resMsg = fbs.HttpResponse.endHttpResponse(fbb);
 
     let staticBody: ArrayBufferView;
-    if (res.isStatic)
+    if (hasBody && res.isStatic)
       staticBody = res.staticBody
     sendSync(fbb, fbs.Any.HttpResponse, resMsg, staticBody); // sync so we can send body chunks when it's ready!
 
-    if (staticBody || !resBody)
+    if (staticBody || !hasBody)
       return
-
     await sendStreamChunks(id, resBody);
 
   } catch (e) {

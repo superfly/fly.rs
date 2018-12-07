@@ -19,6 +19,7 @@ import * as url from './url';
 import { FlyRequest } from "./request";
 import flyData from './fly/data';
 import flyCache from './fly/cache';
+import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
 
@@ -103,7 +104,8 @@ window.loadModule = loadModule;
 
 window.fly = {
   cache: flyCache,
-  data: flyData
+  data: flyData,
+  http: flyHttp,
 }
 
 window.DNSRequest = dns.DNSRequest;

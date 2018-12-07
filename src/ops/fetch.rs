@@ -105,7 +105,8 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             headers: parts.headers,
             status: parts.status,
             body: stream_rx,
-        })).is_err()
+        }))
+        .is_err()
         {
             error!("error sending http response");
             return Ok(());
@@ -120,7 +121,8 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                 io::ErrorKind::Other,
                 format!("err getting response from oneshot: {}", e).as_str(),
             ))
-        }).and_then(move |reserr: FlyResult<JsHttpResponse>| {
+        })
+        .and_then(move |reserr: FlyResult<JsHttpResponse>| {
             debug!("IN HTTP RESPONSE RECEIVING END");
             if let Err(err) = reserr {
                 return Err(err);
@@ -143,7 +145,8 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
                             ..Default::default()
                         },
                     )
-                }).collect();
+                })
+                .collect();
 
             let res_headers = builder.create_vector(&headers);
 
@@ -224,7 +227,8 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
                     headers: headers,
                     status: status,
                     body: body,
-                }).is_err()
+                })
+                .is_err()
             {
                 return odd_future("error sending http response".to_string().into());
             }
