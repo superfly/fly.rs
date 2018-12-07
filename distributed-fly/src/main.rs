@@ -1,6 +1,3 @@
-extern crate r2d2;
-extern crate r2d2_redis;
-
 #[macro_use]
 extern crate serde_derive;
 extern crate rmp_serde as rmps;
@@ -12,13 +9,8 @@ extern crate lazy_static;
 
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 
-extern crate futures;
-extern crate tokio;
-
-extern crate fly;
-use fly::dns_server::DnsServer;
+// use fly::dns_server::DnsServer;
 
 use std::time::Duration;
 use tokio::timer::Interval;
@@ -32,7 +24,7 @@ use hyper::Server;
 
 use env_logger::Env;
 
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 mod release;
 
@@ -44,9 +36,6 @@ use fly::http_server::serve_http;
 mod runtime_selector;
 use crate::runtime_selector::DistributedRuntimeSelector;
 mod kms;
-
-extern crate rusoto_core;
-extern crate rusoto_credential;
 
 use rusoto_credential::{AwsCredentials, EnvironmentProvider, ProvideAwsCredentials};
 
@@ -60,19 +49,28 @@ fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
-    let addr = "127.0.0.1:8888".parse().unwrap(); // TODO: use config
+    let addr = {
+        let s = GLOBAL_SETTINGS.read().unwrap();
+        format!(
+            "{}:{}",
+            s.proxy_bind_ip.as_ref().unwrap_or(&"127.0.0.1".to_string()),
+            s.proxy_port.unwrap_or(8888)
+        )
+    }
+    .parse()
+    .unwrap();
 
     release::start_new_release_check();
 
-    let port: u16 = match GLOBAL_SETTINGS.read().unwrap().proxy_dns_port {
-        Some(port) => port,
-        None => 8053,
-    };
+    // let port: u16 = match GLOBAL_SETTINGS.read().unwrap().proxy_dns_port {
+    //     Some(port) => port,
+    //     None => 8053,
+    // };
 
-    let dns_server = DnsServer::new(
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port),
-        &*SELECTOR,
-    );
+    // let dns_server = DnsServer::new(
+    //     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port),
+    //     &*SELECTOR,
+    // );
 
     tokio::run(future::lazy(move || {
         tokio::spawn(
@@ -91,13 +89,14 @@ fn main() {
                 }),
         );
 
-        dns_server.start();
+        // dns_server.start();
 
         let server = Server::bind(&addr)
             .serve(make_service_fn(|conn: &AddrStream| {
                 let remote_addr = conn.remote_addr();
                 service_fn(move |req| serve_http(req, &*SELECTOR, remote_addr))
-            })).map_err(|e| eprintln!("server error: {}", e));
+            }))
+            .map_err(|e| eprintln!("server error: {}", e));
 
         info!("Listening on http://{}", addr);
 

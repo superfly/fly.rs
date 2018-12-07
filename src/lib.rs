@@ -1,19 +1,8 @@
-extern crate flatbuffers;
-extern crate hyper;
-
-extern crate serde;
-
+// I know this is 2018 edition, but having these globally is very useful.
 #[macro_use]
 extern crate serde_derive;
-
 #[macro_use]
 extern crate log;
-
-extern crate futures;
-extern crate libfly;
-extern crate tokio;
-extern crate url;
-
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
