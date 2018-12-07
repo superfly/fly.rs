@@ -8,7 +8,6 @@ cmake -G "Unix Makefiles"
 make flatc
 cd $TRAVIS_BUILD_DIR
 
-export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
 ./scripts/fbs.sh
 
 source ~/.nvm/nvm.sh
