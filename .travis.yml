@@ -88,7 +88,10 @@ before_deploy:
 - cargo build --bin dns --release
 - strip target/release/dns
 - cp target/release/dns fly-dns
-- tar czf ${DNS_RELEASE_FILENAME} fly-dns
+- cargo build -p distributed-fly --release
+- strip target/release/distributed-fly
+- cp target/release/distributed-fly fly-dist
+- tar czf ${DNS_RELEASE_FILENAME} fly-dns fly-dist
 
 deploy:
   provider: releases
