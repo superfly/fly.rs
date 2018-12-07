@@ -2,6 +2,7 @@
 
 set -e
 
+touch v8env.bin
 cargo build --release --bin create_snapshot
 ls -lah target/release
 target/release/create_snapshot v8env/dist/v8env.js v8env.bin
