@@ -46,10 +46,10 @@ before_install:
     fi
 
 install:
+  - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
   - ./scripts/setup.sh
 
 before_script:
-  - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
   - # HACK: https://github.com/travis-ci/travis-ci/issues/1875#issuecomment-263847183
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -rf /usr/local/var/postgres; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then initdb /usr/local/var/postgres; fi
