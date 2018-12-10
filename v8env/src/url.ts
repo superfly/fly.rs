@@ -25,7 +25,7 @@ if (Symbol && Symbol.iterator && typeof [][Symbol.iterator] === "function") {
 } else {
   createIterator = (items: any[]) => {
     return {
-      next: function() {
+      next: function () {
         const value = items.shift()
         return { done: value === void 0, value: value }
       }
@@ -69,15 +69,15 @@ export class URL {
   static init() {
     this.URLRegExp = new RegExp(
       "^" +
-        this.patterns.protocol +
-        "?" +
-        this.patterns.authority +
-        "?" +
-        this.patterns.path +
-        this.patterns.query +
-        "?" +
-        this.patterns.hash +
-        "?"
+      this.patterns.protocol +
+      "?" +
+      this.patterns.authority +
+      "?" +
+      this.patterns.path +
+      this.patterns.query +
+      "?" +
+      this.patterns.hash +
+      "?"
     )
     this.AuthorityRegExp = new RegExp(
       "^" + this.patterns.authentication + "?" + this.patterns.hostname + this.patterns.port + "?$"
@@ -219,7 +219,7 @@ export class URL {
   set port(value: string) {
     let port = parseInt(value)
     if (isNaN(port)) {
-      this._parts.port = "0"
+      this._parts.port = ""
     } else {
       this._parts.port = Math.max(0, port % 2 ** 16).toString()
     }
@@ -260,13 +260,13 @@ export class URL {
 
   get searchParams(): URLSearchParams {
     const searchParams = new URLSearchParams(this.search)
-    ;["append", "delete", "set"].forEach((methodName: string) => {
-      const method = searchParams[methodName]
-      searchParams[methodName] = (...args) => {
-        method.apply(searchParams, args)
-        this.search = searchParams.toString()
-      }
-    })
+      ;["append", "delete", "set"].forEach((methodName: string) => {
+        const method = searchParams[methodName]
+        searchParams[methodName] = (...args) => {
+          method.apply(searchParams, args)
+          this.search = searchParams.toString()
+        }
+      })
     return searchParams
   }
 

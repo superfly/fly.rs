@@ -37,17 +37,16 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 	const fbb = flatbuffers.createBuilder();
 	const urlStr = fbb.createString(url);
 
-	let headersArr = Array.from(req.headers[Symbol.iterator]());
-	const headersLength = headersArr.length;
 	let fbbHeaders = Array<number>();
 
-	for (let i = 0; i < headersLength; i++) {
-		const key = fbb.createString(headersArr[i].name);
-		const value = fbb.createString(headersArr[i].value);
+	let i = 0;
+	for (const header of req.headers) {
+		const key = fbb.createString(header[0]);
+		const value = fbb.createString(header[1]);
 		fbs.HttpHeader.startHttpHeader(fbb);
 		fbs.HttpHeader.addKey(fbb, key);
 		fbs.HttpHeader.addValue(fbb, value);
-		fbbHeaders[i] = fbs.HttpHeader.endHttpHeader(fbb);
+		fbbHeaders[i++] = fbs.HttpHeader.endHttpHeader(fbb);
 	}
 	let reqHeaders = fbs.HttpRequest.createHeadersVector(fbb, fbbHeaders);
 	fbs.HttpRequest.startHttpRequest(fbb);
@@ -80,7 +79,7 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 					})
 				}
 			}) : null
-		const headersInit: string[][] = [];
+		const headersInit: Array<[string, string]> = [];
 		for (let i = 0; i < msg.headersLength(); i++) {
 			const h = msg.headers(i);
 			headersInit.push([h.key(), h.value()]);

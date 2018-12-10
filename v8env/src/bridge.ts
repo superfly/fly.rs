@@ -79,7 +79,7 @@ export function addEventListener(name: string, fn: Function) {
         base.msg(msg);
         let id = msg.id();
 
-        const headersInit: string[][] = [];
+        const headersInit: Array<[string, string]> = [];
         // console.log("headers len:", msg.headersLength());
         for (let i = 0; i < msg.headersLength(); i++) {
           const h = msg.headers(i);
@@ -364,20 +364,19 @@ async function handleRes(id: number, res: FlyResponse) {
 
   const fbb = flatbuffers.createBuilder();
 
-  let headersArr = Array.from(res.headers[Symbol.iterator]());
-  const headersLength = headersArr.length;
   let fbbHeaders = Array<number>();
 
   try {
     // console.log("trying stuff")
-    for (let i = 0; i < headersLength; i++) {
+    let i = 0;
+    for (const [n, v] of res.headers) {
       // console.log("doing header:", headerKeys[i]);
-      const key = fbb.createString(headersArr[i].name);
-      const value = fbb.createString(headersArr[i].value);
+      const key = fbb.createString(n);
+      const value = fbb.createString(v);
       fbs.HttpHeader.startHttpHeader(fbb);
       fbs.HttpHeader.addKey(fbb, key);
       fbs.HttpHeader.addValue(fbb, value);
-      fbbHeaders[i] = fbs.HttpHeader.endHttpHeader(fbb);
+      fbbHeaders[i++] = fbs.HttpHeader.endHttpHeader(fbb);
     }
     // console.log(fbbHeaders);
     let resHeaders = fbs.HttpResponse.createHeadersVector(fbb, fbbHeaders);

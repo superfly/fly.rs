@@ -1,101 +1,106 @@
-/**
- * @module fly
- * @private
- */
-import { stringify } from 'query-string'
-import { FormData, FormDataEntryValue } from "./dom_types"
+// Copyright 2018 the Deno authors. All rights reserved. MIT license.
+import * as domTypes from "./dom_types";
+import * as blob from "./blob";
+import { DomIterableMixin } from "./mixins/dom_iterable";
 
-/**
- * Class representing a fetch response.
- * @hidden
- */
-export default class FlyFormData implements FormData {
-  private _data: Map<string, string[]>
+const dataSymbol = Symbol("data");
 
-  constructor() {
-    this._data = new Map<string, string[]>()
+class FormDataBase {
+  private [dataSymbol]: Array<[string, domTypes.FormDataEntryValue]> = [];
+
+  /** Appends a new value onto an existing key inside a `FormData`
+   * object, or adds the key if it does not already exist.
+   *
+   *       formData.append('name', 'first');
+   *       formData.append('name', 'second');
+   */
+  append(name: string, value: string): void {
+    // append(name: string, value: blob.FlyBlob, filename?: string): void;
+    // append(name: string, value: string | blob.FlyBlob, filename?: string): void {
+    // if (value instanceof blob.FlyBlob) {
+    //   const dfile = new file.DenoFile([value], filename || name);
+    //   this[dataSymbol].push([name, dfile]);
+    // } else {
+    this[dataSymbol].push([name, String(value)]);
+    // }
   }
 
-  append(name: string, value: string) {
-    let vals: string[]
-    const currentVals = this._data.get(name)
-    if (currentVals == undefined) {
-      vals = [value]
-    } else {
-      vals = currentVals.concat([value])
-    }
-    this._data.set(name, vals);
-  }
-
-  delete(name: string) {
-    this._data.delete(name)
-  }
-
-  entries(): IterableIterator<[string, string[]]> {
-    return this._data.entries()
-  }
-
-  forEach(
-    callbackfn: (
-      value: FormDataEntryValue,
-      key: string,
-      parent: FormData
-    ) => void,
-    // tslint:disable-next-line:no-any
-    thisArg?: any
-  ) {
-    throw new Error("unimplemented");
-  }
-
-  get(name: string): string | null {
-    const vals = this._data.get(name)
-    if (vals == undefined) {
-      return null
-    }
-    return vals[0]
-  }
-
-  getAll(name: string): string[] {
-    const vals = this._data.get(name)
-    if (vals == undefined) {
-      return []
-    }
-    return vals
-  }
-
-  has(name: string): boolean {
-    return this._data.has(name)
-  }
-
-  keys(): IterableIterator<string> {
-    return this._data.keys()
-  }
-
-  set(name: string, value: string) {
-    this._data.set(name, [value])
-  }
-
-  values(): IterableIterator<string> {
-    // this._data.values() doesn't flatten arrays of arrays
-    let that = this
-    return function* () {
-      for (let vals of that._data.values()) {
-        if (Array.isArray(vals)) {
-          for (let val of vals) {
-            yield val
-          }
-        } else {
-          yield vals
-        }
+  /** Deletes a key/value pair from a `FormData` object.
+   *
+   *       formData.delete('name');
+   */
+  delete(name: string): void {
+    let i = 0;
+    while (i < this[dataSymbol].length) {
+      if (this[dataSymbol][i][0] === name) {
+        this[dataSymbol].splice(i, 1);
+      } else {
+        i++;
       }
-    }()
+    }
   }
 
-  toString(): string {
-    const output: string[] = []
-    this._data.forEach((value, key) => {
-      output.push(stringify({ [`${key}`]: value }))
-    })
-    return output.join('&');
+  /** Returns an array of all the values associated with a given key
+   * from within a `FormData`.
+   *
+   *       formData.getAll('name');
+   */
+  getAll(name: string): domTypes.FormDataEntryValue[] {
+    const values = [];
+    for (const entry of this[dataSymbol]) {
+      if (entry[0] === name) {
+        values.push(entry[1]);
+      }
+    }
+
+    return values;
+  }
+
+  /** Returns the first value associated with a given key from within a
+   * `FormData` object.
+   *
+   *       formData.get('name');
+   */
+  get(name: string): domTypes.FormDataEntryValue | null {
+    for (const entry of this[dataSymbol]) {
+      if (entry[0] === name) {
+        return entry[1];
+      }
+    }
+
+    return null;
+  }
+
+  /** Returns a boolean stating whether a `FormData` object contains a
+   * certain key/value pair.
+   *
+   *       formData.has('name');
+   */
+  has(name: string): boolean {
+    return this[dataSymbol].some(entry => entry[0] === name);
+  }
+
+  /** Sets a new value for an existing key inside a `FormData` object, or
+   * adds the key/value if it does not already exist.
+   *
+   *       formData.set('name', 'value');
+   */
+  set(name: string, value: string): void {
+    // set(name: string, value: blob.FlyBlob, filename?: string): void;
+    // set(name: string, value: string | blob.FlyBlob, filename?: string): void {
+    this.delete(name);
+    // if (value instanceof blob.FlyBlob) {
+    //   const dfile = new file.DenoFile([value], filename || name);
+    //   this[dataSymbol].push([name, dfile]);
+    // } else {
+    this[dataSymbol].push([name, String(value)]);
+    // }
   }
 }
+
+// tslint:disable-next-line:variable-name
+export class FlyFormData extends DomIterableMixin<
+  string,
+  domTypes.FormDataEntryValue,
+  typeof FormDataBase
+  >(FormDataBase, dataSymbol) { };

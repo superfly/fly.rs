@@ -3,7 +3,7 @@
  */
 import CookieJar from './cookie_jar'
 import FlyBody from './body_mixin'
-import { Request, Headers, RequestMode, RequestCredentials, RequestCache, RequestDestination, RequestRedirect, ReferrerPolicy, AbortSignal, RequestInit } from "./dom_types"
+import { Request, Headers, RequestMode, RequestCredentials, RequestCache, RequestDestination, RequestRedirect, ReferrerPolicy, AbortSignal, RequestInit, HeadersInit } from "./dom_types"
 import { FlyHeaders } from './headers';
 
 function byteUpperCase(s) {
@@ -137,24 +137,30 @@ export class FlyRequest extends FlyBody implements Request {
 	}
 
 	clone() {
-		throw new Error("unimplemented")
-		return {} as FlyRequest
-		// if (this.bodyUsed)
-		// 	throw new Error("body has already been used")
-		// let body2 = this.bodySource
+		// throw new Error("unimplemented")
+		// return {} as FlyRequest
+		if (this.bodyUsed)
+			throw new Error("body has already been used")
+		let body2 = this.bodySource
 
-		// // if (this.bodySource instanceof FlyBody) {
-		// // 	const tees = this.body.tee()
-		// // 	this.stream = this.bodySource = tees[0]
-		// // 	body2 = tees[1]
-		// // }
-		// const cloned = new FlyRequest(this.url, {
-		// 	body: body2,
-		// 	remoteAddr: this.remoteAddr,
-		// 	method: this.method,
-		// 	headers: this.headers,
-		// 	credentials: this.credentials
-		// })
-		// return cloned
+		if (this.bodySource instanceof FlyBody) {
+			const tees = this.body.tee()
+			this.setBody(tees[0])
+			body2 = tees[1]
+		}
+
+		const iterators = this.headers.entries();
+		const headersList: Array<[string, string]> = [];
+		for (const header of iterators) {
+			headersList.push(header);
+		}
+		const cloned = new FlyRequest(this.url, {
+			body: body2,
+			remoteAddr: this.remoteAddr,
+			method: this.method,
+			headers: headersList,
+			credentials: this.credentials
+		})
+		return cloned
 	}
 }

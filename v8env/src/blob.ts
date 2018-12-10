@@ -18,7 +18,7 @@ export class FlyBlob implements Blob {
     options = options || {};
     // Set ending property's default value to "tranparent".
     if (!options.hasOwnProperty("ending")) {
-      options.ending = "tranparent";
+      options.ending = "transparent";
     }
 
     if (options.type && !containsOnlyASCII(options.type)) {

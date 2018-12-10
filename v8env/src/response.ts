@@ -115,7 +115,7 @@ export class FlyResponse extends FlyBody implements Response {
 
 		if (this.body instanceof ReadableStream) {
 			const [b1, b2] = this.body.tee()
-			this.body = b1
+			this.setBody(b1)
 			return new Response(b2, this)
 		}
 		return new Response(null, this)

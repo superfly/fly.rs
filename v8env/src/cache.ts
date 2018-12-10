@@ -58,9 +58,9 @@ const cache = {
 		const resHeaders = {}
 		const key = await hashData(req)
 
-		for (const h of res.headers) {
+		for (const [name, value] of res.headers) {
 			// if (h.name === 'set-cookie')
-			resHeaders[h.name] = h.value
+			resHeaders[name] = value
 			// else
 			// 	resHeaders[h.name] = h[1].join && h[1].join(',') || h[1]
 		}

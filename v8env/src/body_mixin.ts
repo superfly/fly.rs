@@ -3,7 +3,7 @@
 import { parse as queryParse } from 'query-string'
 import { Blob, FormData, Body, ReadableStream, ReadableStreamReader, BodyInit } from './dom_types';
 import { FlyBlob } from './blob';
-import FlyFormData from './form_data';
+import { FlyFormData } from './form_data';
 import { ReadableStream as WhatWGReadableStream, ReadableStreamDefaultController } from "@stardazed/streams";
 
 // interface ReadableStreamController {
@@ -20,12 +20,10 @@ export default class FlyBody implements Body {
   protected stream: WhatWGReadableStream | null
 
   constructor(obj: BodyInit) {
-    validateBodyType(this, obj)
-    this.bodySource = obj
-    this.stream = null
+    this.setBody(obj)
   }
 
-  get body(): WhatWGReadableStream | null {
+  get body(): ReadableStream | null {
     if (this.stream) {
       return this.stream
     }
@@ -44,6 +42,12 @@ export default class FlyBody implements Body {
     return this.stream
   }
 
+  setBody(obj: BodyInit) {
+    validateBodyType(this, obj)
+    this.bodySource = obj
+    this.stream = null
+  }
+
   get isStatic(): boolean {
     return (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array)
   }
@@ -55,10 +59,6 @@ export default class FlyBody implements Body {
       return new TextEncoder().encode(this.bodySource)
     else
       throw new TypeError("body is not static")
-  }
-
-  set body(value: WhatWGReadableStream) {
-    this.stream = value
   }
 
   get bodyUsed(): boolean {

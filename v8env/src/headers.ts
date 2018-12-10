@@ -1,126 +1,87 @@
-import { Headers, HeadersInit } from "./dom_types";
-import { assert } from "./util";
+import * as domTypes from "./dom_types";
+import { DomIterableMixin } from "./mixins/dom_iterable";
 
-interface Header {
-	name: string;
-	value: string;
+
+export type FlyHeadersInit = domTypes.HeadersInit | FlyHeaders
+
+// tslint:disable-next-line:no-any
+function isHeaders(value: any): value is domTypes.Headers {
+	return value instanceof FlyHeaders;
 }
 
-export type FlyHeadersInit = HeadersInit | FlyHeaders
 
-export class FlyHeaders implements Headers {
-	private readonly headerList: Header[] = [];
-	length: number
+const headerMap = Symbol("header map");
+class HeadersBase {
+	private readonly [headerMap]: Map<string, string> = new Map();
 
-	constructor(init?: FlyHeadersInit) {
-		if (init) {
-			this._fill(init);
-		}
-		this.length = this.headerList.length
+	private _normalizeParams(name: string, value?: string): string[] {
+		name = String(name).toLowerCase();
+		value = String(value).trim();
+		return [name, value];
 	}
 
-	private _append(header: Header): void {
-		// TODO(qti3e) Check header based on the fetch spec.
-		this._appendToHeaderList(header);
-	}
-
-	private _appendToHeaderList(header: Header): void {
-		const lowerCaseName = header.name.toLowerCase();
-		for (let i = 0; i < this.headerList.length; ++i) {
-			if (this.headerList[i].name.toLowerCase() === lowerCaseName) {
-				header.name = this.headerList[i].name;
-			}
-		}
-		this.headerList.push(header);
-	}
-
-	private _fill(init: FlyHeadersInit): void {
-		if (init instanceof FlyHeaders) {
-			init.forEach((value, name) => {
-				this._append({ name: name, value: value })
-			})
-		} else if (Array.isArray(init)) {
-			for (let i = 0; i < init.length; ++i) {
-				const header = init[i];
-				if (header.length !== 2) {
-					throw new TypeError("Failed to construct 'Headers': Invalid value");
-				}
-				this._append({
-					name: header[0],
-					value: header[1]
-				});
-			}
+	constructor(init?: domTypes.HeadersInit) {
+		if (init === null) {
+			throw new TypeError(
+				"Failed to construct 'Headers'; The provided value was not valid"
+			);
+		} else if (isHeaders(init)) {
+			this[headerMap] = new Map(init);
 		} else {
-			for (const key in init) {
-				this._append({
-					name: key,
-					value: init[key]
-				});
+			this[headerMap] = new Map();
+			if (Array.isArray(init)) {
+				for (const [rawName, rawValue] of init) {
+					const [name, value] = this._normalizeParams(rawName, rawValue);
+					const existingValue = this[headerMap].get(name);
+					this[headerMap].set(
+						name,
+						existingValue ? `${existingValue}, ${value}` : value
+					);
+				}
+			} else if (init) {
+				const names = Object.keys(init);
+				for (const rawName of names) {
+					const rawValue = init[rawName];
+					const [name, value] = this._normalizeParams(rawName, rawValue);
+					this[headerMap].set(name, value);
+				}
 			}
 		}
 	}
 
 	append(name: string, value: string): void {
-		this._appendToHeaderList({ name, value });
+		const [newname, newvalue] = this._normalizeParams(name, value);
+		const v = this[headerMap].get(newname);
+		const str = v ? `${v}, ${newvalue}` : newvalue;
+		this[headerMap].set(newname, str);
 	}
 
 	delete(name: string): void {
-		const idx = this.headerList.findIndex(function (h) {
-			return h.name == name.toLowerCase()
-		})
-		if (idx >= 0)
-			this.headerList.splice(idx, 1)
+		const [newname] = this._normalizeParams(name);
+		this[headerMap].delete(newname);
 	}
+
 	get(name: string): string | null {
-		for (const header of this.headerList) {
-			if (header.name.toLowerCase() === name.toLowerCase()) {
-				return header.value;
-			}
-		}
-		return null;
+		const [newname] = this._normalizeParams(name);
+		const value = this[headerMap].get(newname);
+		return value || null;
 	}
+
 	has(name: string): boolean {
-		assert(false, "Implement me");
-		return false;
+		const [newname] = this._normalizeParams(name);
+		return this[headerMap].has(newname);
 	}
 
 	set(name: string, value: string): void {
-		assert(false, "Implement me");
-	}
-
-	forEach(
-		callbackfn: (value: string, key: string, parent: Headers) => void,
-		// tslint:disable-next-line:no-any
-		thisArg?: any
-	): void {
-		const it = this[Symbol.iterator]();
-		let cur = it.next();
-		while (!cur.done) {
-			const { name, value } = cur.value;
-			callbackfn(value, name, this);
-			cur = it.next();
-		}
-	}
-
-	[Symbol.iterator]() {
-		return new FlyHeadersIterator(this.headerList)
+		const [newname, newvalue] = this._normalizeParams(name, value);
+		this[headerMap].set(newname, newvalue);
 	}
 }
 
-class FlyHeadersIterator implements Iterator<Header> {
-	headers: Header[]
-	private index: number
-	constructor(headers: Header[]) {
-		this.headers = headers;
-		this.index = 0;
-	}
-
-	next(): IteratorResult<Header> {
-		if (this.index >= this.headers.length) { return { value: undefined, done: true } }
-		return { value: this.headers[this.index++], done: false }
-	}
-
-	[Symbol.iterator]() {
-		return this
-	}
-}
+// @internal
+// tslint:disable-next-line:variable-name
+export class FlyHeaders extends DomIterableMixin<
+	string,
+	string,
+	typeof HeadersBase
+	>(HeadersBase, headerMap) implements domTypes.Headers { }
