@@ -6,7 +6,7 @@ use r2d2;
 use serde::Deserialize;
 
 use self::redis::Commands;
-use r2d2_redis::{redis, RedisConnectionManager};
+use r2d2_redis::redis;
 
 extern crate serde_json;
 
@@ -163,12 +163,21 @@ fn get_secret<'a>(secrets: &'a Value, name: &str) -> Option<String> {
             if sname == name {
               if let Value::String(vs) = v {
                 return match base64::decode(vs.as_bytes()) {
-                  Ok(b64) => match String::from_utf8(decrypt(b64)) {
-                    Ok(s) => Some(s),
+                  Ok(bytes) => match decrypt(bytes) {
                     Err(e) => {
-                      error!("error decoding decrypted plaintext into string: {}", e);
+                      error!("error decrypting secret: {}", e);
                       None
                     }
+                    Ok(maybe_plain) => match maybe_plain {
+                      None => None,
+                      Some(plain) => match String::from_utf8(plain) {
+                        Ok(s) => Some(s),
+                        Err(e) => {
+                          error!("error decoding decrypted plaintext into string: {}", e);
+                          None
+                        }
+                      },
+                    },
                   },
                   Err(e) => {
                     error!("error decoding base64: {}", e);
