@@ -89,7 +89,12 @@ fn main() {
             .serve(make_service_fn(move |conn: &AddrStream| {
                 let remote_addr = conn.remote_addr();
                 service_fn(move |req| {
-                    serve_http(req, unsafe { SELECTOR.as_ref().unwrap() }, remote_addr)
+                    serve_http(
+                        false,
+                        req,
+                        unsafe { SELECTOR.as_ref().unwrap() },
+                        remote_addr,
+                    )
                 })
             }))
             .map_err(|e| eprintln!("server error: {}", e));

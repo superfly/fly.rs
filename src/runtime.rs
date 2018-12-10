@@ -740,6 +740,7 @@ fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             let req_method = match req.method {
               Method::GET => msg::HttpMethod::Get,
               Method::POST => msg::HttpMethod::Post,
+              Method::HEAD => msg::HttpMethod::Head,
               _ => unimplemented!(),
             };
 

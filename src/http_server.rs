@@ -12,12 +12,27 @@ use hyper::{header, Body, Request, Response, StatusCode};
 use std::sync::mpsc::RecvError;
 
 pub fn serve_http(
+    tls: bool,
     req: Request<Body>,
     selector: &RuntimeSelector,
     remote_addr: SocketAddr,
 ) -> Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send> {
+    info!("serving http: {}", req.uri());
     let (parts, body) = req.into_parts();
-    let host = {
+    warn!("headers: {:?}", parts.headers);
+    let host = if parts.version == hyper::Version::HTTP_2 {
+        match parts.uri.host() {
+            Some(h) => h,
+            None => {
+                return Box::new(future::ok(
+                    Response::builder()
+                        .status(StatusCode::NOT_FOUND)
+                        .body(Body::empty())
+                        .unwrap(),
+                ))
+            }
+        }
+    } else {
         match parts.headers.get(header::HOST) {
             Some(v) => match v.to_str() {
                 Ok(s) => s,
@@ -76,7 +91,11 @@ pub fn serve_http(
 
     let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
-    let url = format!("http://{}{}", host, parts.uri.path_and_query().unwrap());
+    let url: String = if parts.version == hyper::Version::HTTP_2 {
+        format!("{}", parts.uri)
+    } else {
+        format!("{}://{}{}", if tls {"https"} else {"http"},host, parts.uri.path_and_query().unwrap())
+    };
 
     // double checking, could've been removed since last check (maybe not? may need a lock)
     if let Some(ref ch) = rt.fetch_events {

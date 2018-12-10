@@ -50,6 +50,7 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
     let req_body: Body;
     if msg.has_body() {
+        warn!("has body not implemented!");
         unimplemented!(); // TODO: implement
     } else {
         req_body = Body::empty();
@@ -63,7 +64,10 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             msg::HttpMethod::Get => Method::GET,
             msg::HttpMethod::Head => Method::HEAD,
             msg::HttpMethod::Post => Method::POST,
-            _ => unimplemented!(),
+            _ => {
+                warn!("method not implemented");
+                unimplemented!()
+            }
         };
 
         let msg_headers = msg.headers().unwrap();
