@@ -1,4 +1,3 @@
-extern crate libfly;
 use libfly::*;
 
 use std::env;

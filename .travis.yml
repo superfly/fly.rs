@@ -60,12 +60,13 @@ before_script:
 
 script:
   - RUST_BACKTRACE=1 cargo test
+  - ./scripts/build-release.sh
 
 before_cache:
-  - brew cleanup
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew cleanup; fi
 
 before_deploy:
-  - ./scripts/build-release.sh
+  - ./scripts/prepare-release.sh
 
 deploy:
   provider: releases

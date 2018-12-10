@@ -1,0 +1,8 @@
+[package]
+name = "create_snapshot"
+version = "0.1.0"
+authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+libfly = { path="../libfly" }
