@@ -32,7 +32,7 @@ pub struct GlobalSettings {
     // pub fly_private_api_token: String,
     pub blacklist_ip_path: Option<String>,
     // pub geoip_path: String,
-    // pub cert_path: String,
+    pub certs_path: Option<String>,
     pub cockroach_certs_path: Option<String>,
     pub cockroach_host: String,
     pub proxy_port: Option<u16>,

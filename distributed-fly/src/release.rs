@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use r2d2;
 use crate::rmps::Deserializer;
+use r2d2;
 use serde::Deserialize;
 
 use self::redis::Commands;
@@ -19,14 +19,12 @@ extern crate base64;
 
 use crate::settings::GLOBAL_SETTINGS;
 
+use super::REDIS_POOL;
 use std::thread;
 
 lazy_static! {
   static ref RELEASES_BY_APP: RwLock<HashMap<String, Release>> = RwLock::new(HashMap::new());
   static ref APP_BY_HOSTNAME: RwLock<HashMap<String, String>> = RwLock::new(HashMap::new());
-  static ref REDIS_POOL: r2d2::Pool<RedisConnectionManager> = r2d2::Pool::builder()
-    .build(RedisConnectionManager::new(GLOBAL_SETTINGS.read().unwrap().redis_url.as_str()).unwrap())
-    .unwrap();
 }
 
 #[derive(Debug, PartialEq, Deserialize, Clone)]
@@ -48,11 +46,18 @@ impl Release {
       None => {
         let conn = match REDIS_POOL.get() {
           Ok(c) => c,
-          Err(e) => return Err(format!("{}", e)),
+          Err(e) => return Err(format!("error getting pool connection: {}", e)),
         };
-        let app_key: String = match conn.hget("app_hosts", host) {
-          Ok(s) => s,
-          Err(e) => return Err(format!("{}", e)),
+        let app_key: String = match redis::cmd("HGET")
+          .arg("app_hosts")
+          .arg(host)
+          .query::<Option<String>>(&*conn)
+        {
+          Ok(s) => match s {
+            Some(s) => s,
+            None => return Ok(None),
+          },
+          Err(e) => return Err(format!("error getting app host: {}", e)),
         };
         if app_key.is_empty() {
           return Ok(None);
@@ -274,7 +279,8 @@ pub fn start_new_release_check() {
                             .map(|v| match v {
                               Value::String(h) => h.clone(),
                               _ => unimplemented!(),
-                            }).collect();
+                            })
+                            .collect();
                           match notif.action {
                             Delete => match APP_BY_HOSTNAME.write() {
                               Ok(mut guard) => {
@@ -316,7 +322,8 @@ pub fn start_new_release_check() {
           },
         };
       }
-    }).unwrap();
+    })
+    .unwrap();
 }
 
 #[derive(Debug, Deserialize)]
