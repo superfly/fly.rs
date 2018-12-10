@@ -40,14 +40,14 @@ pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
                                     .unwrap();
                                     debug!(
                                         "setting certificate! {}",
-                                        String::from_utf8(pems[1].to_pem().unwrap()).unwrap()
-                                    );
-                                    builder.set_certificate(&pems[1]).unwrap();
-                                    debug!(
-                                        "adding extra chain cert: {}",
                                         String::from_utf8(pems[0].to_pem().unwrap()).unwrap()
                                     );
-                                    builder.add_extra_chain_cert(pems[0].clone()).unwrap();
+                                    builder.set_certificate(&pems[0]).unwrap();
+                                    debug!(
+                                        "adding extra chain cert: {}",
+                                        String::from_utf8(pems[1].to_pem().unwrap()).unwrap()
+                                    );
+                                    builder.add_extra_chain_cert(pems[1].clone()).unwrap();
                                     debug!("decrypting private key!");
                                     match decrypt(c.get("encrypted_private_key").unwrap().to_vec())
                                     {
