@@ -404,9 +404,32 @@ extern "C"
 
   void promise_rejected_cb(v8::PromiseRejectMessage message)
   {
-    printf("!!!!!!!!! PROMISE REJECTED !!!!!!!!!\n");
-    auto exception = message.GetValue();
-    printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), exception));
+    printf("Unhandled promise rejection:\n");
+    auto iso = v8::Isolate::GetCurrent();
+    auto rt = FromIsolate(iso);
+    v8::HandleScope handle_scope(rt->isolate);
+    auto error = message.GetValue();
+    auto context = rt->context.Get(rt->isolate);
+
+    v8::Context::Scope context_scope(context);
+
+    switch (message.GetEvent())
+    {
+    case v8::kPromiseRejectWithNoHandler:
+      printf("no handler!\n");
+      printf("is native error? %s\n", error->IsNativeError() ? "true" : "false");
+      printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), error));
+      break;
+    case v8::kPromiseRejectAfterResolved:
+      printf("promise reject after resolved\n");
+      break;
+    case v8::kPromiseHandlerAddedAfterReject:
+      printf("promise handler added after reject\n");
+      break;
+    case v8::kPromiseResolveAfterResolved:
+      printf("promise resolved after resolved\n");
+      break;
+    }
   }
 
   const js_runtime *js_runtime_new(js_runtime_options options)
