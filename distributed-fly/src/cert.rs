@@ -11,14 +11,38 @@ lazy_static! {
     static ref CTX_STORE: RwLock<HashMap<String, ssl::SslContext>> = RwLock::new(HashMap::new());
 }
 
-pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
-    {
-        if let Ok(store) = CTX_STORE.read() {
-            if let Some(ctx) = store.get(servername) {
-                return Ok(Some(ctx.clone()));
-            }
+pub fn get_cached_ctx(servername: &str) -> Option<ssl::SslContext> {
+    debug!("trying to get cached ssl context for: {}", servername);
+    if let Ok(store) = CTX_STORE.read() {
+        if let Some(ctx) = store.get(servername) {
+            return Some(ctx.clone());
         }
     }
+    None
+}
+
+pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
+    debug!("getting ssl context for: {}", servername);
+    if let Some(ctx) = get_cached_ctx(servername) {
+        return Ok(Some(ctx));
+    }
+
+    let mut wildcard: Option<String> = None;
+    let mut splitted = servername.split(".");
+    let parts = splitted.clone().count();
+    if parts > 2 {
+        let first = splitted.next().unwrap();
+        if first != "*" {
+            let mut skipped = splitted.skip(parts - 3); // we've already read 1, so skip 1 less than 2 (-3)
+            let wc = format!("*.{}.{}", skipped.next().unwrap(), skipped.next().unwrap());
+
+            if let Some(ctx) = get_cached_ctx(wc.as_str()) {
+                return Ok(Some(ctx));
+            }
+            wildcard = Some(wc);
+        }
+    }
+
     match REDIS_POOL.get() {
         Err(e) => Err(format!("{}", e)),
         Ok(conn) => match redis::pipe()
@@ -86,7 +110,11 @@ pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
                         }
                     }
                     if added == 0 {
-                        return Ok(None);
+                        if let Some(ref wc) = wildcard {
+                            return get_ctx(wc.as_str());
+                        } else {
+                            return Ok(None);
+                        }
                     }
                     let ctx = builder.build();
                     debug!("built ctx!");
