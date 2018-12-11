@@ -126,6 +126,7 @@ fn main() {
                 Ok(maybe_ctx) => match maybe_ctx {
                     None => Err(openssl::ssl::SniError::NOACK),
                     Some(ctx) => {
+                        debug!("got a ctx!");
                         ssl_ref.set_ssl_context(&ctx).unwrap();
                         Ok(())
                     }
