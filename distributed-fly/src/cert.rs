@@ -59,7 +59,6 @@ pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
                                         let typ =
                                             String::from_utf8(c.get("type").unwrap().to_vec())
                                                 .unwrap();
-                                        debug!("PK: {}", String::from_utf8(pem.clone()).unwrap());
                                         let pk = if typ == "rsa" {
                                             debug!("rsa, doing it.");
                                             PKey::from_rsa(
