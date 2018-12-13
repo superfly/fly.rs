@@ -10,6 +10,9 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate futures;
+
 // use fly::dns_server::DnsServer;
 
 use std::time::Duration;
@@ -42,6 +45,7 @@ use rusoto_credential::{AwsCredentials, EnvironmentProvider, ProvideAwsCredentia
 use tokio_openssl::SslAcceptorExt;
 
 mod cert;
+mod proxy;
 
 use r2d2_redis::RedisConnectionManager;
 
@@ -76,16 +80,6 @@ fn main() {
 
     release::start_new_release_check();
 
-    // let port: u16 = match GLOBAL_SETTINGS.read().unwrap().proxy_dns_port {
-    //     Some(port) => port,
-    //     None => 8053,
-    // };
-
-    // let dns_server = DnsServer::new(
-    //     SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), port),
-    //     &*SELECTOR,
-    // );
-
     let tls_addr = {
         let s = GLOBAL_SETTINGS.read().unwrap();
         format!(
@@ -97,26 +91,14 @@ fn main() {
     .parse()
     .unwrap();
 
-    // let http_listener = tokio::net::TcpListener::bind(&addr).unwrap();
+    let http_listener = tokio::net::TcpListener::bind(&addr).unwrap();
     let tls_listener = tokio::net::TcpListener::bind(&tls_addr).unwrap();
 
     let mut tls_builder =
         openssl::ssl::SslAcceptor::mozilla_intermediate(openssl::ssl::SslMethod::tls()).unwrap();
 
     tls_builder.set_servername_callback(move |ssl_ref: &mut openssl::ssl::SslRef, _ssl_alert| {
-        let name = ssl_ref.servername(openssl::ssl::NameType::HOST_NAME);
-        println!("GOT NAME: {:?}", name);
-        println!("version: {:?}", ssl_ref.version_str());
-        match ssl_ref.current_cipher() {
-            Some(cipher) => println!(
-                "current cipher: {}, version: {}, desc: {}",
-                cipher.name(),
-                cipher.version(),
-                cipher.description()
-            ),
-            None => println!("no cipher"),
-        };
-        match name {
+        match ssl_ref.servername(openssl::ssl::NameType::HOST_NAME) {
             None => Err(openssl::ssl::SniError::NOACK),
             Some(name) => match cert::get_ctx(name) {
                 Err(e) => {
@@ -141,27 +123,6 @@ fn main() {
             .ok_or(openssl::ssl::AlpnError::NOACK)
     });
     tls_builder.set_cipher_list(CURVES).unwrap();
-
-    // let mut f = File::open("certs/default.crt").expect("could not open certificate file");
-    // let mut rsabuf: Vec<u8> = vec![];
-    // f.read_to_end(&mut rsabuf).unwrap();
-
-    // let mut f = File::open("certs/default.pem").expect("could not open private key file");
-    // let mut rsapembuf: Vec<u8> = vec![];
-    // f.read_to_end(&mut rsapembuf).unwrap();
-
-    // let cert_builder = openssl::x509::X509::builder()
-
-    // cert_builder.
-
-    // let certs = openssl::x509::X509::stack_from_pem(rsabuf.as_slice()).unwrap();
-    // println!("certs count: {}", certs.len());
-    // println!(
-    //     "cert pem: {}",
-    //     String::from_utf8(certs[0].to_pem().unwrap()).unwrap()
-    // );
-
-    // let pk = openssl::pkey::PKey::private_key_from_pem(rsabuf.as_slice()).unwrap();
 
     let certs_path = {
         match GLOBAL_SETTINGS.read().unwrap().certs_path {
@@ -194,16 +155,15 @@ fn main() {
             openssl::ssl::SslFiletype::PEM,
         )
         .unwrap();
-    // tls_builder.set_certificate(&certs[0]).unwrap();
 
     let tls_acceptor = tls_builder.build();
 
     let tls_stream = tls_listener
         .incoming()
-        .map_err(|e| error!("error accepting conn: {}", e))
+        .and_then(|stream| proxy::ProxyTcpStream::peek(stream))
+        .map_err(|e| error!("error in stream: {}", e))
         .for_each(move |stream| {
-            println!("got a conn.");
-            let remote_addr = stream.peer_addr().unwrap_or("0.0.0.0:0".parse().unwrap());
+            let remote_addr = stream.peer_addr().unwrap();
             tokio::spawn(
                 tls_acceptor
                     .accept_async(stream)
@@ -219,6 +179,15 @@ fn main() {
             );
             Ok(())
         });
+
+    let make_svc = make_service_fn(|conn: &proxy::ProxyTcpStream| {
+        let remote_addr = conn.peer_addr().unwrap_or("0.0.0.0:0".parse().unwrap());
+        service_fn(move |req| serve_http(false, req, &*SELECTOR, remote_addr))
+    });
+
+    let http_stream = http_listener
+        .incoming()
+        .and_then(|stream| proxy::ProxyTcpStream::peek(stream));
 
     tokio::run(future::lazy(move || {
         tokio::spawn(
@@ -239,15 +208,9 @@ fn main() {
 
         tokio::spawn(tls_stream);
 
-        let server = Server::bind(&addr)
-            .serve(make_service_fn(|conn: &AddrStream| {
-                let remote_addr = conn.remote_addr();
-                service_fn(move |req| serve_http(false, req, &*SELECTOR, remote_addr))
-            }))
-            .map_err(|e| eprintln!("server error: {}", e));
-
         info!("Listening on http://{}", addr);
-
-        server
+        Server::builder(http_stream)
+            .serve(make_svc)
+            .map_err(|e| error!("error in hyper server: {}", e))
     }));
 }
