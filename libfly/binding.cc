@@ -526,8 +526,7 @@ extern "C"
 
     if (try_catch.HasCaught())
     {
-      // deno::HandleException(context, try_catch.Exception());
-      printf("ex! %s\n", *v8::String::Utf8Value(rt->isolate, try_catch.Exception()));
+      HandleException(context, try_catch.Exception());
       return 0;
     }
 
