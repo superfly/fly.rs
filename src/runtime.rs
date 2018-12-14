@@ -136,6 +136,7 @@ impl JsRuntime {
 pub struct Runtime {
   pub ptr: JsRuntime,
   pub name: String,
+  pub version: String,
   pub event_loop: Mutex<current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
@@ -197,7 +198,7 @@ fn init_event_loop() -> (
 }
 
 impl Runtime {
-  pub fn new(name: Option<String>, settings: &Settings) -> Box<Runtime> {
+  pub fn new(name: Option<String>, version: Option<String>, settings: &Settings) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
     let (rthandle, txready, rxquit) = init_event_loop();
@@ -205,6 +206,7 @@ impl Runtime {
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
       name: name.unwrap_or("v8".to_string()),
+      version: version.unwrap_or(String::new()),
       event_loop: Mutex::new(rthandle.clone()),
       ready_ch: Some(txready),
       quit_ch: Some(rxquit),

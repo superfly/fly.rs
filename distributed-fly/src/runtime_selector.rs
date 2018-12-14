@@ -75,9 +75,9 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                         })),
                     }
                 };
-                let mut rt = Runtime::new(Some(rel.app.clone()), &settings);
+                let mut rt = Runtime::new(Some(rel.app_id.to_string()), Some(rel.version.to_string()), &settings);
                 let merged_conf = rel.clone().parsed_config().unwrap();
-                rt.eval(
+                rt.eval(    
                     "<app config>",
                     &format!("window.app = {{ config: {} }};", merged_conf),
                 );

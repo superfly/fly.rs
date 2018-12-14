@@ -31,13 +31,13 @@ lazy_static! {
     pub static ref HTTP_RESPONSE_COUNTER: IntCounterVec = register_int_counter_vec!(
         "fly_http_responses_total",
         "Total number of HTTP responses made.",
-        &["runtime", "status"]
+        &["runtime", "version", "status"]
     )
     .unwrap();
     pub static ref HTTP_RESPONSE_TIME_HISTOGRAM: HistogramVec = register_histogram_vec!(
         "fly_http_response_time_histogram_seconds",
         "HTTP response times by runtime, in seconds.",
-        &["runtime"],
+        &["runtime", "version"],
         vec![0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 60.0]
     )
     .unwrap();

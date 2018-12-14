@@ -48,8 +48,6 @@ use tokio_openssl::SslAcceptorExt;
 #[macro_use]
 extern crate prometheus;
 
-use floating_duration::TimeAsFloat;
-
 mod cert;
 mod metrics;
 mod proxy;
@@ -69,10 +67,6 @@ lazy_static! {
         )
         .unwrap();
 }
-
-static CURVES: &str = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256";
-
-use std::time;
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
@@ -133,7 +127,6 @@ fn main() {
         openssl::ssl::select_next_proto(b"\x02h2\x08http/1.1", client)
             .ok_or(openssl::ssl::AlpnError::NOACK)
     });
-    tls_builder.set_cipher_list(CURVES).unwrap();
 
     let certs_path = {
         match GLOBAL_SETTINGS.read().unwrap().certs_path {
@@ -175,12 +168,12 @@ fn main() {
         .map_err(|e| error!("error in stream: {}", e))
         .for_each(move |stream| {
             let remote_addr = stream.peer_addr().unwrap();
-            let start = time::Instant::now();
+            let timer = TLS_HANDSHAKE_TIME_HISTOGRAM.start_timer();
             tls_acceptor
                 .accept_async(stream)
                 .map_err(|e| error!("error handshake conn: {}", e))
                 .and_then(move |stream| {
-                    TLS_HANDSHAKE_TIME_HISTOGRAM.observe(start.elapsed().as_fractional_secs());
+                    timer.observe_duration();
                     let h = hyper::server::conn::Http::new();
                     h.serve_connection(
                         stream,

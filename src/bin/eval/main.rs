@@ -29,7 +29,7 @@ fn main() {
         .index(1),
     ).get_matches();
 
-  let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
+  let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap());
   debug!("Loading dev tools");
   runtime.eval_file("v8env/dist/dev-tools.js");
   runtime.eval("<installDevTools>", "installDevTools();");

@@ -59,7 +59,7 @@ fn main() {
     info!("V8 version: {}", libfly::version());
 
     let entry_file = matches.value_of("input").unwrap();
-    let mut runtime = Runtime::new(None, &SETTINGS.read().unwrap());
+    let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap());
 
     debug!("Loading dev tools");
     runtime.eval_file("v8env/dist/dev-tools.js");

@@ -94,7 +94,7 @@ pub fn serve_http(
                 .status(StatusCode::SERVICE_UNAVAILABLE)
                 .body(Body::empty())
                 .unwrap(),
-            Some(rt.name.clone()),
+            Some((rt.name.clone(), rt.version.clone())),
         );
     }
 
@@ -138,7 +138,7 @@ pub fn serve_http(
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .body(Body::empty())
                     .unwrap(),
-                Some(rt.name.clone()),
+                Some((rt.name.clone(), rt.version.clone())),
             );
         }
 
@@ -166,7 +166,7 @@ pub fn serve_http(
 
                 Ok(Response::from_parts(parts, body))
             }),
-            Some(rt.name.clone()),
+            Some((rt.name.clone(), rt.version.clone())),
         )
     } else {
         future_response(
@@ -174,23 +174,23 @@ pub fn serve_http(
                 .status(StatusCode::SERVICE_UNAVAILABLE)
                 .body(Body::empty())
                 .unwrap(),
-            Some(rt.name.clone()),
+            Some((rt.name.clone(), rt.version.clone())),
         )
     }
 }
 
-fn future_response(res: Response<Body>, name: Option<String>) -> BoxedResponseFuture {
-    wrap_future(future::ok(res), name)
+fn future_response(res: Response<Body>, namever: Option<(String, String)>) -> BoxedResponseFuture {
+    wrap_future(future::ok(res), namever)
 }
 
-fn wrap_future<F>(fut: F, maybe_name: Option<String>) -> BoxedResponseFuture
+fn wrap_future<F>(fut: F, namever: Option<(String, String)>) -> BoxedResponseFuture
 where
     F: Future<Item = Response<Body>, Error = futures::Canceled> + Send + 'static,
 {
     Box::new(fut.and_then(move |res| {
-        let rt_name = maybe_name.unwrap_or(String::new());
+        let (name, ver) = namever.unwrap_or((String::new(), String::new()));
         metrics::HTTP_RESPONSE_COUNTER
-            .with_label_values(&[rt_name.as_str(), res.status().as_str()])
+            .with_label_values(&[name.as_str(), ver.as_str(), res.status().as_str()])
             .inc();
         Ok(res)
     }))
