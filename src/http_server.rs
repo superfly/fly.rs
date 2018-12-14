@@ -10,7 +10,9 @@ use std::sync::atomic::Ordering;
 use hyper::body::Payload;
 use hyper::{header, Body, Request, Response, StatusCode};
 
+use floating_duration::TimeAsFloat;
 use std::io;
+use std::time;
 
 type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send>;
 
@@ -20,6 +22,7 @@ pub fn serve_http(
     selector: &RuntimeSelector,
     remote_addr: SocketAddr,
 ) -> BoxedResponseFuture {
+    let timer = time::Instant::now();
     info!("serving http: {}", req.uri());
     let (parts, body) = req.into_parts();
     warn!("headers: {:?}", parts.headers);
@@ -32,6 +35,7 @@ pub fn serve_http(
                         .status(StatusCode::NOT_FOUND)
                         .body(Body::empty())
                         .unwrap(),
+                    timer,
                     None,
                 )
             }
@@ -47,6 +51,7 @@ pub fn serve_http(
                             .status(StatusCode::BAD_REQUEST)
                             .body(Body::from("Bad host header"))
                             .unwrap(),
+                        timer,
                         None,
                     );
                 }
@@ -57,6 +62,7 @@ pub fn serve_http(
                         .status(StatusCode::NOT_FOUND)
                         .body(Body::empty())
                         .unwrap(),
+                    timer,
                     None,
                 )
             }
@@ -72,6 +78,7 @@ pub fn serve_http(
                         .status(StatusCode::NOT_FOUND)
                         .body(Body::from("app not found"))
                         .unwrap(),
+                    timer,
                     None,
                 );
             }
@@ -83,6 +90,7 @@ pub fn serve_http(
                     .status(StatusCode::SERVICE_UNAVAILABLE)
                     .body(Body::empty())
                     .unwrap(),
+                timer,
                 None,
             );
         }
@@ -94,6 +102,7 @@ pub fn serve_http(
                 .status(StatusCode::SERVICE_UNAVAILABLE)
                 .body(Body::empty())
                 .unwrap(),
+            timer,
             Some((rt.name.clone(), rt.version.clone())),
         );
     }
@@ -138,6 +147,7 @@ pub fn serve_http(
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .body(Body::empty())
                     .unwrap(),
+                timer,
                 Some((rt.name.clone(), rt.version.clone())),
             );
         }
@@ -166,6 +176,7 @@ pub fn serve_http(
 
                 Ok(Response::from_parts(parts, body))
             }),
+            timer,
             Some((rt.name.clone(), rt.version.clone())),
         )
     } else {
@@ -174,23 +185,37 @@ pub fn serve_http(
                 .status(StatusCode::SERVICE_UNAVAILABLE)
                 .body(Body::empty())
                 .unwrap(),
+            timer,
             Some((rt.name.clone(), rt.version.clone())),
         )
     }
 }
 
-fn future_response(res: Response<Body>, namever: Option<(String, String)>) -> BoxedResponseFuture {
-    wrap_future(future::ok(res), namever)
+fn future_response(
+    res: Response<Body>,
+    timer: time::Instant,
+    namever: Option<(String, String)>,
+) -> BoxedResponseFuture {
+    wrap_future(future::ok(res), timer, namever)
 }
 
-fn wrap_future<F>(fut: F, namever: Option<(String, String)>) -> BoxedResponseFuture
+fn wrap_future<F>(
+    fut: F,
+    timer: time::Instant,
+    namever: Option<(String, String)>,
+) -> BoxedResponseFuture
 where
     F: Future<Item = Response<Body>, Error = futures::Canceled> + Send + 'static,
 {
     Box::new(fut.and_then(move |res| {
         let (name, ver) = namever.unwrap_or((String::new(), String::new()));
+        let status = res.status();
+        let status_str = status.as_str();
+        metrics::HTTP_RESPONSE_TIME_HISTOGRAM
+            .with_label_values(&[name.as_str(), ver.as_str(), status_str])
+            .observe(timer.elapsed().as_fractional_secs());
         metrics::HTTP_RESPONSE_COUNTER
-            .with_label_values(&[name.as_str(), ver.as_str(), res.status().as_str()])
+            .with_label_values(&[name.as_str(), ver.as_str(), status_str])
             .inc();
         Ok(res)
     }))
