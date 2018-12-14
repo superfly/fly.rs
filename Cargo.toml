@@ -45,6 +45,7 @@ chrono = "0.4"
 serde_derive = "1"
 serde = "1"
 serde_json = "1.0"
+prometheus = "0.4"
 
 [workspace]
 members = [

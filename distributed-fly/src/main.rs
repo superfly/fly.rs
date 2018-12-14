@@ -21,9 +21,10 @@ use tokio::timer::Interval;
 extern crate hyper;
 use futures::{future, Future, Stream};
 
-use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::Server;
+
+use tokio::net::{TcpListener, TcpStream};
 
 use env_logger::Env;
 
@@ -44,8 +45,16 @@ use rusoto_credential::{AwsCredentials, EnvironmentProvider, ProvideAwsCredentia
 
 use tokio_openssl::SslAcceptorExt;
 
+#[macro_use]
+extern crate prometheus;
+
+use floating_duration::TimeAsFloat;
+
 mod cert;
+mod metrics;
 mod proxy;
+
+use crate::metrics::*;
 
 use r2d2_redis::RedisConnectionManager;
 
@@ -62,6 +71,8 @@ lazy_static! {
 }
 
 static CURVES: &str = "ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256";
+
+use std::time;
 
 fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
@@ -91,8 +102,8 @@ fn main() {
     .parse()
     .unwrap();
 
-    let http_listener = tokio::net::TcpListener::bind(&addr).unwrap();
-    let tls_listener = tokio::net::TcpListener::bind(&tls_addr).unwrap();
+    let http_listener = TcpListener::bind(&addr).unwrap();
+    let tls_listener = TcpListener::bind(&tls_addr).unwrap();
 
     let mut tls_builder =
         openssl::ssl::SslAcceptor::mozilla_intermediate(openssl::ssl::SslMethod::tls()).unwrap();
@@ -164,20 +175,19 @@ fn main() {
         .map_err(|e| error!("error in stream: {}", e))
         .for_each(move |stream| {
             let remote_addr = stream.peer_addr().unwrap();
-            tokio::spawn(
-                tls_acceptor
-                    .accept_async(stream)
-                    .map_err(|e| error!("error handshake conn: {}", e))
-                    .and_then(move |stream| {
-                        let h = hyper::server::conn::Http::new();
-                        h.serve_connection(
-                            stream,
-                            service_fn(move |req| serve_http(true, req, &*SELECTOR, remote_addr)),
-                        )
-                        .map_err(|e| error!("error serving conn: {}", e))
-                    }),
-            );
-            Ok(())
+            let start = time::Instant::now();
+            tls_acceptor
+                .accept_async(stream)
+                .map_err(|e| error!("error handshake conn: {}", e))
+                .and_then(move |stream| {
+                    TLS_HANDSHAKE_TIME_HISTOGRAM.observe(start.elapsed().as_fractional_secs());
+                    let h = hyper::server::conn::Http::new();
+                    h.serve_connection(
+                        stream,
+                        service_fn(move |req| serve_http(true, req, &*SELECTOR, remote_addr)),
+                    )
+                    .map_err(|e| error!("error serving conn: {}", e))
+                })
         });
 
     let make_svc = make_service_fn(|conn: &proxy::ProxyTcpStream| {
@@ -188,6 +198,21 @@ fn main() {
     let http_stream = http_listener
         .incoming()
         .and_then(|stream| proxy::ProxyTcpStream::peek(stream));
+
+    let prom_listener: Option<TcpListener> = {
+        let s = GLOBAL_SETTINGS.read().unwrap();
+        if let Some(ref raw) = s.prometheus_bind_addr {
+            match raw.parse() {
+                Ok(addr) => Some(TcpListener::bind(&addr).unwrap()),
+                Err(e) => {
+                    error!("error parsing prometheus bind addr: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    };
 
     tokio::run(future::lazy(move || {
         tokio::spawn(
@@ -206,11 +231,28 @@ fn main() {
                 }),
         );
 
-        tokio::spawn(tls_stream);
+        tokio::spawn(
+            Server::builder(http_stream)
+                .serve(make_svc)
+                .map_err(|e| error!("error in hyper server: {}", e)),
+        );
+        info!("HTTP listening on {}", addr);
 
-        info!("Listening on http://{}", addr);
-        Server::builder(http_stream)
-            .serve(make_svc)
-            .map_err(|e| error!("error in hyper server: {}", e))
+        tokio::spawn(tls_stream);
+        info!("HTTPS listening on {}", tls_addr);
+
+        if let Some(prom_ln) = prom_listener {
+            let addr = prom_ln.local_addr().unwrap();
+            tokio::spawn(
+                Server::builder(prom_ln.incoming())
+                    .serve(make_service_fn(|_conn: &TcpStream| {
+                        service_fn(move |req| fly::metrics::serve_metrics_http(req))
+                    }))
+                    .map_err(|e| error!("error in hyper prom server: {}", e)),
+            );
+            info!("Prometheus listening on {}", addr);
+        }
+
+        Ok(())
     }));
 }

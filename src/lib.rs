@@ -8,6 +8,9 @@ extern crate lazy_static;
 #[macro_use]
 extern crate lazy_static_include;
 
+#[macro_use]
+extern crate prometheus;
+
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 
 pub static NEXT_EVENT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -32,6 +35,8 @@ pub use crate::runtime_selector::{RuntimeSelector, SelectorError};
 pub mod dns_server;
 pub mod fixed_runtime_selector;
 pub mod http_server;
+
+pub mod metrics;
 
 mod compiler;
 mod disk_fs;

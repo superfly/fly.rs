@@ -18,7 +18,7 @@ impl ProxyTcpStream {
         let mut bytes = [0; 107];
         let mut stream = Some(stream);
         future::poll_fn(move || {
-            let n = try_ready!(stream.as_mut().unwrap().poll_peek(&mut bytes));
+            let _n = try_ready!(stream.as_mut().unwrap().poll_peek(&mut bytes));
             // TODO: check bytes[..n] for PROXY line
             let mut stream = stream.take().unwrap();
             let mut remote_addr: SocketAddr = stream.peer_addr().unwrap();
