@@ -165,22 +165,25 @@ fn main() {
     let tls_stream = tls_listener
         .incoming()
         .and_then(|stream| proxy::ProxyTcpStream::peek(stream))
-        .map_err(|e| error!("error in stream: {}", e))
+        .map_err(|e| error!("error in incoming tls conn: {}", e))
         .for_each(move |stream| {
             let remote_addr = stream.peer_addr().unwrap();
             let timer = TLS_HANDSHAKE_TIME_HISTOGRAM.start_timer();
-            tls_acceptor
-                .accept_async(stream)
-                .map_err(|e| error!("error handshake conn: {}", e))
-                .and_then(move |stream| {
-                    timer.observe_duration();
-                    let h = hyper::server::conn::Http::new();
-                    h.serve_connection(
-                        stream,
-                        service_fn(move |req| serve_http(true, req, &*SELECTOR, remote_addr)),
-                    )
-                    .map_err(|e| error!("error serving conn: {}", e))
-                })
+            tokio::spawn(
+                tls_acceptor
+                    .accept_async(stream)
+                    .map_err(|e| error!("error handshake conn: {}", e))
+                    .and_then(move |stream| {
+                        timer.observe_duration();
+                        let h = hyper::server::conn::Http::new();
+                        h.serve_connection(
+                            stream,
+                            service_fn(move |req| serve_http(true, req, &*SELECTOR, remote_addr)),
+                        )
+                        .map_err(|e| error!("error serving conn: {}", e))
+                    }),
+            );
+            Ok(())
         });
 
     let make_svc = make_service_fn(|conn: &proxy::ProxyTcpStream| {
@@ -227,7 +230,7 @@ fn main() {
         tokio::spawn(
             Server::builder(http_stream)
                 .serve(make_svc)
-                .map_err(|e| error!("error in hyper server: {}", e)),
+                .map_err(|e| error!("error in http server: {}", e)),
         );
         info!("HTTP listening on {}", addr);
 
@@ -241,7 +244,7 @@ fn main() {
                     .serve(make_service_fn(|_conn: &TcpStream| {
                         service_fn(move |req| fly::metrics::serve_metrics_http(req))
                     }))
-                    .map_err(|e| error!("error in hyper prom server: {}", e)),
+                    .map_err(|e| error!("error in http prom server: {}", e)),
             );
             info!("Prometheus listening on {}", addr);
         }
