@@ -72,6 +72,14 @@ fn main() {
     let env = Env::default().filter_or("LOG_LEVEL", "info");
     env_logger::init_from_env(env);
 
+    let _guard = {
+        if let Some(ref sentry_dns) = GLOBAL_SETTINGS.read().unwrap().sentry_dns {
+            Some(sentry::init(sentry_dns.as_str()))
+        } else {
+            None
+        }
+    };
+
     let addr = {
         let s = GLOBAL_SETTINGS.read().unwrap();
         format!(

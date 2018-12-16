@@ -1,6 +1,3 @@
-extern crate cbindgen;
-extern crate cc;
-
 use std::env;
 use std::path::Path;
 

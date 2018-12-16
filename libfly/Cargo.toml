@@ -8,4 +8,3 @@ libc = "*"
 
 [build-dependencies]
 cc = "*"
-cbindgen = "0.6"
