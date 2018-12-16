@@ -23,9 +23,8 @@ pub fn serve_http(
     remote_addr: SocketAddr,
 ) -> BoxedResponseFuture {
     let timer = time::Instant::now();
-    info!("serving http: {}", req.uri());
+    debug!("serving http: {}", req.uri());
     let (parts, body) = req.into_parts();
-    warn!("headers: {:?}", parts.headers);
     let host = if parts.version == hyper::Version::HTTP_2 {
         match parts.uri.host() {
             Some(h) => h,
