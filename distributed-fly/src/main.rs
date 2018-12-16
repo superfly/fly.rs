@@ -168,6 +168,8 @@ fn main() {
         )
         .unwrap();
 
+    tls_builder.set_session_cache_mode(openssl::ssl::SslSessionCacheMode::BOTH);
+
     let tls_acceptor = tls_builder.build();
 
     let tls_stream = tls_listener

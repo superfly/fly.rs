@@ -304,9 +304,9 @@ pub fn start_new_release_check() {
                                 match redis::cmd("HGET")
                                   .arg("app_hosts")
                                   .arg(h)
-                                  .query::<String>(&*conn)
+                                  .query::<Option<String>>(&*conn)
                                 {
-                                  Ok(app_key) => match APP_BY_HOSTNAME.write() {
+                                  Ok(Some(app_key)) => match APP_BY_HOSTNAME.write() {
                                     Ok(mut guard) => {
                                       guard.insert(h.clone(), app_key);
                                     }
@@ -314,6 +314,7 @@ pub fn start_new_release_check() {
                                       error!("error acquiring APP_BY_HOSTNAME write lock: {}", e)
                                     }
                                   },
+                                  Ok(None) => debug!("no app host found for {}", h),
                                   Err(e) => error!("could not get app_hosts for {}: {}", h, e),
                                 }
                               }
