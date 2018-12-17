@@ -64,7 +64,8 @@ impl PostgresDataStore {
           Some(tls) => postgres::TlsMode::Require(tls),
           None => postgres::TlsMode::None,
         },
-      ).unwrap();
+      )
+      .unwrap();
       match conn.execute(&format!("CREATE DATABASE \"{}\"", dbname), NO_PARAMS) {
         Ok(_) => debug!("database created with success"),
         Err(e) => warn!(
@@ -86,7 +87,8 @@ impl PostgresDataStore {
           Some(tls) => TlsMode::Require(Box::new(tls)),
           None => TlsMode::None,
         },
-      ).unwrap();
+      )
+      .unwrap();
       r2d2::Pool::builder().build(manager).unwrap()
     } else {
       let manager = PostgresConnectionManager::new(
@@ -95,7 +97,8 @@ impl PostgresDataStore {
           Some(tls) => TlsMode::Require(Box::new(tls)),
           None => TlsMode::None,
         },
-      ).unwrap();
+      )
+      .unwrap();
       r2d2::Pool::builder().build(manager).unwrap()
     };
     PostgresDataStore { pool }
@@ -200,7 +203,8 @@ fn ensure_coll(conn: &postgres::Connection, name: &str) -> postgres::Result<u64>
     format!(
       "CREATE TABLE IF NOT EXISTS {} (key TEXT PRIMARY KEY NOT NULL, obj JSONB NOT NULL)",
       name
-    ).as_str(),
+    )
+    .as_str(),
     NO_PARAMS,
   )
 }
@@ -271,7 +275,8 @@ mod tests {
             &dbname
           ),
           NO_PARAMS,
-        ).unwrap()
+        )
+        .unwrap()
         .get(0)
         .get(0)
     };

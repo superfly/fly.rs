@@ -1,0 +1,15 @@
+union ImageTransform {
+    ImageWebPEncode,
+}
+
+table ImageWebPEncode {
+    quality: short;
+    alpha_quality: short;
+    lossless: bool;
+    near_lossless: bool;
+}
+
+table ImageApply {
+    id: uint;
+    transforms: [ImageTransform];
+}
