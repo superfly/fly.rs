@@ -79,6 +79,8 @@ use super::NEXT_FUTURE_ID;
 use std::net::SocketAddr;
 use std::str;
 
+use std::time;
+
 extern crate trust_dns as dns;
 
 pub enum JsBody {
@@ -147,6 +149,7 @@ pub struct Runtime {
   pub fs_store: Box<fs_store::FsStore + 'static + Send + Sync>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
+  pub last_event_at: AtomicUsize,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
 }
@@ -241,6 +244,7 @@ impl Runtime {
         },
         None => Box::new(disk_fs::DiskFsStore::new()),
       },
+      last_event_at: ATOMIC_USIZE_INIT,
     });
 
     (*rt).ptr.0 = unsafe {
@@ -314,6 +318,68 @@ impl Runtime {
       .spawn(fut.then(move |_| Ok(trace!("SPAWNED FUTURE IS DONE id: {}", n))))
       .unwrap();
   }
+
+  pub fn dispatch_event(
+    &self,
+    id: u32,
+    event: JsEvent,
+  ) -> Option<Result<EventResponseChannel, EventDispatchError>> {
+    let res = match event {
+      JsEvent::Fetch(req) => match self.fetch_events {
+        None => return None,
+        Some(ref ch) => match self.responses.lock() {
+          Ok(mut guard) => {
+            let (tx, rx) = oneshot::channel::<JsHttpResponse>();
+            guard.insert(id, tx);
+            match ch.unbounded_send(req) {
+              Ok(_) => EventResponseChannel::Http(rx),
+              Err(e) => return Some(Err(EventDispatchError::Http(e))),
+            }
+          }
+          Err(_) => return Some(Err(EventDispatchError::PoisonedLock)),
+        },
+      },
+      JsEvent::Resolv(req) => match self.resolv_events {
+        None => return None,
+        Some(ref ch) => match self.dns_responses.lock() {
+          Ok(mut guard) => {
+            let (tx, rx) = oneshot::channel::<ops::dns::JsDnsResponse>();
+            guard.insert(id, tx);
+            match ch.unbounded_send(req) {
+              Ok(_) => EventResponseChannel::Dns(rx),
+              Err(e) => return Some(Err(EventDispatchError::Dns(e))),
+            }
+          }
+          Err(_) => return Some(Err(EventDispatchError::PoisonedLock)),
+        },
+      },
+    };
+
+    if let Ok(epoch) = time::SystemTime::now().duration_since(time::UNIX_EPOCH) {
+      self
+        .last_event_at
+        .store(epoch.as_secs() as usize, Ordering::SeqCst);
+    }
+
+    Some(Ok(res))
+  }
+}
+
+pub enum JsEvent {
+  Fetch(JsHttpRequest),
+  Resolv(ops::dns::JsDnsRequest),
+}
+
+pub enum EventResponseChannel {
+  Http(oneshot::Receiver<JsHttpResponse>),
+  Dns(oneshot::Receiver<ops::dns::JsDnsResponse>),
+}
+
+#[derive(Debug)]
+pub enum EventDispatchError {
+  PoisonedLock,
+  Http(mpsc::SendError<JsHttpRequest>),
+  Dns(mpsc::SendError<ops::dns::JsDnsRequest>),
 }
 
 #[cfg(debug_assertions)]

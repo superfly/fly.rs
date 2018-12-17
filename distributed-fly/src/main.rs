@@ -53,6 +53,7 @@ mod metrics;
 mod proxy;
 
 use crate::metrics::*;
+use fly::metrics::*;
 
 use r2d2_redis::RedisConnectionManager;
 
@@ -221,21 +222,7 @@ fn main() {
     };
 
     tokio::run(future::lazy(move || {
-        tokio::spawn(
-            Interval::new_interval(Duration::from_secs(30))
-                .map_err(|e| error!("timer error: {}", e))
-                .for_each(|_| {
-                    SELECTOR
-                        .runtimes
-                        .read()
-                        .unwrap()
-                        .iter()
-                        .for_each(|(k, rt)| {
-                            info!("{} {:?}", k, rt.heap_statistics());
-                        });
-                    Ok(())
-                }),
-        );
+        tokio::spawn(runtime_monitoring());
 
         tokio::spawn(
             Server::builder(http_stream)
@@ -261,4 +248,41 @@ fn main() {
 
         Ok(())
     }));
+}
+
+fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
+    Interval::new_interval(Duration::from_secs(15))
+        .map_err(|e| error!("timer error: {}", e))
+        .for_each(|_| {
+            SELECTOR
+                .runtimes
+                .read()
+                .unwrap()
+                .iter()
+                .for_each(|(_, rt)| {
+                    let stats = rt.heap_statistics();
+                    RUNTIME_USED_HEAP_GAUGE
+                        .with_label_values(&[rt.name.as_str(), &rt.version.as_str()])
+                        .set(stats.used_heap_size as i64);
+                    RUNTIME_TOTAL_HEAP_GAUGE
+                        .with_label_values(&[rt.name.as_str(), &rt.version.as_str()])
+                        .set(stats.total_heap_size as i64);
+                    RUNTIME_EXTERNAL_ALLOCATIONS_GAUGE
+                        .with_label_values(&[rt.name.as_str(), &rt.version.as_str()])
+                        .set(stats.externally_allocated as i64);
+                    RUNTIME_MALLOCED_MEMORY_GAUGE
+                        .with_label_values(&[rt.name.as_str(), &rt.version.as_str()])
+                        .set(stats.malloced_memory as i64);
+                    RUNTIME_PEAK_MALLOCED_MEMORY_GAUGE
+                        .with_label_values(&[rt.name.as_str(), &rt.version.as_str()])
+                        .set(stats.peak_malloced_memory as i64);
+                    info!(
+                        "{}:v{} runtime heap at: {:.2} MB",
+                        rt.name,
+                        rt.version,
+                        stats.used_heap_size as f64 / 1024.0 / 1024.0
+                    );
+                });
+            Ok(())
+        })
 }

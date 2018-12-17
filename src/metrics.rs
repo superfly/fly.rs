@@ -2,7 +2,7 @@ use futures::{future, Canceled, Future};
 use http::header;
 use hyper::{Body, Request, Response, StatusCode};
 
-use prometheus::{Counter, Encoder, Gauge, HistogramVec, IntCounterVec, Opts, TextEncoder};
+use prometheus::{Encoder, IntGaugeVec, HistogramVec, IntCounterVec, TextEncoder};
 
 pub fn serve_metrics_http(
     _req: Request<Body>,
@@ -41,4 +41,34 @@ lazy_static! {
         vec![0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 60.0]
     )
     .unwrap();
+
+    pub static ref RUNTIME_USED_HEAP_GAUGE: IntGaugeVec = register_int_gauge_vec!(
+        "fly_runtime_used_heap_size_bytes",
+        "Used heap for a runtime, in bytes.",
+        &["runtime", "version"]
+    ).unwrap();
+
+    pub static ref RUNTIME_TOTAL_HEAP_GAUGE: IntGaugeVec = register_int_gauge_vec!(
+        "fly_runtime_total_heap_size_bytes",
+        "Total heap for a runtime, in bytes.",
+        &["runtime", "version"]
+    ).unwrap();
+
+    pub static ref RUNTIME_EXTERNAL_ALLOCATIONS_GAUGE: IntGaugeVec = register_int_gauge_vec!(
+        "fly_runtime_externally_allocated_size_bytes",
+        "Externally allocated size for a runtime, in bytes.",
+        &["runtime", "version"]
+    ).unwrap();
+
+    pub static ref RUNTIME_MALLOCED_MEMORY_GAUGE: IntGaugeVec = register_int_gauge_vec!(
+        "fly_runtime_malloced_memory_bytes",
+        "Amount of memory, obtained via malloc, for a runtime, in bytes.",
+        &["runtime", "version"]
+    ).unwrap();
+
+    pub static ref RUNTIME_PEAK_MALLOCED_MEMORY_GAUGE: IntGaugeVec = register_int_gauge_vec!(
+        "fly_runtime_peak_malloced_memory_bytes",
+        "Peak amount of memory, obtained via malloc, for a runtime, in bytes.",
+        &["runtime", "version"]
+    ).unwrap();
 }

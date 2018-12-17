@@ -1,8 +1,8 @@
-use futures::{future, sync::oneshot, Future, Stream};
+use futures::{future, Future, Stream};
 use std::net::SocketAddr;
 
 use crate::metrics;
-use crate::runtime::{JsBody, JsHttpRequest, JsHttpResponse};
+use crate::runtime::{EventResponseChannel, JsBody, JsEvent, JsHttpRequest, JsHttpResponse};
 use crate::{RuntimeSelector, NEXT_EVENT_ID};
 
 use std::sync::atomic::Ordering;
@@ -95,19 +95,6 @@ pub fn serve_http(
         }
     };
 
-    if rt.fetch_events.is_none() {
-        return future_response(
-            Response::builder()
-                .status(StatusCode::SERVICE_UNAVAILABLE)
-                .body(Body::empty())
-                .unwrap(),
-            timer,
-            Some((rt.name.clone(), rt.version.clone())),
-        );
-    }
-
-    let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-
     let url: String = if parts.version == hyper::Version::HTTP_2 {
         format!("{}", parts.uri)
     } else {
@@ -118,15 +105,11 @@ pub fn serve_http(
             parts.uri.path_and_query().unwrap()
         )
     };
+    let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
-    // double checking, could've been removed since last check (maybe not? may need a lock)
-    if let Some(ref ch) = rt.fetch_events {
-        let rx = {
-            let (tx, rx) = oneshot::channel::<JsHttpResponse>();
-            rt.responses.lock().unwrap().insert(req_id, tx);
-            rx
-        };
-        let sendres = ch.unbounded_send(JsHttpRequest {
+    match rt.dispatch_event(
+        req_id,
+        JsEvent::Fetch(JsHttpRequest {
             id: req_id,
             method: parts.method,
             remote_addr: remote_addr,
@@ -137,21 +120,28 @@ pub fn serve_http(
             } else {
                 Some(JsBody::HyperBody(body))
             },
-        });
-
-        if let Err(e) = sendres {
-            error!("error sending js http request: {}", e);
-            return future_response(
+        }),
+    ) {
+        None => future_response(
+            Response::builder()
+                .status(StatusCode::SERVICE_UNAVAILABLE)
+                .body(Body::empty())
+                .unwrap(),
+            timer,
+            Some((rt.name.clone(), rt.version.clone())),
+        ),
+        Some(Err(e)) => {
+            error!("error sending js http request: {:?}", e);
+            future_response(
                 Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
                     .body(Body::empty())
                     .unwrap(),
                 timer,
                 Some((rt.name.clone(), rt.version.clone())),
-            );
+            )
         }
-
-        wrap_future(
+        Some(Ok(EventResponseChannel::Http(rx))) => wrap_future(
             rx.and_then(move |res: JsHttpResponse| {
                 let (mut parts, mut body) = Response::<Body>::default().into_parts();
                 parts.headers = res.headers;
@@ -177,16 +167,8 @@ pub fn serve_http(
             }),
             timer,
             Some((rt.name.clone(), rt.version.clone())),
-        )
-    } else {
-        future_response(
-            Response::builder()
-                .status(StatusCode::SERVICE_UNAVAILABLE)
-                .body(Body::empty())
-                .unwrap(),
-            timer,
-            Some((rt.name.clone(), rt.version.clone())),
-        )
+        ),
+        _ => unimplemented!(),
     }
 }
 

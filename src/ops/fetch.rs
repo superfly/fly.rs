@@ -112,7 +112,7 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         }))
         .is_err()
         {
-            error!("error sending http response");
+            error!("error sending fetch http response");
             return Ok(());
         }
         debug!("done with http request");

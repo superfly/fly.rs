@@ -13,8 +13,6 @@ use self::trust_dns_proto::op::response_code::ResponseCode;
 use self::trust_dns_proto::rr::{Record, RrsetRecords};
 use self::trust_dns_server::authority::authority::LookupRecords;
 
-use futures::sync::oneshot;
-
 use self::trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
 use std::io;
 
@@ -25,6 +23,7 @@ extern crate flatbuffers;
 use tokio::prelude::*;
 
 use crate::ops::dns::*;
+use crate::runtime::{EventResponseChannel, JsEvent};
 use crate::{RuntimeSelector, NEXT_EVENT_ID};
 
 use std::sync::atomic::Ordering;
@@ -93,36 +92,36 @@ impl RequestHandler for DnsServer {
             }
         };
 
-        if rt.resolv_events.is_none() {
-            return res.send_response(
-                MessageResponseBuilder::new(Some(req.message.raw_queries())).error_msg(
-                    req.message.id(),
-                    req.message.op_code(),
-                    ResponseCode::ServFail,
-                ),
-            );
-        }
-
-        let ch = rt.resolv_events.as_ref().unwrap();
-        let rx = {
-            let (tx, rx) = oneshot::channel::<JsDnsResponse>();
-            rt.dns_responses.lock().unwrap().insert(eid, tx);
-            rx
+        let rx = match rt.dispatch_event(
+            eid,
+            JsEvent::Resolv(JsDnsRequest {
+                id: eid,
+                message_type: req.message.message_type(),
+                queries: req.message.queries().to_vec(),
+            }),
+        ) {
+            None => {
+                return res.send_response(
+                    MessageResponseBuilder::new(Some(req.message.raw_queries())).error_msg(
+                        req.message.id(),
+                        req.message.op_code(),
+                        ResponseCode::ServFail,
+                    ),
+                )
+            }
+            Some(Err(e)) => {
+                error!("error sending js dns request: {:?}", e);
+                return res.send_response(
+                    MessageResponseBuilder::new(Some(req.message.raw_queries())).error_msg(
+                        req.message.id(),
+                        req.message.op_code(),
+                        ResponseCode::ServFail,
+                    ),
+                );
+            }
+            Some(Ok(EventResponseChannel::Dns(rx))) => rx,
+            _ => unimplemented!(),
         };
-        let sendres = ch.unbounded_send(JsDnsRequest {
-            id: eid,
-            message_type: req.message.message_type(),
-            queries: req.message.queries().to_vec(),
-        });
-        if let Err(_e) = sendres {
-            return res.send_response(
-                MessageResponseBuilder::new(Some(req.message.raw_queries())).error_msg(
-                    req.message.id(),
-                    req.message.op_code(),
-                    ResponseCode::ServFail,
-                ),
-            );
-        }
 
         let dns_res: JsDnsResponse = rx.wait().unwrap();
         let answers: Vec<Record> = dns_res
@@ -135,7 +134,8 @@ impl RequestHandler for DnsServer {
                     ans.rdata.to_record_type(),
                     ans.rdata.to_owned(),
                 )
-            }).collect();
+            })
+            .collect();
         let mut msg = MessageResponseBuilder::new(Some(req.message.raw_queries()));
         let msg = {
             msg.answers(AuthLookup::Records(LookupRecords::RecordsIter(
