@@ -105,20 +105,30 @@ export function addEventListener(name: string, fn: Function) {
             }) : null
         })
 
-        fn.call(window, {
-          request: req,
-          respondWith(resfn: any) {
-            let ret = resfn;
-            if (typeof ret === "function") {
-              ret = resfn()
+        try {
+          fn.call(window, {
+            request: req,
+            respondWith(resfn: any) {
+              try {
+                let ret = resfn;
+                if (typeof ret === "function") {
+                  ret = resfn()
+                }
+                if (ret instanceof Promise) {
+                  ret.then(handleRes.bind(null, id)).catch(handleError.bind(null, id))
+                } else if (ret instanceof Response) {
+                  handleRes(id, ret)
+                }
+              } catch (e) {
+                console.log("error in fetch event respondWith")
+                handleError(id, e)
+              }
             }
-            if (ret instanceof Promise) {
-              ret.then(handleRes.bind(null, id)).catch(handleError.bind(null, id))
-            } else if (ret instanceof Response) {
-              handleRes(id, ret)
-            }
-          }
-        })
+          })
+        } catch (e) {
+          console.log("error in fetch event handler function")
+          handleError(id, e)
+        }
       })
       event_type = fbs.EventType.Fetch;
       break;
@@ -131,32 +141,32 @@ export function addEventListener(name: string, fn: Function) {
 
         let q = msg.queries(0);
 
-        // let queries: DNSQuery[] = [];
-        // for (let i = 0; i < msg.queriesLength(); i++) {
-        //   const q = msg.queries(i);
-        //   queries.push({
-        //     name: q.name(),
-        //     dnsClass: q.dnsClass(),
-        //     type: q.rrType()
-        //   })
-        // }
-
         const req = new DNSRequest(q.name(), { type: q.rrType() })
 
-        fn.call(window, {
-          request: req,
-          respondWith(resfn: any) {//DNSResponse | Promise<DNSResponse> | DNSResponseFn) {
-            let ret = resfn;
-            if (typeof ret === "function") {
-              ret = resfn()
+        try {
+          fn.call(window, {
+            request: req,
+            respondWith(resfn: any) {//DNSResponse | Promise<DNSResponse> | DNSResponseFn) {
+              try {
+                let ret = resfn;
+                if (typeof ret === "function") {
+                  ret = resfn()
+                }
+                if (ret instanceof Promise) {
+                  ret.then(handleDNSRes.bind(null, id)).catch(handleDNSError.bind(null, id))
+                } else if (ret instanceof DNSResponse) {
+                  handleDNSRes(id, ret)
+                }
+              } catch (e) {
+                console.log("error in resolv event respondWith")
+                handleDNSError(id, e)
+              }
             }
-            if (ret instanceof Promise) {
-              ret.then(handleDNSRes.bind(null, id)).catch(handleDNSError.bind(null, id))
-            } else if (ret instanceof DNSResponse) {
-              handleDNSRes(id, ret)
-            }
-          }
-        })
+          })
+        } catch (e) {
+          console.log("error in resolv event handler function")
+          handleDNSError(id, e)
+        }
       })
       event_type = fbs.EventType.Resolv;
       break;
@@ -183,7 +193,6 @@ function handleDNSError(id: number, err: Error) {
 }
 
 function handleDNSRes(id: number, res: DNSResponse) {
-  console.log("handle dns res!", res)
   const fbb = flatbuffers.createBuilder();
 
   let answers: number[] = []
@@ -312,7 +321,6 @@ function handleDNSRes(id: number, res: DNSResponse) {
 }
 
 function handleError(id: number, err: Error) {
-  console.error(err.stack);
   const fbb = flatbuffers.createBuilder();
 
   fbs.HttpResponse.startHttpResponse(fbb);
@@ -370,7 +378,6 @@ async function handleRes(id: number, res: FlyResponse) {
     // console.log("trying stuff")
     let i = 0;
     for (const [n, v] of res.headers) {
-      // console.log("doing header:", headerKeys[i]);
       const key = fbb.createString(n);
       const value = fbb.createString(v);
       fbs.HttpHeader.startHttpHeader(fbb);

@@ -34,6 +34,9 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 	const req = new FlyRequest(info, init)
 	const url = req.url
 
+	if (!url)
+		throw new Error("fetch url required")
+
 	const fbb = flatbuffers.createBuilder();
 	const urlStr = fbb.createString(url);
 

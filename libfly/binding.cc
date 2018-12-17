@@ -164,6 +164,7 @@ void HandleException(v8::Local<v8::Context> context,
   HandleExceptionStr(context, exception, &exception_str);
   if (rt != nullptr)
   {
+    printf("last exception: %s\n", exception_str.c_str());
     rt->last_exception = exception_str;
   }
   else
