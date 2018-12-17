@@ -36,6 +36,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
 
         {
             if !runtimes.read().unwrap().contains_key(&key) {
+                let mut writer = runtimes.write().unwrap();
                 let settings = {
                     use fly::settings::*;
                     let global_settings = &*GLOBAL_SETTINGS.read().unwrap();
@@ -75,9 +76,13 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                         })),
                     }
                 };
-                let mut rt = Runtime::new(Some(rel.app_id.to_string()), Some(rel.version.to_string()), &settings);
+                let mut rt = Runtime::new(
+                    Some(rel.app_id.to_string()),
+                    Some(rel.version.to_string()),
+                    &settings,
+                );
                 let merged_conf = rel.clone().parsed_config().unwrap();
-                rt.eval(    
+                rt.eval(
                     "<app config>",
                     &format!("window.app = {{ config: {} }};", merged_conf),
                 );
@@ -95,10 +100,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     // runtimes.write().unwrap().remove(&key2);
                     Ok(())
                 }));
-                {
-                    debug!("writing runtime in hashmap");
-                    runtimes.write().unwrap().insert(key.clone(), rt);
-                }
+                writer.insert(key.clone(), rt);
             }
         }
 
