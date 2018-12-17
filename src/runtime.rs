@@ -155,9 +155,10 @@ pub struct Runtime {
 }
 
 static JSINIT: Once = Once::new();
-static NEXT_RUNTIME_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
-fn init_event_loop() -> (
+fn init_event_loop(
+  name: String,
+) -> (
   current_thread::Handle,
   oneshot::Sender<()>,
   oneshot::Receiver<()>,
@@ -168,10 +169,7 @@ fn init_event_loop() -> (
     oneshot::Receiver<()>,
   )>();
   thread::Builder::new()
-    .name(format!(
-      "runtime-loop-{}",
-      NEXT_RUNTIME_ID.fetch_add(1, Ordering::SeqCst)
-    ))
+    .name(format!("runtime-loop-{}", name))
     .spawn(move || {
       let mut el = current_thread::Runtime::new().unwrap();
       let (txready, rxready) = oneshot::channel::<()>();
@@ -204,12 +202,14 @@ impl Runtime {
   pub fn new(name: Option<String>, version: Option<String>, settings: &Settings) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
-    let (rthandle, txready, rxquit) = init_event_loop();
+    let rt_name = name.unwrap_or("v8".to_string());
+    let rt_version = version.unwrap_or("0".to_string());
+    let (rthandle, txready, rxquit) = init_event_loop(format!("{}-{}", rt_name, rt_version));
 
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
-      name: name.unwrap_or("v8".to_string()),
-      version: version.unwrap_or(String::new()),
+      name: rt_name,
+      version: rt_version,
       event_loop: Mutex::new(rthandle.clone()),
       ready_ch: Some(txready),
       quit_ch: Some(rxquit),
@@ -293,10 +293,23 @@ impl Runtime {
     &mut *ptr
   }
 
-  pub fn dispose(&self) {
+  pub fn dispose(&mut self) {
+    // stop listening to events
+    self.fetch_events.take();
+    self.resolv_events.take();
+
+    match self.timers.lock() {
+      Ok(mut timers) => timers.clear(),
+      Err(_) => error!("error acquiring lock to clear timers"),
+    };
+
+    match self.streams.lock() {
+      Ok(mut streams) => streams.clear(),
+      Err(_) => error!("error acquiring lock to clear streams"),
+    };
+
     unsafe {
       js_runtime_dispose(self.ptr.0);
-      Box::from_raw(js_get_data(self.ptr.0) as *mut Runtime); // to drop it
     };
   }
 
