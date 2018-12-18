@@ -74,7 +74,7 @@ There's an issue: [#5](https://github.com/superfly/fly.rs/issues/5)
 
 ### Setup
 
-- `wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-osx-x64.tar.gz | tar xvz -C libfly`
+- `wget -qO- https://github.com/superfly/libv8/releases/download/7.2.502.13/v8-osx-x64.tar.gz | tar xvz -C libfly`
 - `git submodule update --init`
 - `cd third_party/flatbuffers`
   - `cmake -G "Unix Makefiles"`

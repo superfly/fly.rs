@@ -18,4 +18,4 @@ cd v8env
 yarn install
 node_modules/.bin/rollup -c
 cd $TRAVIS_BUILD_DIR
-wget -qO- https://github.com/superfly/libv8/releases/download/7.1.321/v8-$TRAVIS_OS_NAME-x64.tar.gz | tar xvz -C libfly
+wget -qO- https://github.com/superfly/libv8/releases/download/7.2.502.13/v8-$TRAVIS_OS_NAME-x64.tar.gz | tar xvz -C libfly
