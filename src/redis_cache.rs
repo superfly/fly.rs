@@ -11,6 +11,10 @@ use std::time;
 
 use std::collections::HashMap;
 
+use crate::metrics::*;
+
+use std::sync::Arc;
+
 lazy_static! {
   static ref REPLACE_HASH: redis::Script = redis::Script::new(
     r#"
@@ -100,7 +104,13 @@ impl CacheStore for RedisCacheStore {
     let fullkey = self.cache_key(key);
     let cfullkey = fullkey.clone();
 
-    let ns = self.ns.as_ref().cloned().unwrap_or("".to_string());
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_SETS_TOTAL
+      .with_label_values(&["redis", ns.as_str()])
+      .inc();
+    let timer = CACHE_SET_DURATION
+      .with_label_values(&["redis", ns.as_str()])
+      .start_timer();
 
     let pool = self.pool.clone();
     let cpool = pool.clone();
@@ -141,7 +151,8 @@ impl CacheStore for RedisCacheStore {
           }
         }
         Err(e) => Err(CacheError::Failure(format!("{}", e))),
-      }).and_then(move |_| {
+      })
+      .and_then(move |_| {
         data
           .map_err(|_| CacheError::Unknown)
           .fold(0, move |idx, chunk| match cpool.get() {
@@ -155,7 +166,11 @@ impl CacheStore for RedisCacheStore {
               Err(e) => Err(CacheError::Failure(format!("{}", e))),
             },
             Err(e) => Err(CacheError::Failure(format!("{}", e))),
-          }).and_then(|_| Ok(()))
+          })
+          .and_then(move |_| {
+            timer.observe_duration();
+            Ok(())
+          })
       }),
     )
   }
@@ -163,6 +178,16 @@ impl CacheStore for RedisCacheStore {
   fn get(&self, key: String) -> Box<Future<Item = Option<CacheEntry>, Error = CacheError> + Send> {
     let fullkey = self.cache_key(key);
     debug!("redis cache get with key: {}", fullkey);
+
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_GETS_TOTAL
+      .with_label_values(&["redis", ns.as_str()])
+      .inc();
+    let timer = Arc::new(
+      CACHE_GET_DURATION
+        .with_label_values(&["redis", ns.as_str()])
+        .start_timer(),
+    );
 
     let pool = self.pool.clone();
 
@@ -173,8 +198,14 @@ impl CacheStore for RedisCacheStore {
       {
         Ok(vals) => {
           if vals.0 == 0 {
+            CACHE_MISSES_TOTAL
+              .with_label_values(&["redis", ns.as_str()])
+              .inc();
             return Ok(None);
           }
+          CACHE_HITS_TOTAL
+            .with_label_values(&["redis", ns.as_str()])
+            .inc();
           Ok(Some(CacheEntry {
             meta: vals.1,
             stream: Box::new(stream::unfold(0, move |idx| match pool.get() {
@@ -187,22 +218,46 @@ impl CacheStore for RedisCacheStore {
                   if r.len() == 0 {
                     return None;
                   }
+                  let _t = timer.clone(); // keep it alive.
                   Some(future::ok((r, idx + 1)))
                 }
-                Err(e) => Some(future::err(CacheError::Failure(format!("{}", e)))),
+                Err(e) => {
+                  CACHE_ERRORS_TOTAL
+                    .with_label_values(&["redis", ns.as_str()])
+                    .inc();
+                  Some(future::err(CacheError::Failure(format!("{}", e))))
+                }
               },
-              Err(e) => Some(future::err(CacheError::Failure(format!("{}", e)))),
+              Err(e) => {
+                CACHE_ERRORS_TOTAL
+                  .with_label_values(&["redis", ns.as_str()])
+                  .inc();
+                Some(future::err(CacheError::Failure(format!("{}", e))))
+              }
             })),
           }))
         }
-        Err(e) => Err(CacheError::Failure(format!("{}", e))),
+        Err(e) => {
+          CACHE_ERRORS_TOTAL
+            .with_label_values(&["redis", ns.as_str()])
+            .inc();
+          Err(CacheError::Failure(format!("{}", e)))
+        }
       },
-      Err(e) => Err(CacheError::Failure(format!("{}", e))),
+      Err(e) => {
+        CACHE_ERRORS_TOTAL
+          .with_label_values(&["redis", ns.as_str()])
+          .inc();
+        Err(CacheError::Failure(format!("{}", e)))
+      }
     }))
   }
 
   fn del(&self, key: String) -> EmptyCacheFuture {
-    // let pool = Arc::clone(&self.pool);
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_DELS_TOTAL
+      .with_label_values(&["redis", ns.as_str()])
+      .inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache del key: {}", fullkey);
     let pool = self.pool.clone();
@@ -216,7 +271,10 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn expire(&self, key: String, ttl: u32) -> EmptyCacheFuture {
-    // let pool = Arc::clone(&self.pool);
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_EXPIRES_TOTAL
+      .with_label_values(&["redis", ns.as_str()])
+      .inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache expire key: {} w/ ttl: {}", fullkey, ttl);
 
@@ -235,7 +293,10 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn ttl(&self, key: String) -> Box<Future<Item = i32, Error = CacheError> + Send> {
-    // let pool = Arc::clone(&self.pool);
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_TTLS_TOTAL
+      .with_label_values(&["redis", ns.as_str()])
+      .inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache ttl key: {}", fullkey);
 
@@ -250,6 +311,10 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn purge_tag(&self, tag: String) -> EmptyCacheFuture {
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_PURGES_TOTAL
+      .with_label_values(&["redis", ns.as_str(), tag.as_str()])
+      .inc();
     debug!("redis cache purge_tag tag: {}", tag);
     let tagkey = self.tag_key(tag);
     let pool = self.pool.clone();
@@ -288,7 +353,10 @@ impl CacheStore for RedisCacheStore {
     debug!("redis cache set tags key: {}, tags: {:?}", key, tags);
     let fullkey = self.cache_key(&key);
 
-    let ns = self.ns.as_ref().cloned().unwrap_or("".to_string());
+    let ns = ns_or_empty(self.ns.as_ref());
+    CACHE_SET_TAGS_TOTAL
+      .with_label_values(&["redis", ns.as_str()])
+      .inc();
     let pool = self.pool.clone();
     Box::new(future::lazy(move || match pool.get() {
       Ok(conn) => {
@@ -322,6 +390,10 @@ impl CacheStore for RedisCacheStore {
       Err(e) => Err(CacheError::Failure(format!("{}", e))),
     }))
   }
+}
+
+fn ns_or_empty(ns: Option<&String>) -> String {
+  ns.cloned().unwrap_or("".to_string())
 }
 
 #[cfg(test)]
@@ -360,7 +432,8 @@ mod tests {
           }
         })),
         opts,
-      ).wait()
+      )
+      .wait()
   }
 
   #[test]
@@ -378,20 +451,19 @@ mod tests {
         ttl: None,
         meta: None,
       },
-    ).unwrap();
+    )
+    .unwrap();
 
     let entry = store.get(key.to_string()).wait().unwrap().unwrap();
     assert_eq!(v.to_vec(), entry.stream.concat2().wait().unwrap());
 
     let conn = store.pool.get().unwrap();
 
-    assert!(
-      redis::cmd("HEXISTS")
-        .arg(store.cache_key(key))
-        .arg("ts")
-        .query::<bool>(&*conn)
-        .unwrap()
-    );
+    assert!(redis::cmd("HEXISTS")
+      .arg(store.cache_key(key))
+      .arg("ts")
+      .query::<bool>(&*conn)
+      .unwrap());
   }
 
   #[test]
@@ -411,7 +483,8 @@ mod tests {
         ttl: None,
         meta: None,
       },
-    ).unwrap();
+    )
+    .unwrap();
 
     let entry = store.get(key.to_string()).wait().unwrap().unwrap();
     assert_eq!(v.to_vec(), entry.stream.concat2().wait().unwrap());
@@ -454,7 +527,8 @@ mod tests {
         ttl: None,
         meta: Some(meta.to_string()),
       },
-    ).unwrap();
+    )
+    .unwrap();
 
     let entry = store.get(key.to_string()).wait().unwrap().unwrap();
     assert_eq!(v.to_vec(), entry.stream.concat2().wait().unwrap());
@@ -488,7 +562,8 @@ mod tests {
         ttl: None,
         meta: None,
       },
-    ).unwrap();
+    )
+    .unwrap();
 
     set_value(
       &store,
@@ -499,7 +574,8 @@ mod tests {
         ttl: None,
         meta: None,
       },
-    ).unwrap();
+    )
+    .unwrap();
 
     store.purge_tag("tag2".to_string()).wait().unwrap();
 
@@ -530,7 +606,8 @@ mod tests {
         ttl: Some(100),
         meta: None,
       },
-    ).unwrap();
+    )
+    .unwrap();
 
     let entry = store.get(key.to_string()).wait().unwrap().unwrap();
     assert_eq!(v.to_vec(), entry.stream.concat2().wait().unwrap());
@@ -560,7 +637,8 @@ mod tests {
           meta: None,
           tags: None,
         },
-      ).wait()
+      )
+      .wait()
       .unwrap();
 
     store.expire(key.to_string(), 100).wait().unwrap();
@@ -584,7 +662,8 @@ mod tests {
           meta: None,
           tags: None,
         },
-      ).wait()
+      )
+      .wait()
       .unwrap();
 
     store.del(key.to_string()).wait().unwrap();
@@ -606,7 +685,8 @@ mod tests {
           meta: None,
           tags: None,
         },
-      ).wait()
+      )
+      .wait()
       .unwrap();
 
     let tags = vec!["hello".to_string(), "world".to_string()];
