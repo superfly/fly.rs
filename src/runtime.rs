@@ -522,6 +522,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::DnsResponse => ops::dns::op_dns_response,
     msg::Any::AddEventListener => op_add_event_ln,
     msg::Any::LoadModule => op_load_module,
+    msg::Any::ImageApplyTransforms => ops::image::op_image_transform,
     _ => unimplemented!(),
   };
 

@@ -56,6 +56,20 @@ addEventListener("fetch", function (event) {
     }).catch(err => { console.log("error resolving I guess:", err.stack) })
     event.respondWith(new Response(null, { headers: {} }))
   }
+  else if (url.pathname == "/image") {
+    event.respondWith(fetch(url.searchParams.get("url")).then(res => {
+      let img = new fly.Image(res.body);
+      img.webp({ lossless: false, quality: 75 });
+      return img.transform().then(stream => {
+        console.log("image accepted!");
+        return new Response(stream, {
+          headers: {
+            "content-type": "image/webp",
+          }
+        })
+      }).catch(e => console.log("error processing image:", e))
+    }))
+  }
   else {
     req.headers.delete("host");
     let u = url.searchParams.get("url");

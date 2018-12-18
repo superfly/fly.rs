@@ -89,7 +89,7 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
 
   rt.spawn(
     fut
-      .map_err(|e| println!("error cache set stream! {:?}", e))
+      .map_err(|e| error!("error cache set stream! {:?}", e))
       .and_then(move |_b| Ok(())),
   );
 

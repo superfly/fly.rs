@@ -1,15 +1,28 @@
-union ImageTransform {
-    ImageWebPEncode,
+enum ImageTransformType: byte {
+    ImageWebPEncode = 0,
 }
 
 table ImageWebPEncode {
-    quality: short;
-    alpha_quality: short;
+    quality: float;
+    alpha_quality: float;
     lossless: bool;
     near_lossless: bool;
 }
 
-table ImageApply {
-    id: uint;
+union ImageTransformOptions {
+    ImageWebPEncode,
+}
+
+table ImageTransform {
+    transform: ImageTransformType;
+    options: ImageTransformOptions;
+}
+
+table ImageApplyTransforms {
     transforms: [ImageTransform];
+}
+
+table ImageReady {
+    in_id: uint;
+    out_id: uint;
 }

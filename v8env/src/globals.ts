@@ -14,6 +14,7 @@ import * as resolv_ from './resolv';
 import * as dns from './dns';
 import * as crypto_ from "./crypto";
 import cache_ from "./cache";
+import { Image } from "./fly/image";
 
 import * as url from './url';
 import { FlyRequest } from "./request";
@@ -58,6 +59,8 @@ declare global {
   interface Fly {
     cache: typeof flyCache
     data: typeof flyData
+    http: typeof flyHttp
+    Image: typeof Image
   }
   // TODO: remove
   const fly: Fly
@@ -106,6 +109,7 @@ window.fly = {
   cache: flyCache,
   data: flyData,
   http: flyHttp,
+  Image: Image,
 }
 
 window.DNSRequest = dns.DNSRequest;

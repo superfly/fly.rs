@@ -339,7 +339,7 @@ export async function sendStreamChunks(id: number, stream: ReadableStream) {
   let cur = await reader.read()
   let done = false
   while (!done) {
-    console.debug("done?", cur.done, "value:", cur.value);
+    console.debug("done?", cur.done, "typeof value:", typeof cur.value);
     let value: ArrayBufferView;
     if (typeof cur.value === 'string')
       value = new TextEncoder().encode(cur.value)
