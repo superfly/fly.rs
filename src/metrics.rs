@@ -154,6 +154,12 @@ lazy_static! {
         &["runtime", "version", "type"]
     )
     .unwrap();
+    pub static ref FETCH_HTTP_REQUESTS_TOTAL: IntCounterVec = register_int_counter_vec!(
+        "fly_fetch_http_requests_total",
+        "Total number of fetch requests.",
+        &["runtime", "version", "hostname"]
+    )
+    .unwrap();
     pub static ref FETCH_HEADERS_DURATION: HistogramVec = register_histogram_vec!(
         "fly_fetch_read_headers_duration_histogram_seconds",
         "Time to get headers for a fetch, by runtime, in seconds.",
