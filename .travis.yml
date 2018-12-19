@@ -1,18 +1,15 @@
 language: rust
 rust:
-- "1.31.0"
-
+- 1.31.0
 matrix:
   include:
-    - os: linux
-      sudo: required
-      dist: trusty
-    - os: osx
-
+  - os: linux
+    sudo: required
+    dist: trusty
+  - os: osx
 services:
-  - postgresql
-  - redis
-
+- postgresql
+- redis
 cache:
   cargo: true
   yarn: true
@@ -20,70 +17,68 @@ cache:
   - node_modules
   - v8env/node_modules
   - third_party/flatbuffers
-  - $HOME/Library/Caches/Homebrew
-
+  - "$HOME/Library/Caches/Homebrew"
 addons:
-  postgresql: "9.6" # required for JSONB
+  postgresql: '9.6'
   apt:
     sources:
-      - ubuntu-toolchain-r-test
+    - ubuntu-toolchain-r-test
     packages:
-      - gcc-5
-      - g++-5
-      - binutils-2.26
-
+    - gcc-5
+    - g++-5
+    - binutils-2.26
 before_install:
-  - |
-    if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-      export CXX="g++-5" CC="gcc-5"
-      sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
-      sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-5 100
-      sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-5 100
-      export PATH=/usr/lib/binutils-2.26/bin:${PATH}
-    fi
-
+- |
+  if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    export CXX="g++-5" CC="gcc-5"
+    sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
+    sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-5 100
+    sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-5 100
+    export PATH=/usr/lib/binutils-2.26/bin:${PATH}
+  fi
 install:
-  - export RELEASE_NAME=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo pr$TRAVIS_PULL_REQUEST_BRANCH; fi)
-  - export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
-  - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
-  - ./scripts/setup.sh
-
+- export RELEASE_NAME=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH;
+  else echo pr$TRAVIS_PULL_REQUEST_BRANCH; fi)
+- export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
+- export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
+- "./scripts/setup.sh"
 before_script:
-  - # HACK: https://github.com/travis-ci/travis-ci/issues/1875#issuecomment-263847183
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -rf /usr/local/var/postgres; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then initdb /usr/local/var/postgres; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start postgres; fi
-  - # NOTE: https://github.com/docker-library/postgres/issues/146
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then while ! pg_isready; do sleep 1; done; createuser -s postgres; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start redis; fi
-
+- 
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -rf /usr/local/var/postgres; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then initdb /usr/local/var/postgres; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start postgres; fi
+- 
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then while ! pg_isready; do sleep 1; done;
+  createuser -s postgres; fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start redis; fi
 script:
-  - RUST_BACKTRACE=1 cargo test
-  - ./scripts/build-release.sh
-
+- RUST_BACKTRACE=1 cargo test
+- "./scripts/build-release.sh"
 before_cache:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew cleanup; fi
-
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew cleanup; fi
 before_deploy:
-  - ./scripts/prepare-release.sh
-
+- "./scripts/prepare-release.sh"
 deploy:
-  - provider: releases
-    overwrite: true
-    api_key:
-      secure: VsCHyGpPc02F3LiK+nqMDSPSEKmzgKyAhwVJQJ2mLjso74N1NGRsCDgKIQAOoLzcJRVNZFrpnlbOxKoyTGg1x8b6MnpPmqR8j/LVdKoud6Nhp8Ufw1I/9XwPpyjAhSNKnQq+1h1DpbWbob4bS5BR23PRbIySPUx570W3G8y3IritqorvpM4Qn12fyetWoZxRxWt9QAnrEV2Pj8ULR1C2jBtQPNAVLKm5FcDPBxzQcqXRZjARQtdjNU5tOB1bEm4zg8QNl/hDHi+5WZ/FQ/gZR28cAdhAb8GTC8UU7hTP5TTt2G1UimI27RPxyAyc/eJ9JU2ixRGzjDPvv6hk+KkGGjvuJccKHqR+bgHJ8lS8gPPmpvRMM9uVTAsI/pPA51OgveaHknMCCefiDYGgMq2cIW3UmUMHaB1m9SmBrIqCfEOwPp8f4KEtO55B9myuvqOYvlL4pJrcSUucjNGkm7guqCR4u3L3D0cIkTyk3fTbZyaeAxkSlcYvcff8BpRuFI8YiTybtLxqy0+KoDNoXr/d34/dwFyQNeRPN7H4EWGkzFeHpbfm+aCXGtqF8fMj/tOT7yrOAwy2rvD9/Gx8nzdY7j+DMIXB9HAR3y5Xrpiba0nedV4jww2s1dKuf96Iac3CZrO1qOXvNMKPCVSrp/rmQ5r6REfTQDe6NBONPvjjTX0=
-    file: release/${RELEASE_FILENAME}
-    skip_cleanup: true
-    on:
-      repo: superfly/fly.rs
-      tags: true
-  - provider: s3
-    access_key_id: AKIAIUEJ6IB7XWPIBUXA
-    secret_access_key:
-      secure: "bZ4lbgiq4WrTdo6dEVCE3zaVM8rCSVpeE9gLVM9Mtwu+Uui5EtTpPnRXnndBe/XGZrKDx7ggeXZb5JCG55WVVi2npviLcS852R/PAPXOOcDZWtq+MiLh+o80LuCH1HR40slxoLxyK7c2SX1pocmGEbp2JoTyE2PNm4wlJI/EfUY4B9zxribXRxw/zYrcDuDHJtG5/x3AjKB8qefs02VCHVCbkF3CPp6qJs+w0+QnBjlMJzScof9ZGx18Wp0lslQnDYSPc8JBuOYySSGdirT06IqA0JjpCW8K9OqlyGQzY+j18OTxXD+iuHrj+KCL7MK7pE+8tRJq5klEe7V3GzjSmIvF22agFjewU15KuTBGe3LG5WUdv0KyKhBSPdOwrgi8casQ9GMLhGCxe5TajQXGNPeexdPGY0huNf7/166BdHgIsGm9QT9+alipvKSEehPPg2F50UmiGXR0ZkpYbs3PGwuehTXBVYz53ZKd8l9VMppnBsZn3naxRwi89SZduoTCbYtNLAxzH5e1TaD2Ss6ozTMCHxUbnvGX6B0BpBOweKhhf9g+nTDc2wyK/LyQFJp62pwvjAFX499EqxA0CXToWY0dqWk69ZNkS5N0quxcc54xm7Q3U1R58LZAY59/Yo+35BKD86YP1N0tFqhZKpVo3m0mOv39oh2w4dhVU+1jF5Y="
-    bucket: fly-proxy
-    local_dir: release
-    upload-dir: ${RELEASE_NAME}
-    skip_cleanup: true
-    acl: public_read
-    detect_encoding: true
+- provider: releases
+  overwrite: true
+  api_key:
+    secure: VsCHyGpPc02F3LiK+nqMDSPSEKmzgKyAhwVJQJ2mLjso74N1NGRsCDgKIQAOoLzcJRVNZFrpnlbOxKoyTGg1x8b6MnpPmqR8j/LVdKoud6Nhp8Ufw1I/9XwPpyjAhSNKnQq+1h1DpbWbob4bS5BR23PRbIySPUx570W3G8y3IritqorvpM4Qn12fyetWoZxRxWt9QAnrEV2Pj8ULR1C2jBtQPNAVLKm5FcDPBxzQcqXRZjARQtdjNU5tOB1bEm4zg8QNl/hDHi+5WZ/FQ/gZR28cAdhAb8GTC8UU7hTP5TTt2G1UimI27RPxyAyc/eJ9JU2ixRGzjDPvv6hk+KkGGjvuJccKHqR+bgHJ8lS8gPPmpvRMM9uVTAsI/pPA51OgveaHknMCCefiDYGgMq2cIW3UmUMHaB1m9SmBrIqCfEOwPp8f4KEtO55B9myuvqOYvlL4pJrcSUucjNGkm7guqCR4u3L3D0cIkTyk3fTbZyaeAxkSlcYvcff8BpRuFI8YiTybtLxqy0+KoDNoXr/d34/dwFyQNeRPN7H4EWGkzFeHpbfm+aCXGtqF8fMj/tOT7yrOAwy2rvD9/Gx8nzdY7j+DMIXB9HAR3y5Xrpiba0nedV4jww2s1dKuf96Iac3CZrO1qOXvNMKPCVSrp/rmQ5r6REfTQDe6NBONPvjjTX0=
+  file: release/${RELEASE_FILENAME}
+  skip_cleanup: true
+  on:
+    repo: superfly/fly.rs
+    tags: true
+- provider: s3
+  access_key_id: $AWS_ACCESS_KEY_ID
+  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  bucket: fly-proxy
+  local_dir: release
+  upload-dir: "${RELEASE_NAME}"
+  skip_cleanup: true
+  acl: public_read
+  region: us-east-1
+  detect_encoding: true
+env:
+  global:
+    - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
+    - secure: kt5abE2Jbs86hWlHUHvRxw3EDOGzQkXl9Eheh0UzrkDBeztaIBZ2S3Puocy+DfejZLpiImQzIp+ye5TExE6Fk4u3ikhBd4PHG6goM8e3EYaFCbTOcz1/6KqR20mNc/7MPXQhMzoBMKQuHTGtIqpvt5FzhjhlzRdkcHax/u0p6v6OWekAVDlEmUvUfXqcea90bnQpXsmecVdulnuw68PVZxqaqc8SBabg2LgCAYZABjM6kEqtWx00an3me1StF6ph9d3QrfOEQwvZrUkaAPsOD5GXDL5Ly840mfArQDa1FhjzQ1CYvwyM05aj94G94Ph8xHthKtt+d9S2xWmJL/QmA+zYIy/20CchzOOmAOxekOul6uAQGiVqsZTW0RboM25Stwqf/yXb+/FkpoW7QUi4RFRshnf3hBMaRuSgtRvGc3kCMexVQFFrjCzkUrHjHV6NoVrQQ68fM0tBMGxF6oVZcb8ujrztVzC9zCsi4ZpJZpx27PWRG6aoyQa0w8x9wdkuNi5b5D1UpM9Dz1WxEo4deEGRy/ykZTehLfQJrmKun6U+b/MK/27cz27xot5CdlZXJq/YxJODfZdshwMqzoIrJ0KWVXClGAKVtsIGzq64hpgQrG8FNgBftcX92eh02pDIRoOIgi74gQKPxTUx0nnkvc0JCt00YT7Mr/Y/MWsLPDM=
