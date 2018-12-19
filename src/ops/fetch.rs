@@ -1,4 +1,7 @@
-use futures::sync::{mpsc, oneshot};
+use futures::{
+    future,
+    sync::{mpsc, oneshot},
+};
 
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
@@ -29,6 +32,11 @@ use std::io;
 
 use std::slice;
 
+use crate::metrics::*;
+use floating_duration::TimeAsFloat;
+use http::uri::Scheme;
+use std::time;
+
 lazy_static! {
     static ref HTTP_CLIENT: Client<HttpsConnector<HttpConnector>, Body> = {
         Client::builder()
@@ -56,18 +64,43 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         req_body = Body::empty();
     }
 
+    let http_uri: hyper::Uri = url.parse().unwrap();
+
+    // for the metrics
+    let host_str = http_uri.host().unwrap_or("unknown");
+    let host = if let Some(port) = http_uri.port_part() {
+        format!("{}:{}", host_str, port.as_str())
+    } else {
+        let port = if let Some(scheme) = http_uri.scheme_part() {
+            if scheme == &Scheme::HTTPS {
+                "443"
+            } else {
+                "80"
+            }
+        } else {
+            "80"
+        };
+        format!("{}:{}", host_str, port)
+    };
+
+    let rt = ptr.to_runtime();
+    FETCH_HTTP_REQUESTS_TOTAL
+        .with_label_values(&[rt.name.as_str(), rt.version.as_str(), host.as_str()])
+        .inc();
+
     let mut req = Request::new(req_body);
     {
-        let uri: hyper::Uri = url.parse().unwrap();
-        *req.uri_mut() = uri;
+        *req.uri_mut() = http_uri.clone();
         *req.method_mut() = match msg.method() {
             msg::HttpMethod::Get => Method::GET,
             msg::HttpMethod::Head => Method::HEAD,
             msg::HttpMethod::Post => Method::POST,
-            _ => {
-                warn!("method not implemented");
-                unimplemented!()
-            }
+            msg::HttpMethod::Put => Method::PUT,
+            msg::HttpMethod::Patch => Method::PATCH,
+            msg::HttpMethod::Delete => Method::DELETE,
+            msg::HttpMethod::Connect => Method::CONNECT,
+            msg::HttpMethod::Options => Method::OPTIONS,
+            msg::HttpMethod::Trace => Method::TRACE,
         };
 
         let msg_headers = msg.headers().unwrap();
@@ -84,39 +117,62 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
 
     let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
 
-    let rt = ptr.to_runtime();
+    let rt_name = rt.name.clone();
+    let rt_version = rt.version.clone();
+    let method = req.method().clone();
 
-    rt.spawn(HTTP_CLIENT.request(req).then(move |reserr| {
-        debug!("got http response (or error)");
-        if let Err(err) = reserr {
-            if p.send(Err(err.into())).is_err() {
-                error!("error sending error for http response :/");
+    rt.spawn(future::lazy(move || {
+        let timer = time::Instant::now();
+        HTTP_CLIENT.request(req).then(move |reserr| {
+            debug!("got http response (or error)");
+            if let Err(err) = reserr {
+                if p.send(Err(err.into())).is_err() {
+                    error!("error sending error for http response :/");
+                }
+                return Ok(());
             }
-            return Ok(());
-        }
 
-        let res = reserr.unwrap(); // should be safe.
+            let res = reserr.unwrap(); // should be safe.
 
-        let (parts, body) = res.into_parts();
+            FETCH_HEADERS_DURATION
+                .with_label_values(&[
+                    rt_name.as_str(),
+                    rt_version.as_str(),
+                    method.as_str(),
+                    host.as_str(),
+                    res.status().as_str(),
+                ])
+                .observe(timer.elapsed().as_fractional_secs());
 
-        let mut stream_rx: Option<JsBody> = None;
-        let has_body = !body.is_end_stream();
-        if has_body {
-            stream_rx = Some(JsBody::HyperBody(body));
-        }
+            let (parts, body) = res.into_parts();
 
-        if p.send(Ok(JsHttpResponse {
-            headers: parts.headers,
-            status: parts.status,
-            body: stream_rx,
-        }))
-        .is_err()
-        {
-            error!("error sending fetch http response");
-            return Ok(());
-        }
-        debug!("done with http request");
-        Ok(())
+            let mut stream_rx: Option<JsBody> = None;
+            let has_body = !body.is_end_stream();
+            if has_body {
+                stream_rx = Some(JsBody::BoxedStream(Box::new(
+                    body.map_err(|e| format!("{}", e).into()).map(move |chunk| {
+                        let bytes = chunk.into_bytes();
+                        DATA_IN_TOTAL
+                            .with_label_values(&[rt_name.as_str(), rt_version.as_str(), "fetch"])
+                            .inc_by(bytes.len() as i64);
+                        bytes.to_vec()
+                    }),
+                )));
+            }
+
+            if p.send(Ok(JsHttpResponse {
+                headers: parts.headers,
+                status: parts.status,
+                body: stream_rx,
+            }))
+            .is_err()
+            {
+                error!("error sending fetch http response");
+                return Ok(());
+            }
+            debug!("done with http request");
+            Ok(())
+        })
     }));
 
     let fut = c
@@ -127,7 +183,6 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
             ))
         })
         .and_then(move |reserr: FlyResult<JsHttpResponse>| {
-            debug!("IN HTTP RESPONSE RECEIVING END");
             if let Err(err) = reserr {
                 return Err(err);
             }
@@ -287,166 +342,3 @@ fn file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
             }),
     )
 }
-
-// use tokio::codec::{BytesCodec, FramedRead};
-//
-// fn op_file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
-//   let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-
-//   let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
-
-//   let path: String = url.chars().skip(7).collect();
-
-//   let meta = match fs::metadata(path.clone()) {
-//     Ok(m) => m,
-//     Err(e) => return odd_future(e.into()),
-//   };
-
-//   println!("META: {:?}", meta);
-
-//   if meta.is_file() {
-//     EVENT_LOOP.0.spawn(future::lazy(move || {
-//       tokio::fs::File::open(path).then(
-//         move |fileerr: Result<tokio::fs::File, io::Error>| -> Result<(), ()> {
-//           debug!("file opened? {}", fileerr.is_ok());
-//           if let Err(err) = fileerr {
-//             if p.send(Err(err.into())).is_err() {
-//               error!("error sending file open error");
-//             }
-//             return Ok(());
-//           }
-
-//           let file = fileerr.unwrap(); // should be safe.
-
-//           let (tx, rx) = mpsc::unbounded::<BytesMut>();
-
-//           if p
-//             .send(Ok(JsHttpResponse {
-//               headers: HeaderMap::new(),
-//               status: StatusCode::OK,
-//               body: Some(JsBody::BytesStream(rx)),
-//             })).is_err()
-//           {
-//             error!("error sending http response");
-//             return Ok(());
-//           }
-
-//           EVENT_LOOP.0.spawn(
-//             FramedRead::new(file, BytesCodec::new())
-//               .map_err(|e| println!("error reading file chunk! {}", e))
-//               .for_each(move |chunk| {
-//                 debug!("got frame chunk");
-//                 match tx.clone().unbounded_send(chunk) {
-//                   Ok(_) => Ok(()),
-//                   Err(e) => {
-//                     error!("error sending chunk in channel: {}", e);
-//                     Err(())
-//                   }
-//                 }
-//               }),
-//           );
-//           Ok(())
-//         },
-//       )
-//     }));
-//   } else {
-//     EVENT_LOOP.0.spawn(future::lazy(move || {
-//       tokio::fs::read_dir(path).then(move |read_dir_err| {
-//         if let Err(err) = read_dir_err {
-//           if p.send(Err(err.into())).is_err() {
-//             error!("error sending read_dir error");
-//           }
-//           return Ok(());
-//         }
-//         let read_dir = read_dir_err.unwrap();
-//         let (tx, rx) = mpsc::unbounded::<Vec<u8>>();
-
-//         if p
-//           .send(Ok(JsHttpResponse {
-//             headers: HeaderMap::new(),
-//             status: StatusCode::OK,
-//             body: Some(JsBody::Stream(rx)),
-//           })).is_err()
-//         {
-//           error!("error sending http response");
-//           return Ok(());
-//         }
-
-//         EVENT_LOOP.0.spawn(
-//           read_dir
-//             .map_err(|e| println!("error read_dir stream: {}", e))
-//             .for_each(move |entry| {
-//               let entrypath = entry.path();
-//               let pathstr = format!("{}\n", entrypath.to_str().unwrap());
-//               match tx.clone().unbounded_send(pathstr.into()) {
-//                 Ok(_) => Ok(()),
-//                 Err(e) => {
-//                   error!("error sending path chunk in channel: {}", e);
-//                   Err(())
-//                 }
-//               }
-//             }),
-//         );
-//         Ok(())
-//       })
-//     }));
-//   }
-
-//   let fut = c
-//     .map_err(|e| {
-//       FlyError::from(io::Error::new(
-//         io::ErrorKind::Other,
-//         format!("err getting response from oneshot: {}", e).as_str(),
-//       ))
-//     }).and_then(move |reserr: FlyResult<JsHttpResponse>| {
-//       if let Err(err) = reserr {
-//         return Err(err);
-//       }
-
-//       let res = reserr.unwrap();
-
-//       let builder = &mut FlatBufferBuilder::new();
-//       let headers: Vec<_> = res
-//         .headers
-//         .iter()
-//         .map(|(key, value)| {
-//           let key = builder.create_string(key.as_str());
-//           let value = builder.create_string(value.to_str().unwrap());
-//           msg::HttpHeader::create(
-//             builder,
-//             &msg::HttpHeaderArgs {
-//               key: Some(key),
-//               value: Some(value),
-//               ..Default::default()
-//             },
-//           )
-//         }).collect();
-
-//       let res_headers = builder.create_vector(&headers);
-
-//       let msg = msg::FetchHttpResponse::create(
-//         builder,
-//         &msg::FetchHttpResponseArgs {
-//           id: req_id,
-//           headers: Some(res_headers),
-//           status: res.status.as_u16(),
-//           has_body: res.body.is_some(),
-//           ..Default::default()
-//         },
-//       );
-//       if let Some(stream) = res.body {
-//         send_body_stream(ptr, req_id, stream);
-//       }
-//       Ok(serialize_response(
-//         cmd_id,
-//         builder,
-//         msg::BaseArgs {
-//           msg: Some(msg.as_union_value()),
-//           msg_type: msg::Any::FetchHttpResponse,
-//           ..Default::default()
-//         },
-//       ))
-//     });
-
-//   Box::new(fut)
-// }

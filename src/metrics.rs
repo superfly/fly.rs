@@ -85,64 +85,87 @@ lazy_static! {
         vec![0.001, 0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0]
     )
     .unwrap();
-    pub static ref CACHE_HITS_TOTAL: IntCounterVec = register_int_counter_vec!(
-        "fly_cache_hits_total",
-        "Cache hits totals.",
-        &["type", "ns"]
-    )
-    .unwrap();
+    pub static ref CACHE_HITS_TOTAL: IntCounterVec =
+        register_int_counter_vec!("fly_cache_hits_total", "Cache hits total.", &["type", "ns"])
+            .unwrap();
     pub static ref CACHE_MISSES_TOTAL: IntCounterVec = register_int_counter_vec!(
         "fly_cache_misses_total",
-        "Cache misses totals.",
+        "Cache misses total.",
         &["type", "ns"]
     )
     .unwrap();
     pub static ref CACHE_ERRORS_TOTAL: IntCounterVec = register_int_counter_vec!(
         "fly_cache_errors_total",
-        "Cache errors totals.",
+        "Cache errors total.",
         &["type", "ns"]
     )
     .unwrap();
-    pub static ref CACHE_GETS_TOTAL: IntCounterVec = register_int_counter_vec!(
-        "fly_cache_gets_total",
-        "Cache gets totals.",
+    pub static ref CACHE_GETS_TOTAL: IntCounterVec =
+        register_int_counter_vec!("fly_cache_gets_total", "Cache gets total.", &["type", "ns"])
+            .unwrap();
+    pub static ref CACHE_GET_SIZE_TOTAL: IntCounterVec = register_int_counter_vec!(
+        "fly_cache_get_bytes_total",
+        "Cache get size total.",
         &["type", "ns"]
     )
     .unwrap();
-    pub static ref CACHE_SETS_TOTAL: IntCounterVec = register_int_counter_vec!(
-        "fly_cache_sets_total",
-        "Cache sets totals.",
+    pub static ref CACHE_SETS_TOTAL: IntCounterVec =
+        register_int_counter_vec!("fly_cache_sets_total", "Cache sets total.", &["type", "ns"])
+            .unwrap();
+    pub static ref CACHE_SET_SIZE_TOTAL: IntCounterVec = register_int_counter_vec!(
+        "fly_cache_set_bytes_total",
+        "Cache set size total.",
         &["type", "ns"]
     )
     .unwrap();
-    pub static ref CACHE_DELS_TOTAL: IntCounterVec = register_int_counter_vec!(
-        "fly_cache_dels_total",
-        "Cache dels totals.",
-        &["type", "ns"]
-    )
-    .unwrap();
+    pub static ref CACHE_DELS_TOTAL: IntCounterVec =
+        register_int_counter_vec!("fly_cache_dels_total", "Cache dels total.", &["type", "ns"])
+            .unwrap();
     pub static ref CACHE_EXPIRES_TOTAL: IntCounterVec = register_int_counter_vec!(
         "fly_cache_expires_total",
-        "Cache expires totals.",
+        "Cache expires total.",
         &["type", "ns"]
     )
     .unwrap();
-    pub static ref CACHE_TTLS_TOTAL: IntCounterVec = register_int_counter_vec!(
-        "fly_cache_ttls_total",
-        "Cache ttls totals.",
-        &["type", "ns"]
-    )
-    .unwrap();
+    pub static ref CACHE_TTLS_TOTAL: IntCounterVec =
+        register_int_counter_vec!("fly_cache_ttls_total", "Cache ttls total.", &["type", "ns"])
+            .unwrap();
     pub static ref CACHE_PURGES_TOTAL: IntCounterVec = register_int_counter_vec!(
         "fly_cache_purges_total",
-        "Cache purges totals.",
+        "Cache purges total.",
         &["type", "ns", "tag"]
     )
     .unwrap();
     pub static ref CACHE_SET_TAGS_TOTAL: IntCounterVec = register_int_counter_vec!(
         "fly_cache_set_tags_total",
-        "Cache set tags totals.",
+        "Cache set tags total.",
         &["type", "ns"]
+    )
+    .unwrap();
+    pub static ref DATA_OUT_TOTAL: IntCounterVec = register_int_counter_vec!(
+        "fly_data_out_bytes",
+        "Outgoing data in bytes.",
+        &["runtime", "version", "type"]
+    )
+    .unwrap();
+    pub static ref DATA_IN_TOTAL: IntCounterVec = register_int_counter_vec!(
+        "fly_data_in_bytes",
+        "Incoming data in bytes.",
+        &["runtime", "version", "type"]
+    )
+    .unwrap();
+    pub static ref FETCH_HEADERS_DURATION: HistogramVec = register_histogram_vec!(
+        "fly_fetch_read_headers_duration_histogram_seconds",
+        "Time to get headers for a fetch, by runtime, in seconds.",
+        &["runtime", "version", "method", "hostname", "status"],
+        vec![0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0]
+    )
+    .unwrap();
+    pub static ref FETCH_BODY_DURATION: HistogramVec = register_histogram_vec!(
+        "fly_fetch_read_body_duration_histogram_seconds",
+        "Fetch request times by runtime, in seconds.",
+        &["runtime", "version", "hostname"],
+        vec![0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0]
     )
     .unwrap();
 }

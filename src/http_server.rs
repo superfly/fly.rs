@@ -1,7 +1,7 @@
 use futures::{future, Future, Stream};
 use std::net::SocketAddr;
 
-use crate::metrics;
+use crate::metrics::*;
 use crate::runtime::{EventResponseChannel, JsBody, JsEvent, JsHttpRequest, JsHttpResponse};
 use crate::{RuntimeSelector, NEXT_EVENT_ID};
 
@@ -107,6 +107,9 @@ pub fn serve_http(
     };
     let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
+    let rt_name = rt.name.clone();
+    let rt_version = rt.version.clone();
+
     match rt.dispatch_event(
         req_id,
         JsEvent::Fetch(JsHttpRequest {
@@ -118,7 +121,19 @@ pub fn serve_http(
             body: if body.is_end_stream() {
                 None
             } else {
-                Some(JsBody::HyperBody(body))
+                Some(JsBody::BoxedStream(Box::new(
+                    body.map_err(|e| format!("{}", e).into()).map(move |chunk| {
+                        let bytes = chunk.into_bytes();
+                        DATA_IN_TOTAL
+                            .with_label_values(&[
+                                rt_name.as_str(),
+                                rt_version.as_str(),
+                                "http_request",
+                            ])
+                            .inc_by(bytes.len() as i64);
+                        bytes.to_vec()
+                    }),
+                )))
             },
         }),
     ) {
@@ -141,33 +156,66 @@ pub fn serve_http(
                 Some((rt.name.clone(), rt.version.clone())),
             )
         }
-        Some(Ok(EventResponseChannel::Http(rx))) => wrap_future(
-            rx.and_then(move |res: JsHttpResponse| {
-                let (mut parts, mut body) = Response::<Body>::default().into_parts();
-                parts.headers = res.headers;
-                parts.status = res.status;
+        Some(Ok(EventResponseChannel::Http(rx))) => {
+            let rt_name = rt.name.clone();
+            let rt_version = rt.version.clone();
+            wrap_future(
+                rx.and_then(move |res: JsHttpResponse| {
+                    let (mut parts, mut body) = Response::<Body>::default().into_parts();
+                    parts.headers = res.headers;
+                    parts.status = res.status;
 
-                if let Some(js_body) = res.body {
-                    body = match js_body {
-                        JsBody::Stream(s) => Body::wrap_stream(s.map_err(|_| {
-                            io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
-                        })),
-                        JsBody::BytesStream(s) => Body::wrap_stream(
-                            s.map_err(|_| {
-                                io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
-                            })
-                            .map(|bm| bm.freeze()),
-                        ),
-                        JsBody::Static(b) => Body::from(b),
-                        _ => unimplemented!(),
-                    };
-                }
+                    if let Some(js_body) = res.body {
+                        body = match js_body {
+                            JsBody::Stream(s) => Body::wrap_stream(
+                                s.map_err(|_| {
+                                    io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
+                                })
+                                .inspect(move |v| {
+                                    DATA_OUT_TOTAL
+                                        .with_label_values(&[
+                                            rt_name.as_str(),
+                                            rt_version.as_str(),
+                                            "http_response",
+                                        ])
+                                        .inc_by(v.len() as i64);
+                                }),
+                            ),
+                            JsBody::BytesStream(s) => Body::wrap_stream(
+                                s.map_err(|_| {
+                                    io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
+                                })
+                                .map(|bm| bm.freeze())
+                                .inspect(move |bytes| {
+                                    DATA_OUT_TOTAL
+                                        .with_label_values(&[
+                                            rt_name.as_str(),
+                                            rt_version.as_str(),
+                                            "http_response",
+                                        ])
+                                        .inc_by(bytes.len() as i64);
+                                }),
+                            ),
+                            JsBody::Static(b) => {
+                                DATA_OUT_TOTAL
+                                    .with_label_values(&[
+                                        rt_name.as_str(),
+                                        rt_version.as_str(),
+                                        "http_response",
+                                    ])
+                                    .inc_by(b.len() as i64);
+                                Body::from(b)
+                            }
+                            _ => unimplemented!(),
+                        };
+                    }
 
-                Ok(Response::from_parts(parts, body))
-            }),
-            timer,
-            Some((rt.name.clone(), rt.version.clone())),
-        ),
+                    Ok(Response::from_parts(parts, body))
+                }),
+                timer,
+                Some((rt.name.clone(), rt.version.clone())),
+            )
+        }
         _ => unimplemented!(),
     }
 }
@@ -192,10 +240,10 @@ where
         let (name, ver) = namever.unwrap_or((String::new(), String::new()));
         let status = res.status();
         let status_str = status.as_str();
-        metrics::HTTP_RESPONSE_TIME_HISTOGRAM
+        HTTP_RESPONSE_TIME_HISTOGRAM
             .with_label_values(&[name.as_str(), ver.as_str(), status_str])
             .observe(timer.elapsed().as_fractional_secs());
-        metrics::HTTP_RESPONSE_COUNTER
+        HTTP_RESPONSE_COUNTER
             .with_label_values(&[name.as_str(), ver.as_str(), status_str])
             .inc();
         Ok(res)

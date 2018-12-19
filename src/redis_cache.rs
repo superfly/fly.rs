@@ -15,6 +15,8 @@ use crate::metrics::*;
 
 use std::sync::Arc;
 
+use prometheus::{Histogram, IntCounter};
+
 lazy_static! {
   static ref REPLACE_HASH: redis::Script = redis::Script::new(
     r#"
@@ -63,34 +65,55 @@ lazy_static! {
 use self::r2d2_redis::RedisConnectionManager;
 use self::r2d2_redis::{r2d2, redis};
 
-#[derive(Debug)]
 pub struct RedisCacheStore {
   pool: r2d2::Pool<RedisConnectionManager>,
-  ns: Option<String>,
+  ns: String,
+  metric_get_duration: Histogram,
+  metric_set_duration: Histogram,
+  metric_hits_total: IntCounter,
+  metric_misses_total: IntCounter,
+  metric_errors_total: IntCounter,
+  metric_gets_total: IntCounter,
+  metric_get_size_total: IntCounter,
+  metric_sets_total: IntCounter,
+  metric_set_size_total: IntCounter,
+  metric_dels_total: IntCounter,
+  metric_expires_total: IntCounter,
+  metric_ttls_total: IntCounter,
+  metric_purges_total: IntCounter,
+  metric_set_tags_total: IntCounter,
 }
 
 impl RedisCacheStore {
   pub fn new(conf: &RedisStoreConfig) -> Self {
+    let ns = conf.namespace.as_ref().cloned().unwrap_or("".to_string());
+    let ns_str = ns.as_str();
     RedisCacheStore {
       pool: r2d2::Pool::new(RedisConnectionManager::new(conf.url.as_str()).unwrap()).unwrap(),
-      ns: conf.namespace.as_ref().cloned(),
+      ns: ns.clone(),
+      metric_get_duration: CACHE_GET_DURATION.with_label_values(&["redis", ns_str]),
+      metric_set_duration: CACHE_SET_DURATION.with_label_values(&["redis", ns_str]),
+      metric_hits_total: CACHE_HITS_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_misses_total: CACHE_MISSES_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_errors_total: CACHE_ERRORS_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_gets_total: CACHE_GETS_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_get_size_total: CACHE_GET_SIZE_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_sets_total: CACHE_SETS_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_set_size_total: CACHE_SET_SIZE_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_dels_total: CACHE_DELS_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_expires_total: CACHE_EXPIRES_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_ttls_total: CACHE_TTLS_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_purges_total: CACHE_PURGES_TOTAL.with_label_values(&["redis", ns_str]),
+      metric_set_tags_total: CACHE_SET_TAGS_TOTAL.with_label_values(&["redis", ns_str]),
     }
   }
 
   fn cache_key<S: Display>(&self, key: S) -> String {
-    format!(
-      "cache:{}:{}",
-      self.ns.as_ref().unwrap_or(&"".to_string()),
-      key
-    )
+    format!("cache:{}:{}", self.ns, key)
   }
 
   fn tag_key<S: Display>(&self, tag: S) -> String {
-    format!(
-      "tag:{}:{}",
-      self.ns.as_ref().unwrap_or(&"".to_string()),
-      tag
-    )
+    format!("tag:{}:{}", self.ns, tag)
   }
 }
 
@@ -101,16 +124,13 @@ impl CacheStore for RedisCacheStore {
     data: Box<Stream<Item = Vec<u8>, Error = ()> + Send>,
     opts: CacheSetOptions,
   ) -> EmptyCacheFuture {
+    self.metric_sets_total.inc();
     let fullkey = self.cache_key(key);
     let cfullkey = fullkey.clone();
 
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_SETS_TOTAL
-      .with_label_values(&["redis", ns.as_str()])
-      .inc();
-    let timer = CACHE_SET_DURATION
-      .with_label_values(&["redis", ns.as_str()])
-      .start_timer();
+    let ns = self.ns.clone();
+    let timer = self.metric_set_duration.start_timer();
+    let size_metric = self.metric_set_size_total.clone();
 
     let pool = self.pool.clone();
     let cpool = pool.clone();
@@ -159,10 +179,13 @@ impl CacheStore for RedisCacheStore {
             Ok(conn) => match redis::cmd("HSET")
               .arg(&cfullkey)
               .arg(format!("chunk:{}", idx))
-              .arg(chunk)
+              .arg(chunk.as_slice())
               .query::<()>(&*conn)
             {
-              Ok(_) => Ok(idx + 1),
+              Ok(_) => {
+                size_metric.inc_by(chunk.len() as i64);
+                Ok(idx + 1)
+              }
               Err(e) => Err(CacheError::Failure(format!("{}", e))),
             },
             Err(e) => Err(CacheError::Failure(format!("{}", e))),
@@ -176,18 +199,15 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn get(&self, key: String) -> Box<Future<Item = Option<CacheEntry>, Error = CacheError> + Send> {
+    self.metric_gets_total.inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache get with key: {}", fullkey);
 
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_GETS_TOTAL
-      .with_label_values(&["redis", ns.as_str()])
-      .inc();
-    let timer = Arc::new(
-      CACHE_GET_DURATION
-        .with_label_values(&["redis", ns.as_str()])
-        .start_timer(),
-    );
+    let timer = Arc::new(self.metric_get_duration.start_timer());
+    let size_metric = self.metric_get_size_total.clone();
+    let metric_misses = self.metric_misses_total.clone();
+    let metric_hits = self.metric_hits_total.clone();
+    let metric_errors = self.metric_errors_total.clone();
 
     let pool = self.pool.clone();
 
@@ -198,14 +218,10 @@ impl CacheStore for RedisCacheStore {
       {
         Ok(vals) => {
           if vals.0 == 0 {
-            CACHE_MISSES_TOTAL
-              .with_label_values(&["redis", ns.as_str()])
-              .inc();
+            metric_misses.inc();
             return Ok(None);
           }
-          CACHE_HITS_TOTAL
-            .with_label_values(&["redis", ns.as_str()])
-            .inc();
+          metric_hits.inc();
           Ok(Some(CacheEntry {
             meta: vals.1,
             stream: Box::new(stream::unfold(0, move |idx| match pool.get() {
@@ -218,46 +234,36 @@ impl CacheStore for RedisCacheStore {
                   if r.len() == 0 {
                     return None;
                   }
+                  size_metric.inc_by(r.len() as i64);
                   let _t = timer.clone(); // keep it alive.
                   Some(future::ok((r, idx + 1)))
                 }
                 Err(e) => {
-                  CACHE_ERRORS_TOTAL
-                    .with_label_values(&["redis", ns.as_str()])
-                    .inc();
+                  metric_errors.inc();
                   Some(future::err(CacheError::Failure(format!("{}", e))))
                 }
               },
               Err(e) => {
-                CACHE_ERRORS_TOTAL
-                  .with_label_values(&["redis", ns.as_str()])
-                  .inc();
+                metric_errors.inc();
                 Some(future::err(CacheError::Failure(format!("{}", e))))
               }
             })),
           }))
         }
         Err(e) => {
-          CACHE_ERRORS_TOTAL
-            .with_label_values(&["redis", ns.as_str()])
-            .inc();
+          metric_errors.inc();
           Err(CacheError::Failure(format!("{}", e)))
         }
       },
       Err(e) => {
-        CACHE_ERRORS_TOTAL
-          .with_label_values(&["redis", ns.as_str()])
-          .inc();
+        metric_errors.inc();
         Err(CacheError::Failure(format!("{}", e)))
       }
     }))
   }
 
   fn del(&self, key: String) -> EmptyCacheFuture {
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_DELS_TOTAL
-      .with_label_values(&["redis", ns.as_str()])
-      .inc();
+    self.metric_dels_total.inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache del key: {}", fullkey);
     let pool = self.pool.clone();
@@ -271,10 +277,7 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn expire(&self, key: String, ttl: u32) -> EmptyCacheFuture {
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_EXPIRES_TOTAL
-      .with_label_values(&["redis", ns.as_str()])
-      .inc();
+    self.metric_expires_total.inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache expire key: {} w/ ttl: {}", fullkey, ttl);
 
@@ -293,10 +296,7 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn ttl(&self, key: String) -> Box<Future<Item = i32, Error = CacheError> + Send> {
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_TTLS_TOTAL
-      .with_label_values(&["redis", ns.as_str()])
-      .inc();
+    self.metric_ttls_total.inc();
     let fullkey = self.cache_key(key);
     debug!("redis cache ttl key: {}", fullkey);
 
@@ -311,10 +311,7 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn purge_tag(&self, tag: String) -> EmptyCacheFuture {
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_PURGES_TOTAL
-      .with_label_values(&["redis", ns.as_str(), tag.as_str()])
-      .inc();
+    self.metric_purges_total.inc();
     debug!("redis cache purge_tag tag: {}", tag);
     let tagkey = self.tag_key(tag);
     let pool = self.pool.clone();
@@ -350,13 +347,11 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn set_tags(&self, key: String, tags: Vec<String>) -> EmptyCacheFuture {
+    self.metric_set_tags_total.inc();
     debug!("redis cache set tags key: {}, tags: {:?}", key, tags);
     let fullkey = self.cache_key(&key);
 
-    let ns = ns_or_empty(self.ns.as_ref());
-    CACHE_SET_TAGS_TOTAL
-      .with_label_values(&["redis", ns.as_str()])
-      .inc();
+    let ns = self.ns.clone();
     let pool = self.pool.clone();
     Box::new(future::lazy(move || match pool.get() {
       Ok(conn) => {
@@ -390,10 +385,6 @@ impl CacheStore for RedisCacheStore {
       Err(e) => Err(CacheError::Failure(format!("{}", e))),
     }))
   }
-}
-
-fn ns_or_empty(ns: Option<&String>) -> String {
-  ns.cloned().unwrap_or("".to_string())
 }
 
 #[cfg(test)]
