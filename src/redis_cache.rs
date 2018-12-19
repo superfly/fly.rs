@@ -80,7 +80,6 @@ pub struct RedisCacheStore {
   metric_dels_total: IntCounter,
   metric_expires_total: IntCounter,
   metric_ttls_total: IntCounter,
-  metric_purges_total: IntCounter,
   metric_set_tags_total: IntCounter,
 }
 
@@ -103,7 +102,6 @@ impl RedisCacheStore {
       metric_dels_total: CACHE_DELS_TOTAL.with_label_values(&["redis", ns_str]),
       metric_expires_total: CACHE_EXPIRES_TOTAL.with_label_values(&["redis", ns_str]),
       metric_ttls_total: CACHE_TTLS_TOTAL.with_label_values(&["redis", ns_str]),
-      metric_purges_total: CACHE_PURGES_TOTAL.with_label_values(&["redis", ns_str]),
       metric_set_tags_total: CACHE_SET_TAGS_TOTAL.with_label_values(&["redis", ns_str]),
     }
   }
@@ -311,7 +309,9 @@ impl CacheStore for RedisCacheStore {
   }
 
   fn purge_tag(&self, tag: String) -> EmptyCacheFuture {
-    self.metric_purges_total.inc();
+    CACHE_PURGES_TOTAL
+      .with_label_values(&["redis", self.ns.as_str(), tag.as_str()])
+      .inc(); // can't do that oen statically.
     debug!("redis cache purge_tag tag: {}", tag);
     let tagkey = self.tag_key(tag);
     let pool = self.pool.clone();
