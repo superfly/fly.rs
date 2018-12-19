@@ -69,8 +69,8 @@ deploy:
     repo: superfly/fly.rs
     tags: true
 - provider: s3
-  access_key_id: $AWS_ACCESS_KEY_ID
-  secret_access_key: $AWS_SECRET_ACCESS_KEY
+  access_key_id: "$AWS_ACCESS_KEY_ID"
+  secret_access_key: "$AWS_SECRET_ACCESS_KEY"
   bucket: fly-proxy
   local_dir: release
   upload-dir: "${RELEASE_NAME}"
@@ -80,5 +80,5 @@ deploy:
   detect_encoding: true
 env:
   global:
-    - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
-    - secure: kt5abE2Jbs86hWlHUHvRxw3EDOGzQkXl9Eheh0UzrkDBeztaIBZ2S3Puocy+DfejZLpiImQzIp+ye5TExE6Fk4u3ikhBd4PHG6goM8e3EYaFCbTOcz1/6KqR20mNc/7MPXQhMzoBMKQuHTGtIqpvt5FzhjhlzRdkcHax/u0p6v6OWekAVDlEmUvUfXqcea90bnQpXsmecVdulnuw68PVZxqaqc8SBabg2LgCAYZABjM6kEqtWx00an3me1StF6ph9d3QrfOEQwvZrUkaAPsOD5GXDL5Ly840mfArQDa1FhjzQ1CYvwyM05aj94G94Ph8xHthKtt+d9S2xWmJL/QmA+zYIy/20CchzOOmAOxekOul6uAQGiVqsZTW0RboM25Stwqf/yXb+/FkpoW7QUi4RFRshnf3hBMaRuSgtRvGc3kCMexVQFFrjCzkUrHjHV6NoVrQQ68fM0tBMGxF6oVZcb8ujrztVzC9zCsi4ZpJZpx27PWRG6aoyQa0w8x9wdkuNi5b5D1UpM9Dz1WxEo4deEGRy/ykZTehLfQJrmKun6U+b/MK/27cz27xot5CdlZXJq/YxJODfZdshwMqzoIrJ0KWVXClGAKVtsIGzq64hpgQrG8FNgBftcX92eh02pDIRoOIgi74gQKPxTUx0nnkvc0JCt00YT7Mr/Y/MWsLPDM=
+  - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
+  - secure: jmVOyhVL3suLKdAbFylWJSEHjpw5KbN8rMd7sVXxRQWgM99OfrXTecfE0HH4RiO5tL+5lAQtZIEKX0qPQY4puPQjabuHmNcvzfvfVR/kGGyoM21ebj9GpLctDkBlHjA7nDHGkuB61sSASbgGfaOvqen72fSGe0SIp+5mTFDT10Dh9/rVj70W8MDMjXVVv9KI9av9Xtu2/O5W56gZbecA8EUnTNxkrE+l2vyGFrr+TQgfOEMK2GX/NReLkLxGaSP+lYoo8fY17z13fa2+HlQHKvLiKMaXFTeZNQECvOPSnYF/gslbEfabccI+Z0L5Q4vzIe2gxxPJt1N2uld7tinW/ZM8VWklykAFiCf6WQ7ZNpZD5fvY8JflBnSI75WONswhT7HrzLjwg3pqWxw45RtcS3wlMumoOyGLZn6BtpUV60wp8ejtszyQKZpMgYNYhlshvQj1o6iLU7GRnUxJweSgHY6RoBRCxMnJM20wv2KTNNkMfucee3tPF9bacUWNAP9JxeT43IXPUmTv0Ci/qej4hPrnuHa2JXR/tVWlWxBXqb/OdZOowA/JzQi8izM3/bXTe9WhawnOdvNbcKey+g4S4YN5zkYIwKjtOJyTQ5AWS1WbK35z2ZgMZsCtq1NWTjuU6cUbStGpdoyH/Vva/ORDPstKuO+PP8AJEx9cDM7JIBA=
