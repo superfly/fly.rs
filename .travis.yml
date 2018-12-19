@@ -13,9 +13,6 @@ services:
   - postgresql
   - redis
 
-env:
-  global:
-    - RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
 cache:
   cargo: true
   yarn: true
@@ -46,6 +43,8 @@ before_install:
     fi
 
 install:
+  - export RELEASE_NAME=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo pr$TRAVIS_PULL_REQUEST_BRANCH; fi)
+  - export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
   - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
   - ./scripts/setup.sh
 
@@ -69,12 +68,22 @@ before_deploy:
   - ./scripts/prepare-release.sh
 
 deploy:
-  provider: releases
-  overwrite: true
-  api_key:
-    secure: VsCHyGpPc02F3LiK+nqMDSPSEKmzgKyAhwVJQJ2mLjso74N1NGRsCDgKIQAOoLzcJRVNZFrpnlbOxKoyTGg1x8b6MnpPmqR8j/LVdKoud6Nhp8Ufw1I/9XwPpyjAhSNKnQq+1h1DpbWbob4bS5BR23PRbIySPUx570W3G8y3IritqorvpM4Qn12fyetWoZxRxWt9QAnrEV2Pj8ULR1C2jBtQPNAVLKm5FcDPBxzQcqXRZjARQtdjNU5tOB1bEm4zg8QNl/hDHi+5WZ/FQ/gZR28cAdhAb8GTC8UU7hTP5TTt2G1UimI27RPxyAyc/eJ9JU2ixRGzjDPvv6hk+KkGGjvuJccKHqR+bgHJ8lS8gPPmpvRMM9uVTAsI/pPA51OgveaHknMCCefiDYGgMq2cIW3UmUMHaB1m9SmBrIqCfEOwPp8f4KEtO55B9myuvqOYvlL4pJrcSUucjNGkm7guqCR4u3L3D0cIkTyk3fTbZyaeAxkSlcYvcff8BpRuFI8YiTybtLxqy0+KoDNoXr/d34/dwFyQNeRPN7H4EWGkzFeHpbfm+aCXGtqF8fMj/tOT7yrOAwy2rvD9/Gx8nzdY7j+DMIXB9HAR3y5Xrpiba0nedV4jww2s1dKuf96Iac3CZrO1qOXvNMKPCVSrp/rmQ5r6REfTQDe6NBONPvjjTX0=
-  file: ${RELEASE_FILENAME}
-  skip_cleanup: true
-  on:
-    repo: superfly/fly.rs
-    tags: true
+  - provider: releases
+    overwrite: true
+    api_key:
+      secure: VsCHyGpPc02F3LiK+nqMDSPSEKmzgKyAhwVJQJ2mLjso74N1NGRsCDgKIQAOoLzcJRVNZFrpnlbOxKoyTGg1x8b6MnpPmqR8j/LVdKoud6Nhp8Ufw1I/9XwPpyjAhSNKnQq+1h1DpbWbob4bS5BR23PRbIySPUx570W3G8y3IritqorvpM4Qn12fyetWoZxRxWt9QAnrEV2Pj8ULR1C2jBtQPNAVLKm5FcDPBxzQcqXRZjARQtdjNU5tOB1bEm4zg8QNl/hDHi+5WZ/FQ/gZR28cAdhAb8GTC8UU7hTP5TTt2G1UimI27RPxyAyc/eJ9JU2ixRGzjDPvv6hk+KkGGjvuJccKHqR+bgHJ8lS8gPPmpvRMM9uVTAsI/pPA51OgveaHknMCCefiDYGgMq2cIW3UmUMHaB1m9SmBrIqCfEOwPp8f4KEtO55B9myuvqOYvlL4pJrcSUucjNGkm7guqCR4u3L3D0cIkTyk3fTbZyaeAxkSlcYvcff8BpRuFI8YiTybtLxqy0+KoDNoXr/d34/dwFyQNeRPN7H4EWGkzFeHpbfm+aCXGtqF8fMj/tOT7yrOAwy2rvD9/Gx8nzdY7j+DMIXB9HAR3y5Xrpiba0nedV4jww2s1dKuf96Iac3CZrO1qOXvNMKPCVSrp/rmQ5r6REfTQDe6NBONPvjjTX0=
+    file: ${RELEASE_FILENAME}
+    skip_cleanup: true
+    on:
+      repo: superfly/fly.rs
+      tags: true
+  - provider: s3
+    access_key_id: AKIAIUEJ6IB7XWPIBUXA
+    secret_access_key:
+      secure: GtVqZAtx1CJ8xMRmheg9X/bYoMECkjI4Db1pV1XcyuLa2NjlzxHAm0yq2vozab0iOTtITpSE06msCDBW8DXgwjgT3JpH01cTwL+aUPTqTSb5XY06QM+0elU8ozpEbeRy17BCX/zLjatvhKVdLAKoHPz4aJPQT9N5VcVCttow1RGdTqS/9kR6zSu7NmEBILp65sK9rjO80X38UwME99J5Hq8BTzu0aOvIqIok6BYJAiGl471Xtqq6f9ntMDr+9zLz6zwpBDXaxJmbkImSAHAeE8yGJMiFjtR0a+AZHygkpdA5v+3kIT8ZeGWi9pc2HayBUoEwT8fOQVWUBUeaqKUUXG3KK2629CtArkb6ckpGrHSbyZAxWZcki+uM6LnzbX8S6tojBob8HRqCvEdSGuD+yO6F4f1t+athzPRONxNnzkNAoj6zuqF4bDFtiJpq62q474oEY9/iRWR2yHH/IF7Fiy0h4Sog+bEq6cCefqmMhUAYoeek3eHPL1jTu0s71nJn6NXKhvJ8vOmy0iXOGXFq//ggIFEzgr3D4i21zACa5m4c6RYqiQx05DUs/DGanJIPzs1g5CFlUDBqD4rbpFaAASagVvZEmfTE6ESAcJMITnPVxyzxi9kM1Zk3rNqSO0+JmSZQ+gB1iJPpZePQutgxy/zHYKuVpLXvegu2o+VaVEI=
+    bucket: fly-proxy
+    file: ${RELEASE_FILENAME}
+    upload-dir: ${RELEASE_NAME}
+    skip_cleanup: true
+    acl: public_read
+    detect_encoding: true
