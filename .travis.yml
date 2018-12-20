@@ -6,18 +6,32 @@ matrix:
   - os: linux
     sudo: required
     dist: trusty
+    env:
+      - HOST_TRIPLE=x86_64-unknown-linux-musl
   - os: osx
+    env:
+      - HOST_TRIPLE=x86_64-apple-darwin
 services:
 - postgresql
 - redis
+
+env:
+  global:
+  - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
+  - SCCACHE_VERSION=0.2.7
+  - SCCACHE_BUCKET=fly-proxy-sccache
+  - RUSTUP_HOME=$HOME/.rustup/
+
 cache:
-  cargo: true
   yarn: true
   directories:
   - node_modules
   - v8env/node_modules
   - third_party/flatbuffers
   - "$HOME/Library/Caches/Homebrew"
+  - "$RUSTUP_HOME"
+  - $HOME/.cargo/registry/index/
+  - $HOME/.cargo/registry/cache/
 addons:
   postgresql: '9.6'
   apt:
@@ -41,19 +55,29 @@ install:
   else echo pr$TRAVIS_PULL_REQUEST_BRANCH; fi)
 - export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
 - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
-- "./scripts/setup.sh"
+- curl -SsL https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${HOST_TRIPLE}.tar.gz | tar xzv -C /tmp
+- mv /tmp/sccache-${SCCACHE_VERSION}-${HOST_TRIPLE}/sccache $HOME/.cargo/bin/sccache
+- export RUSTC_WRAPPER=~/.cargo/bin/sccache
+- |-
+  # Remove unnnecessary cargo and rustup directories.
+  # This keeps the Travis CI cache small and fast.
+  rm -rf "$RUSTUP_HOME"downloads
+  rm -rf "$RUSTUP_HOME"tmp
+  rm -rf "$RUSTUP_HOME"toolchains/*/etc
+  rm -rf "$RUSTUP_HOME"toolchains/*/share
 before_script:
-- 
+- "./scripts/setup.sh"
+- sccache --start-server
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then rm -rf /usr/local/var/postgres; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then initdb /usr/local/var/postgres; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start postgres; fi
-- 
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then while ! pg_isready; do sleep 1; done;
   createuser -s postgres; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start redis; fi
 script:
 - RUST_BACKTRACE=1 cargo test
 - "./scripts/build-release.sh"
+- sccache --stop-server
 before_cache:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew cleanup; fi
 before_deploy:
@@ -78,7 +102,6 @@ deploy:
   acl: public_read
   region: us-east-1
   detect_encoding: true
-env:
-  global:
-  - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
-  - secure: jmVOyhVL3suLKdAbFylWJSEHjpw5KbN8rMd7sVXxRQWgM99OfrXTecfE0HH4RiO5tL+5lAQtZIEKX0qPQY4puPQjabuHmNcvzfvfVR/kGGyoM21ebj9GpLctDkBlHjA7nDHGkuB61sSASbgGfaOvqen72fSGe0SIp+5mTFDT10Dh9/rVj70W8MDMjXVVv9KI9av9Xtu2/O5W56gZbecA8EUnTNxkrE+l2vyGFrr+TQgfOEMK2GX/NReLkLxGaSP+lYoo8fY17z13fa2+HlQHKvLiKMaXFTeZNQECvOPSnYF/gslbEfabccI+Z0L5Q4vzIe2gxxPJt1N2uld7tinW/ZM8VWklykAFiCf6WQ7ZNpZD5fvY8JflBnSI75WONswhT7HrzLjwg3pqWxw45RtcS3wlMumoOyGLZn6BtpUV60wp8ejtszyQKZpMgYNYhlshvQj1o6iLU7GRnUxJweSgHY6RoBRCxMnJM20wv2KTNNkMfucee3tPF9bacUWNAP9JxeT43IXPUmTv0Ci/qej4hPrnuHa2JXR/tVWlWxBXqb/OdZOowA/JzQi8izM3/bXTe9WhawnOdvNbcKey+g4S4YN5zkYIwKjtOJyTQ5AWS1WbK35z2ZgMZsCtq1NWTjuU6cUbStGpdoyH/Vva/ORDPstKuO+PP8AJEx9cDM7JIBA=
+  on:
+    repo: superfly/fly.rs
+    all_branches: true
