@@ -6,7 +6,11 @@ matrix:
   - os: linux
     sudo: required
     dist: trusty
-  # - os: osx
+    env:
+      - HOST_TRIPLE=x86_64-unknown-linux-musl
+  - os: osx
+    env:
+      - HOST_TRIPLE=x86_64-apple-darwin
 services:
 - postgresql
 - redis
@@ -14,6 +18,7 @@ services:
 env:
   global:
   - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
+  - SCCACHE_VERSION=0.2.7
   - SCCACHE_BUCKET=fly-proxy-sccache
   - RUSTUP_HOME=$HOME/.rustup/
 
@@ -50,8 +55,8 @@ install:
   else echo pr$TRAVIS_PULL_REQUEST_BRANCH; fi)
 - export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
 - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
-- curl -SsL https://github.com/mozilla/sccache/releases/download/0.2.7/sccache-0.2.7-x86_64-unknown-linux-musl.tar.gz | tar xzv -C /tmp
-- mv /tmp/sccache-0.2.7-x86_64-unknown-linux-musl/sccache $HOME/.cargo/bin/sccache
+- curl -SsL https://github.com/mozilla/sccache/releases/download/${SCCACHE_VERSION}/sccache-${SCCACHE_VERSION}-${HOST_TRIPLE}.tar.gz | tar xzv -C /tmp
+- mv /tmp/sccache-${SCCACHE_VERSION}-${HOST_TRIPLE}/sccache $HOME/.cargo/bin/sccache
 - export RUSTC_WRAPPER=~/.cargo/bin/sccache
 - |-
   # Remove unnnecessary cargo and rustup directories.
