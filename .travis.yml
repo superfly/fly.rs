@@ -14,7 +14,6 @@ services:
 env:
   global:
   - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
-  - RUSTC_WRAPPER=~/.cargo/bin/sccache
   - SCCACHE_BUCKET=fly-proxy-sccache
   - RUSTUP_HOME=$HOME/.rustup/
 
@@ -52,6 +51,7 @@ install:
 - export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
 - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
 - which sccache || cargo install sccache
+- export RUSTC_WRAPPER=~/.cargo/bin/sccache
 - |-
   # Remove unnnecessary cargo and rustup directories.
   # This keeps the Travis CI cache small and fast.
