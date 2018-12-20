@@ -78,6 +78,9 @@ deploy:
   acl: public_read
   region: us-east-1
   detect_encoding: true
+  on:
+    repo: superfly/fly.rs
+    all_branches: true
 env:
   global:
   - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
