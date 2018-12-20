@@ -6,7 +6,7 @@ matrix:
   - os: linux
     sudo: required
     dist: trusty
-  - os: osx
+  # - os: osx
 services:
 - postgresql
 - redis
@@ -50,7 +50,8 @@ install:
   else echo pr$TRAVIS_PULL_REQUEST_BRANCH; fi)
 - export RELEASE_FILENAME=fly-${TRAVIS_OS_NAME}-x64.tar.gz
 - export PATH=$PATH:$TRAVIS_BUILD_DIR/third_party/flatbuffers/
-- which sccache || cargo install sccache
+- curl -SsL https://github.com/mozilla/sccache/releases/download/0.2.7/sccache-0.2.7-x86_64-unknown-linux-musl.tar.gz | tar xzv -C /tmp
+- mv /tmp/sccache-0.2.7-x86_64-unknown-linux-musl/sccache $HOME/.cargo/bin/sccache
 - export RUSTC_WRAPPER=~/.cargo/bin/sccache
 - |-
   # Remove unnnecessary cargo and rustup directories.
