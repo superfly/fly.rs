@@ -16,6 +16,14 @@ use std::time;
 
 type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send>;
 
+lazy_static! {
+    // static ref SERVER_HEADER: &'static str =
+    static ref SERVER_HEADER_VALUE: header::HeaderValue = {
+        let s = format!("Fly ({})", env!("GIT_HASH"));
+        header::HeaderValue::from_str(s.as_str()).unwrap()
+    };
+}
+
 pub fn serve_http(
     tls: bool,
     req: Request<Body>,
@@ -24,16 +32,14 @@ pub fn serve_http(
 ) -> BoxedResponseFuture {
     let timer = time::Instant::now();
     debug!("serving http: {}", req.uri());
+    let req_id = ksuid::Ksuid::generate().to_base62();
     let (parts, body) = req.into_parts();
     let host = if parts.version == hyper::Version::HTTP_2 {
         match parts.uri.host() {
             Some(h) => h,
             None => {
                 return future_response(
-                    Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Body::empty())
-                        .unwrap(),
+                    simple_response(req_id, StatusCode::NOT_FOUND, None),
                     timer,
                     None,
                 )
@@ -46,10 +52,11 @@ pub fn serve_http(
                 Err(e) => {
                     error!("error stringifying host: {}", e);
                     return future_response(
-                        Response::builder()
-                            .status(StatusCode::BAD_REQUEST)
-                            .body(Body::from("Bad host header"))
-                            .unwrap(),
+                        simple_response(
+                            req_id,
+                            StatusCode::BAD_REQUEST,
+                            Some(Body::from("Bad host header")),
+                        ),
                         timer,
                         None,
                     );
@@ -57,10 +64,7 @@ pub fn serve_http(
             },
             None => {
                 return future_response(
-                    Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Body::empty())
-                        .unwrap(),
+                    simple_response(req_id, StatusCode::NOT_FOUND, None),
                     timer,
                     None,
                 )
@@ -73,10 +77,11 @@ pub fn serve_http(
             Some(rt) => rt,
             None => {
                 return future_response(
-                    Response::builder()
-                        .status(StatusCode::NOT_FOUND)
-                        .body(Body::from("app not found"))
-                        .unwrap(),
+                    simple_response(
+                        req_id,
+                        StatusCode::NOT_FOUND,
+                        Some(Body::from("app not found")),
+                    ),
                     timer,
                     None,
                 );
@@ -85,10 +90,7 @@ pub fn serve_http(
         Err(e) => {
             error!("error getting runtime: {:?}", e);
             return future_response(
-                Response::builder()
-                    .status(StatusCode::SERVICE_UNAVAILABLE)
-                    .body(Body::empty())
-                    .unwrap(),
+                simple_response(req_id, StatusCode::SERVICE_UNAVAILABLE, None),
                 timer,
                 None,
             );
@@ -105,15 +107,15 @@ pub fn serve_http(
             parts.uri.path_and_query().unwrap()
         )
     };
-    let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+    let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
 
     let rt_name = rt.name.clone();
     let rt_version = rt.version.clone();
 
     match rt.dispatch_event(
-        req_id,
+        stream_id,
         JsEvent::Fetch(JsHttpRequest {
-            id: req_id,
+            id: stream_id,
             method: parts.method,
             remote_addr: remote_addr,
             url: url,
@@ -138,20 +140,14 @@ pub fn serve_http(
         }),
     ) {
         None => future_response(
-            Response::builder()
-                .status(StatusCode::SERVICE_UNAVAILABLE)
-                .body(Body::empty())
-                .unwrap(),
+            simple_response(req_id, StatusCode::SERVICE_UNAVAILABLE, None),
             timer,
             Some((rt.name.clone(), rt.version.clone())),
         ),
         Some(Err(e)) => {
             error!("error sending js http request: {:?}", e);
             future_response(
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::empty())
-                    .unwrap(),
+                simple_response(req_id, StatusCode::INTERNAL_SERVER_ERROR, None),
                 timer,
                 Some((rt.name.clone(), rt.version.clone())),
             )
@@ -210,7 +206,10 @@ pub fn serve_http(
                         };
                     }
 
-                    Ok(Response::from_parts(parts, body))
+                    Ok(set_request_id(
+                        set_server_header(Response::from_parts(parts, body)),
+                        req_id,
+                    ))
                 }),
                 timer,
                 Some((rt.name.clone(), rt.version.clone())),
@@ -226,6 +225,32 @@ fn future_response(
     namever: Option<(String, String)>,
 ) -> BoxedResponseFuture {
     wrap_future(future::ok(res), timer, namever)
+}
+
+fn simple_response(req_id: String, status: StatusCode, body: Option<Body>) -> Response<Body> {
+    set_request_id(
+        set_server_header(
+            Response::builder()
+                .status(status)
+                .body(body.unwrap_or(Body::empty()))
+                .unwrap(),
+        ),
+        req_id,
+    )
+}
+
+fn set_server_header(mut res: Response<Body>) -> Response<Body> {
+    res.headers_mut()
+        .insert(header::SERVER, SERVER_HEADER_VALUE.clone());
+    res
+}
+
+fn set_request_id(mut res: Response<Body>, req_id: String) -> Response<Body> {
+    res.headers_mut().insert(
+        "fly-request-id",
+        header::HeaderValue::from_str(req_id.as_str()).unwrap(),
+    );
+    res
 }
 
 fn wrap_future<F>(
