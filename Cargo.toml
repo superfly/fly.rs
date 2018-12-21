@@ -50,6 +50,7 @@ prometheus = "0.4"
 floating-duration = "0.1"
 image = "0.20"
 libwebp-sys = "0.2"
+ksuid = "0.2"
 
 [workspace]
 members = [
