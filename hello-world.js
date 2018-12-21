@@ -6,13 +6,13 @@ addEventListener("fetch", function (event) {
   const req = event.request;
   // console.log("req url:", event.request.url);
   let url = new URL(req.url)
-  if (url.pathname.endsWith("echo"))
+  if (url.pathname == "/echo")
     event.respondWith(new Response(req.body, { headers: { foo: "bar" } }))
 
-  else if (url.pathname.endsWith("null"))
+  else if (url.pathname == "/null")
     event.respondWith(new Response(null, { headers: {} }))
 
-  else if (url.pathname.endsWith("hello-world"))
+  else if (url.pathname == "/hello-world")
     event.respondWith(new Response(helloWorld))
 
   else if (url.pathname == "/kitchensink") {
@@ -69,8 +69,14 @@ addEventListener("fetch", function (event) {
         })
       }).catch(e => console.log("error processing image:", e))
     }))
-  }
-  else {
+  } else if (url.pathname == "/post") {
+    console.log("post")
+    // event.respondWith(fetch("http://localhost:8888/post-echo", { body: "from within", method: "POST" }))
+    event.respondWith(fetch("http://localhost:8888/post-echo", { body: event.request.body, method: "POST" }))
+  } else if (req.method == "POST" && url.pathname == "/post-echo") {
+    console.log("post-echo")
+    event.respondWith(new Response(event.request.body))
+  } else {
     req.headers.delete("host");
     let u = url.searchParams.get("url");
     let toFetch = new Request(req)

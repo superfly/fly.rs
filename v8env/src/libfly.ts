@@ -15,9 +15,7 @@ interface Libfly {
       error: Error
     ) => void
   ) => void;
-
-  // sources: { [key: string]: string }
-  // sourceMaps: { [key: string]: any }
+  getNextStreamId(): number;
 }
 
 const window = globalEval("this");

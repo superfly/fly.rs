@@ -24,9 +24,7 @@ use tokio::prelude::*;
 
 use crate::ops::dns::*;
 use crate::runtime::{EventResponseChannel, JsEvent};
-use crate::{RuntimeSelector, NEXT_EVENT_ID};
-
-use std::sync::atomic::Ordering;
+use crate::{get_next_stream_id, RuntimeSelector};
 
 pub struct DnsServer {
     addr: SocketAddr,
@@ -59,7 +57,7 @@ impl RequestHandler for DnsServer {
             req.message
         );
 
-        let eid = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+        let eid = get_next_stream_id();
 
         let queries = req.message.queries();
         let mut name = dns::rr::Name::from(queries[0].name().clone())

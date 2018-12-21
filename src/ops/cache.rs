@@ -7,11 +7,9 @@ use crate::runtime::{JsBody, JsRuntime, Op};
 use crate::utils::*;
 use libfly::*;
 
-use crate::NEXT_EVENT_ID;
+use crate::get_next_stream_id;
 
 use futures::{Future, Stream};
-
-use std::sync::atomic::Ordering;
 
 use crate::cache_store::*;
 
@@ -51,7 +49,7 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   let msg = base.msg_as_cache_set().unwrap();
   let key = msg.key().unwrap().to_string();
 
-  let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let stream_id = get_next_stream_id();
 
   let rt = ptr.to_runtime();
 
@@ -116,7 +114,7 @@ pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_get().unwrap();
 
-  let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+  let stream_id = get_next_stream_id();
 
   let key = msg.key().unwrap().to_string();
 

@@ -3,9 +3,7 @@ use std::net::SocketAddr;
 
 use crate::metrics::*;
 use crate::runtime::{EventResponseChannel, JsBody, JsEvent, JsHttpRequest, JsHttpResponse};
-use crate::{RuntimeSelector, NEXT_EVENT_ID};
-
-use std::sync::atomic::Ordering;
+use crate::{get_next_stream_id, RuntimeSelector};
 
 use hyper::body::Payload;
 use hyper::{header, Body, Request, Response, StatusCode};
@@ -107,7 +105,7 @@ pub fn serve_http(
             parts.uri.path_and_query().unwrap()
         )
     };
-    let stream_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+    let stream_id = get_next_stream_id();
 
     let rt_name = rt.name.clone();
     let rt_version = rt.version.clone();

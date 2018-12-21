@@ -174,6 +174,12 @@ void HandleException(v8::Local<v8::Context> context,
   }
 }
 
+void GetNextStreamId(const v8::FunctionCallbackInfo<v8::Value> &args)
+{
+  v8::Isolate *isolate = args.GetIsolate();
+  args.GetReturnValue().Set(v8::Number::New(isolate, c_get_next_stream_id()));
+}
+
 void Print(const v8::FunctionCallbackInfo<v8::Value> &args)
 {
   // TODO: assert arguments (level:Number, msg:String)
@@ -346,6 +352,7 @@ intptr_t ext_refs[] = {
     reinterpret_cast<intptr_t>(Send),
     reinterpret_cast<intptr_t>(Recv),
     reinterpret_cast<intptr_t>(SetGlobalErrorHandler),
+    reinterpret_cast<intptr_t>(GetNextStreamId),
     0};
 
 void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context)
@@ -371,6 +378,10 @@ void InitContext(v8::Isolate *isolate, v8::Local<v8::Context> context)
   auto ge_tmpl = v8::FunctionTemplate::New(isolate, SetGlobalErrorHandler);
   auto ge_val = ge_tmpl->GetFunction(context).ToLocalChecked();
   fly->Set(context, v8_str(isolate, "setGlobalErrorHandler"), ge_val).FromJust();
+
+  auto gnsi_tmpl = v8::FunctionTemplate::New(isolate, GetNextStreamId);
+  auto gnsi_val = gnsi_tmpl->GetFunction(context).ToLocalChecked();
+  fly->Set(context, v8_str(isolate, "getNextStreamId"), gnsi_val).FromJust();
 }
 
 extern "C"

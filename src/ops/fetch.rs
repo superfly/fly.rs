@@ -12,9 +12,7 @@ use libfly::*;
 
 use crate::errors::{FlyError, FlyResult};
 
-use crate::NEXT_EVENT_ID;
-
-use std::sync::atomic::Ordering;
+use crate::get_next_stream_id;
 
 extern crate hyper;
 
@@ -45,7 +43,7 @@ lazy_static! {
     };
 }
 
-pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_http_request().unwrap();
 
@@ -54,17 +52,12 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         return file_request(ptr, cmd_id, url);
     }
 
-    let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+    let req_id = msg.id();
 
-    let req_body: Body;
-    if msg.has_body() {
-        warn!("has body not implemented!");
-        unimplemented!(); // TODO: implement
-    } else {
-        req_body = Body::empty();
-    }
-
-    let http_uri: hyper::Uri = url.parse().unwrap();
+    let http_uri: hyper::Uri = match url.parse() {
+        Ok(u) => u,
+        Err(e) => return odd_future(format!("{}", e).into()),
+    };
 
     // for the metrics
     let host_str = http_uri.host().unwrap_or("unknown");
@@ -88,31 +81,53 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
         .with_label_values(&[rt.name.as_str(), rt.version.as_str(), host.as_str()])
         .inc();
 
+    let method = match msg.method() {
+        msg::HttpMethod::Get => Method::GET,
+        msg::HttpMethod::Head => Method::HEAD,
+        msg::HttpMethod::Post => Method::POST,
+        msg::HttpMethod::Put => Method::PUT,
+        msg::HttpMethod::Patch => Method::PATCH,
+        msg::HttpMethod::Delete => Method::DELETE,
+        msg::HttpMethod::Connect => Method::CONNECT,
+        msg::HttpMethod::Options => Method::OPTIONS,
+        msg::HttpMethod::Trace => Method::TRACE,
+    };
+
+    let msg_headers = msg.headers().unwrap();
+    let mut headers = HeaderMap::new();
+    for i in 0..msg_headers.len() {
+        let h = msg_headers.get(i);
+        trace!("header: {} => {}", h.key().unwrap(), h.value().unwrap());
+        headers.insert(
+            HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
+            h.value().unwrap().parse().unwrap(),
+        );
+    }
+
+    let has_body = msg.has_body();
+    println!("HAS BODY? {}", has_body);
+    let req_body = if has_body {
+        if raw.data_len > 0 {
+            println!("STATIC BODY!");
+            Body::from(unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec())
+        } else {
+            println!("STREAMING BODY");
+            let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
+            {
+                rt.streams.lock().unwrap().insert(req_id, sender);
+            }
+            Body::wrap_stream(recver.map_err(|_| std::sync::mpsc::RecvError {}))
+        }
+    } else {
+        Body::empty()
+    };
+    // let req_body = Body::empty();
+
     let mut req = Request::new(req_body);
     {
         *req.uri_mut() = http_uri.clone();
-        *req.method_mut() = match msg.method() {
-            msg::HttpMethod::Get => Method::GET,
-            msg::HttpMethod::Head => Method::HEAD,
-            msg::HttpMethod::Post => Method::POST,
-            msg::HttpMethod::Put => Method::PUT,
-            msg::HttpMethod::Patch => Method::PATCH,
-            msg::HttpMethod::Delete => Method::DELETE,
-            msg::HttpMethod::Connect => Method::CONNECT,
-            msg::HttpMethod::Options => Method::OPTIONS,
-            msg::HttpMethod::Trace => Method::TRACE,
-        };
-
-        let msg_headers = msg.headers().unwrap();
-        let headers = req.headers_mut();
-        for i in 0..msg_headers.len() {
-            let h = msg_headers.get(i);
-            trace!("header: {} => {}", h.key().unwrap(), h.value().unwrap());
-            headers.insert(
-                HeaderName::from_bytes(h.key().unwrap().as_bytes()).unwrap(),
-                h.value().unwrap().parse().unwrap(),
-            );
-        }
+        *req.method_mut() = method;
+        *req.headers_mut() = headers;
     }
 
     let (p, c) = oneshot::channel::<FlyResult<JsHttpResponse>>();
@@ -299,7 +314,7 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
 }
 
 fn file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
-    let req_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+    let req_id = get_next_stream_id();
     let path: String = url.chars().skip(7).collect();
 
     let rt = ptr.to_runtime();

@@ -10,11 +10,9 @@ use crate::runtime::{JsBody, JsRuntime, Op};
 use crate::utils::*;
 use libfly::*;
 
-use crate::NEXT_EVENT_ID;
+use crate::get_next_stream_id;
 
 use futures::{sync::mpsc, Future, Stream};
-
-use std::sync::atomic::Ordering;
 
 #[derive(Debug)]
 struct WebPEncodeOptions {
@@ -59,8 +57,8 @@ pub fn op_image_transform(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Bo
         }
     };
 
-    let in_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
-    let out_id = NEXT_EVENT_ID.fetch_add(1, Ordering::SeqCst) as u32;
+    let in_id = get_next_stream_id();
+    let out_id = get_next_stream_id();
 
     let rt = ptr.to_runtime();
 

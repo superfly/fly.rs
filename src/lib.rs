@@ -16,6 +16,17 @@ use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 pub static NEXT_EVENT_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 pub static NEXT_FUTURE_ID: AtomicUsize = ATOMIC_USIZE_INIT;
 
+use std::os::raw::c_uint;
+
+#[no_mangle]
+pub unsafe extern "C" fn c_get_next_stream_id() -> c_uint {
+    get_next_stream_id()
+}
+
+pub fn get_next_stream_id() -> u32 {
+    NEXT_EVENT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as u32
+}
+
 pub mod errors;
 pub mod msg;
 pub mod ops;

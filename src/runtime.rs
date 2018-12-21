@@ -144,6 +144,7 @@ pub struct Runtime {
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
+  // pub stream_recv: Mutex<HashMap<u32, mpsc::UnboundedReceiver<Vec<u8>>>>,
   pub cache_store: Box<cache_store::CacheStore + 'static + Send + Sync>,
   pub data_store: Box<data_store::DataStore + 'static + Send + Sync>,
   pub fs_store: Box<fs_store::FsStore + 'static + Send + Sync>,
@@ -217,6 +218,7 @@ impl Runtime {
       responses: Mutex::new(HashMap::new()),
       dns_responses: Mutex::new(HashMap::new()),
       streams: Mutex::new(HashMap::new()),
+      // stream_recv: Mutex::new(HashMap::new()),
       fetch_events: None,
       resolv_events: None,
       cache_store: match settings.cache_store {
@@ -992,7 +994,7 @@ fn op_stream_chunk(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
           _ => debug!("chunk streamed"),
         }
       }
-      _ => unimplemented!(),
+      None => unimplemented!(),
     };
   }
   if msg.done() {

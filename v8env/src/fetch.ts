@@ -6,7 +6,7 @@
 import { RequestInit, RequestInfo, HeadersInit } from './dom_types';
 import { FlyResponse } from './response';
 import { FlyRequest } from './request';
-import { sendAsync, sendSync, streams } from './bridge';
+import { sendAsync, sendSync, streams, sendStreamChunks } from './bridge';
 
 import * as fbs from "./msg_generated";
 import * as errors from "./errors";
@@ -14,11 +14,24 @@ import * as util from "./util";
 import * as flatbuffers from "./flatbuffers"
 import { ReadableStream } from '@stardazed/streams';
 
+import { libfly } from './libfly';
 
 export interface FlyRequestInit extends RequestInit {
 	timeout?: number,
 	readTimeout?: number
 }
+
+const fbsMethodMap: Map<String, fbs.HttpMethod> = new Map([
+	["GET", fbs.HttpMethod.Get],
+	["HEAD", fbs.HttpMethod.Head],
+	["POST", fbs.HttpMethod.Post],
+	["PUT", fbs.HttpMethod.Put],
+	["PATCH", fbs.HttpMethod.Patch],
+	["DELETE", fbs.HttpMethod.Delete],
+	["CONNECT", fbs.HttpMethod.Connect],
+	["OPTIONS", fbs.HttpMethod.Options],
+	["TRACE", fbs.HttpMethod.Trace],
+]);
 
 /**
  * Starts the process of fetching a network request.
@@ -37,6 +50,9 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 	if (!url)
 		throw new Error("fetch url required")
 
+	let fbbMethod = fbsMethodMap.get(req.method.toUpperCase());
+	if (typeof fbbMethod === "undefined")
+		throw new Error(`unknown http method: ${req.method}`);
 	const fbb = flatbuffers.createBuilder();
 	const urlStr = fbb.createString(url);
 
@@ -53,21 +69,21 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 	}
 	let reqHeaders = fbs.HttpRequest.createHeadersVector(fbb, fbbHeaders);
 	fbs.HttpRequest.startHttpRequest(fbb);
+	const reqId = libfly.getNextStreamId();
+	fbs.HttpRequest.addId(fbb, reqId);
+	fbs.HttpRequest.addMethod(fbb, fbbMethod);
 	fbs.HttpRequest.addUrl(fbb, urlStr);
-
-	let method: fbs.HttpMethod;
-	switch (req.method) {
-		case "GET":
-			method = fbs.HttpMethod.Get;
-			break;
-		case "HEAD":
-			method = fbs.HttpMethod.Head;
-			break;
-	}
-
-	fbs.HttpRequest.addMethod(fbb, method);
 	fbs.HttpRequest.addHeaders(fbb, reqHeaders);
-	return sendAsync(fbb, fbs.Any.HttpRequest, fbs.HttpRequest.endHttpRequest(fbb)).then((base) => {
+
+	let reqBody = req.body;
+	let hasBody = reqBody != null && (!req.isStatic || req.isStatic && req.staticBody.length > 0);
+	fbs.HttpRequest.addHasBody(fbb, hasBody);
+
+	let staticBody: ArrayBufferView;
+	if (hasBody && req.isStatic)
+		staticBody = req.staticBody
+
+	const prom = sendAsync(fbb, fbs.Any.HttpRequest, fbs.HttpRequest.endHttpRequest(fbb), staticBody).then((base) => {
 		let msg = new fbs.FetchHttpResponse();
 		base.msg(msg);
 		const body = msg.hasBody() ?
@@ -90,6 +106,11 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 
 		return new FlyResponse(body, { headers: headersInit, status: msg.status() })
 	});
+
+	if (!staticBody && hasBody) // must be a stream
+		sendStreamChunks(reqId, reqBody) // don't wait for it, just start sending.
+
+	return prom
 };
 
 export class TimeoutError extends Error { }

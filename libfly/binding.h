@@ -52,6 +52,8 @@ struct js_runtime_options
   size_t hard_memory_limit;
 };
 
+extern "C" uint c_get_next_stream_id();
+
 extern "C"
 {
   extern fly_simple_buf js_create_snapshot(const char *filename, const char *code);
