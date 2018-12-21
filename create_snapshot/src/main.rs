@@ -7,6 +7,13 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::slice;
 
+use std::os::raw::c_uint;
+
+#[no_mangle]
+pub unsafe extern "C" fn c_get_next_stream_id() -> c_uint {
+    0
+}
+
 fn main() {
   unsafe { js_init() };
 
