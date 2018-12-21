@@ -52,7 +52,7 @@ struct js_runtime_options
   size_t hard_memory_limit;
 };
 
-extern "C" uint c_get_next_stream_id();
+extern "C" uint32_t c_get_next_stream_id();
 
 extern "C"
 {
