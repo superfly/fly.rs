@@ -1,6 +1,6 @@
 import * as ts from "typescript"
 
-import { assert } from "./util"
+import { assert, assertNotNull, assertNotNullOrUndef, assertNotUndef } from "./util"
 import { fetchModule } from "./resolver";
 import { extname } from "./path";
 import { ContainerName } from "./assets";
@@ -65,7 +65,7 @@ class ModuleInfo implements ts.IScriptSnapshot {
   public deps?: ModuleId[];
   public readonly mediaType: MediaType;
 
-  public constructor(moduleId: ModuleId, fileName: ModuleFileName, version?: number, type?: MediaType)
+  public constructor(moduleId: ModuleId, fileName: ModuleFileName, version?: number, type: MediaType = MediaType.Unknown)
   {
     this.moduleId = moduleId;
     this.fileName = fileName;
@@ -137,33 +137,44 @@ export class Compiler {
 
   public run(moduleSpecifier: ModuleSpecifier, containingFile: ContainingFile) {
     trace("run()", { moduleSpecifier, containingFile });
+    // Load entry point module and put it's file name in the scriptFileNames field as a new array
     const moduleMetaData = this.resolveModule(moduleSpecifier, containingFile);
     this.scriptFileNames = [moduleMetaData.fileName];
+    // If the module doesn't have any dependencies(hasn't been loaded before) instantiate it
     if (!moduleMetaData.deps) {
       this.instantiateModule(moduleMetaData);
     }
+    // 
     this.drainRunQueue();
     return moduleMetaData;
   }
 
   public resolveModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
     trace("resolveModule()", { moduleSpecifier, containingFile })
+    // attempt to load module from cache
     let fn = this.fileNameCache.get([moduleSpecifier, containingFile]);
     if (fn && this.moduleCache.has(fn)) {
+      // return if found
       return this.moduleCache.get(fn);
     }
     let { moduleId, fileName, sourceCode } = fetchModule(moduleSpecifier, containingFile);
 
+    // If module id is null or undef resolve failed.
     if (!moduleId) {
       throw new Error(`Failed to resolve '${moduleSpecifier}' from '${containingFile}'`)
     }
 
+    // If module cache already contains module return it
     if (this.moduleCache.has(fileName)) {
       return this.moduleCache.get(fileName)
     }
 
+    console.log("Loading new module with mediaType %s", mediaType(moduleId));
+
+    // Create new ModuleInfo object and fill it with info 
     const moduleInfo = new ModuleInfo(moduleId, fileName, 0, mediaType(moduleId))
     moduleInfo.inputCode = sourceCode
+    // Put module into cache for the next guy to pick it up
     this.moduleCache.set(moduleInfo)
     this.fileNameCache.set([moduleSpecifier, containingFile], fileName);
     return moduleInfo
@@ -184,18 +195,20 @@ export class Compiler {
    */
   compile(moduleInfo: ModuleInfo): OutputCode {
     const recompile = false; // only relevant for persistent cache
+    // If module already has ouputCode return that(Nothing to compile).
     if (!recompile && moduleInfo.outputCode) {
       return moduleInfo.outputCode;
     }
     const { fileName, inputCode, moduleId } = moduleInfo;
     const output = this.languageService.getEmitOutput(fileName);
-    // Get the relevant diagnostics - this is 3x faster than
+    // Get the relevant diagnosetics - this is 3x faster than
     // `getPreEmitDiagnostics`.
     const diagnostics = [
       ...this.languageService.getCompilerOptionsDiagnostics(),
       ...this.languageService.getSyntacticDiagnostics(fileName),
       ...this.languageService.getSemanticDiagnostics(fileName)
     ];
+    // If the language service reports log error and throw.
     if (diagnostics.length > 0) {
       const errMsg = ts.formatDiagnosticsWithColorAndContext(diagnostics, diagnosticHost);
       console.error("Compiler error", { errMsg });
@@ -213,6 +226,7 @@ export class Compiler {
       "Only single file should be output."
     );
 
+
     const [outputFile] = output.outputFiles;
     const outputCode = (moduleInfo.outputCode = `${
       outputFile.text
@@ -220,6 +234,7 @@ export class Compiler {
     moduleInfo.version = 1;
     // write to persistent cache
     // this._os.codeCache(fileName, sourceCode, outputCode);
+    // Return compiled code.
     return moduleInfo.outputCode;
   }
 
@@ -239,10 +254,12 @@ export class Compiler {
       "drainRunQueue()",
       this.runQueue.map(moduleInfo => moduleInfo.moduleId)
     );
+    // For each module in the runQueue 
     let moduleMetaData: ModuleInfo | undefined;
     while ((moduleMetaData = this.runQueue.shift())) {
-      assert(
-        moduleMetaData.factory != null,
+      // Error if module has no factory or factory is null
+      assertNotNullOrUndef(
+        moduleMetaData.factory,
         "Cannot run module without factory."
       );
       assert(moduleMetaData.hasRun === false, "Module has already been run.");
@@ -268,6 +285,9 @@ export class Compiler {
       return;
     }
 
+    /**
+     * I assume the global part has some use but it may be not longer needed
+     */
     this.global.define = this.makeDefine(moduleInfo);
     this.globalEval(this.compile(moduleInfo));
     this.global.define = undefined;
@@ -281,6 +301,7 @@ export class Compiler {
     if (!moduleMetaData.deps) {
       throw new Error("Cannot get arguments until dependencies resolved.");
     }
+    // For each dependency 
     return moduleMetaData.deps.map(dep => {
       if (dep === "require") {
         return this.makeLocalRequire(moduleMetaData);
@@ -308,7 +329,7 @@ export class Compiler {
       // when there are circular dependencies, we need to skip recursing the
       // dependencies
       moduleInfo.gatheringDeps = true;
-      // we will recursively resolve the dependencies for any modules
+      // we will recursively resolve the dependencies for any modules and store them as file names
       moduleInfo.deps = deps.map(dep => {
         if (
           dep === "require" ||
@@ -317,12 +338,15 @@ export class Compiler {
         ) {
           return dep;
         }
+        // Resolve the dependency and instantiate it if not currently gathering deps to avoid loading deps more than once
         const dependencyMetaData = this.resolveModule(dep, moduleInfo.fileName);
         if (!dependencyMetaData.gatheringDeps) {
           this.instantiateModule(dependencyMetaData);
         }
+        // Return the resolved dep's fileName
         return dependencyMetaData.fileName;
       });
+      // Remove gatheringDeps lock and if the runQueue doesn't already contain this module add it.
       moduleInfo.gatheringDeps = false;
       if (!this.runQueue.includes(moduleInfo)) {
         this.runQueue.push(moduleInfo);

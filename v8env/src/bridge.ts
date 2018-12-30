@@ -84,7 +84,8 @@ export function addEventListener(name: string, fn: Function) {
         for (let i = 0; i < msg.headersLength(); i++) {
           const h = msg.headers(i);
           // console.log("header:", h.key(), h.value());
-          headersInit.push([h.key(), h.value()]);
+          // Not null operators to appease the typescript gods. These should never be null as far as I can tell.
+          headersInit.push([h!.key()!, h!.value()!]);
         }
 
         let req = new FlyRequest(msg.url(), {
