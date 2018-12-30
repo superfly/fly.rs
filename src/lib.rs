@@ -49,7 +49,9 @@ pub mod http_server;
 
 pub mod metrics;
 
-mod compiler;
+pub mod compiler;
+pub use crate::compiler::{ ModuleResolver, JsonSecretsResolver, LocalDiskModuleResolver };
+
 mod disk_fs;
 mod postgres_data;
 mod redis_cache;

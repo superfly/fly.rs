@@ -34,7 +34,7 @@ fn main() {
   let env = Env::default().filter_or("LOG_LEVEL", "info");
   env_logger::init_from_env(env);
 
-  let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap());
+  let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap(), None);
   rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap());
   rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap());
   rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap());

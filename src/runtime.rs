@@ -75,6 +75,8 @@ use crate::{disk_fs, redis_fs};
 
 use crate::settings::{CacheStore, DataStore, FsStore, Settings};
 
+use crate::compiler::{ Compiler, ModuleResolver, LocalDiskModuleResolver };
+
 use super::NEXT_FUTURE_ID;
 use std::net::SocketAddr;
 use std::str;
@@ -151,6 +153,7 @@ pub struct Runtime {
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   pub last_event_at: AtomicUsize,
+  pub compiler: Mutex<Compiler>,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
 }
@@ -200,12 +203,13 @@ fn init_event_loop(
 }
 
 impl Runtime {
-  pub fn new(name: Option<String>, version: Option<String>, settings: &Settings) -> Box<Runtime> {
+  pub fn new(name: Option<String>, version: Option<String>, settings: &Settings, module_resolvers: Option<Vec<Box<ModuleResolver>>>) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
     let rt_name = name.unwrap_or("v8".to_string());
     let rt_version = version.unwrap_or("0".to_string());
     let (rthandle, txready, rxquit) = init_event_loop(format!("{}-{}", rt_name, rt_version));
+    let rt_module_resolvers = module_resolvers.unwrap_or(vec![Box::new(LocalDiskModuleResolver::new(None)) as Box<ModuleResolver>]);
 
     let mut rt = Box::new(Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
@@ -247,6 +251,7 @@ impl Runtime {
         None => Box::new(disk_fs::DiskFsStore::new()),
       },
       last_event_at: ATOMIC_USIZE_INIT,
+      compiler: Mutex::new(Compiler::new(rt_module_resolvers)),
     });
 
     (*rt).ptr.0 = unsafe {
@@ -1107,16 +1112,16 @@ fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
 }
 
 fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let rt = _ptr.to_runtime();
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_load_module().unwrap();
   let module_specifier = msg.module_specifier().unwrap().to_string();
   let containing_file = msg.containing_file().unwrap().to_string();
 
-  let module =
-    match crate::compiler::Compiler::new(None).fetch_module(&module_specifier, &containing_file) {
-      Ok(m) => m,
-      Err(e) => return odd_future(e.into()),
-    };
+  let module = match rt.compiler.lock().unwrap().fetch_module(&module_specifier, &containing_file) {
+    Ok(m) => m,
+    Err(e) => return odd_future(e.into()),
+  };
 
   Box::new(future::lazy(move || {
     let builder = &mut FlatBufferBuilder::new();
