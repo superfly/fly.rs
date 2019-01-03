@@ -37,6 +37,7 @@ pub mod utils;
 pub mod cache_store;
 pub mod data_store;
 pub mod fs_store;
+pub mod acme_challenge;
 
 pub mod settings;
 
@@ -54,5 +55,6 @@ mod disk_fs;
 mod postgres_data;
 mod redis_cache;
 mod redis_fs;
+mod redis_acme;
 mod sqlite_cache;
 mod sqlite_data;
