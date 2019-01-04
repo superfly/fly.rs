@@ -107,12 +107,9 @@ export function addEventListener(name: string, fn: Function) {
         })
 
         if (isAcmeChallengeRequest(req)) {
-          try {
-            handleAcmeChallenge(req).then(res => handleRes(id, res));
-          } catch (err) {
-            console.log("error in acme challenge handler");
-            handleError(id, err);
-          }
+          handleAcmeChallenge(req)
+            .then(res => handleRes(id, res))
+            .catch(err => handleError(id, err));
         } else {
           try {
             fn.call(window, {
