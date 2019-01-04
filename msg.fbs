@@ -37,8 +37,8 @@ union Any {
   LoadModuleResp,
   ImageApplyTransforms,
   ImageReady,
-  AcmeValidateChallenge,
-  AcmeValidateChallengeReady,
+  AcmeGetChallenge,
+  AcmeGetChallengeReady,
 }
 
 enum ErrorKind: byte {

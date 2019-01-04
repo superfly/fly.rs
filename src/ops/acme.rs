@@ -18,9 +18,9 @@ lazy_static! {
         };
 }
 
-pub fn op_validate_challenge(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_get_challenge(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
-    let msg = base.msg_as_acme_validate_challenge().unwrap();
+    let msg = base.msg_as_acme_get_challenge().unwrap();
     let hostname = msg.hostname().unwrap().to_string();
     let token = msg.token().unwrap().to_string();
 
@@ -32,16 +32,14 @@ pub fn op_validate_challenge(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -
 
     Box::new(
         acme_store
-            .validate_challenge(hostname, token)
+            .get_challenge(hostname, token)
             .map_err(|e| format!("acme error: {:?}", e).into())
             .and_then(move |contents| {
                 let builder = &mut FlatBufferBuilder::new();
-                let valid = contents.is_some();
                 let contents = builder.create_string(&contents.unwrap_or("".to_string()));
-                let msg = msg::AcmeValidateChallengeReady::create(
+                let msg = msg::AcmeGetChallengeReady::create(
                     builder,
-                    &msg::AcmeValidateChallengeReadyArgs {
-                        valid: valid,
+                    &msg::AcmeGetChallengeReadyArgs {
                         contents: Some(contents),
                         ..Default::default()
                     },
@@ -51,7 +49,7 @@ pub fn op_validate_challenge(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -
                     builder,
                     msg::BaseArgs {
                         msg: Some(msg.as_union_value()),
-                        msg_type: msg::Any::AcmeValidateChallengeReady,
+                        msg_type: msg::Any::AcmeGetChallengeReady,
                         ..Default::default()
                     },
                 ))

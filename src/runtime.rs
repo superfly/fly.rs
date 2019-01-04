@@ -525,7 +525,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::AddEventListener => op_add_event_ln,
     msg::Any::LoadModule => op_load_module,
     msg::Any::ImageApplyTransforms => ops::image::op_image_transform,
-    msg::Any::AcmeValidateChallenge => ops::acme::op_validate_challenge,
+    msg::Any::AcmeGetChallenge => ops::acme::op_get_challenge,
     _ => unimplemented!(),
   };
 

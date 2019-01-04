@@ -1,10 +1,9 @@
-table AcmeValidateChallenge {
+table AcmeGetChallenge {
   hostname: string;
   token: string;
 }
 
-table AcmeValidateChallengeReady {
+table AcmeGetChallengeReady {
   id: uint;
-  valid: bool;
   contents: string;
 }

@@ -25,36 +25,31 @@ export async function handleAcmeChallenge(req: FlyRequest): Promise<FlyResponse>
 
   console.log("handleAcmeChallenge", { hostname, token });
 
-  const { valid, contents } = await validateChallenge(hostname, token).catch(err => {
-    console.error("Error validating acme challenge");
-    return { valid: false, contents: "" };
-  });
+  try {
+    const contents = await getChallenge(hostname, token);
 
-  console.log("handleAcmeChallenge.response", { valid, contents });
-
-  return new Response(valid ? contents : "invalid", {
-    status: valid ? 200 : 404,
-    headers: {
-      "content-type": "text/plain"
+    if (contents) {
+      return new Response(contents, { headers: { "content-type": "text/plain" } });
     }
-  });
+
+    return new Response("", { status: 404 });
+  } catch (err) {
+    return new Response(`acme challenge error: ${err.message}`, { status: 500 });
+  }
 }
 
-async function validateChallenge(hostname: string, token: string): Promise<{valid: boolean, contents: string}> {
+async function getChallenge(hostname: string, token: string): Promise<string> {
   const fbb = flatbuffers.createBuilder();
   const fbHostname = fbb.createString(hostname);
   const fbToken = fbb.createString(token);
 
-  fbs.AcmeValidateChallenge.startAcmeValidateChallenge(fbb);
-  fbs.AcmeValidateChallenge.addHostname(fbb, fbHostname);
-  fbs.AcmeValidateChallenge.addToken(fbb, fbToken);
+  fbs.AcmeGetChallenge.startAcmeGetChallenge(fbb);
+  fbs.AcmeGetChallenge.addHostname(fbb, fbHostname);
+  fbs.AcmeGetChallenge.addToken(fbb, fbToken);
 
-  const resp = await sendAsync(fbb, fbs.Any.AcmeValidateChallenge, fbs.AcmeValidateChallenge.endAcmeValidateChallenge(fbb));
-  const msg = new fbs.AcmeValidateChallengeReady();
+  const resp = await sendAsync(fbb, fbs.Any.AcmeGetChallenge, fbs.AcmeGetChallenge.endAcmeGetChallenge(fbb));
+  const msg = new fbs.AcmeGetChallengeReady();
   resp.msg(msg);
 
-  return {
-    valid: msg.valid(),
-    contents: msg.contents()
-  };
+  return msg.contents();
 }
