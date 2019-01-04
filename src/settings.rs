@@ -49,7 +49,7 @@ pub enum CacheStore {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum AcmeStore {
+pub enum AcmeStoreConfig {
   Redis(RedisStoreConfig),
 }
 
@@ -58,7 +58,7 @@ pub struct Settings {
   pub data_store: Option<DataStore>,
   pub cache_store: Option<CacheStore>,
   pub fs_store: Option<FsStore>,
-  pub acme_store: Option<AcmeStore>,
+  pub acme_store: Option<AcmeStoreConfig>,
 }
 
 impl Settings {
