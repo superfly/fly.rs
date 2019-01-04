@@ -1,0 +1,10 @@
+table AcmeValidateChallenge {
+  hostname: string;
+  token: string;
+}
+
+table AcmeValidateChallengeReady {
+  id: uint;
+  valid: bool;
+  contents: string;
+}

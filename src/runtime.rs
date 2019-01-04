@@ -60,6 +60,7 @@ use self::rand::{thread_rng, Rng};
 extern crate bytes;
 use self::bytes::BytesMut;
 
+use crate::acme_store;
 use crate::cache_store;
 use crate::data_store;
 use crate::fs_store;
@@ -67,13 +68,14 @@ use crate::ops;
 use crate::utils::*;
 
 use crate::postgres_data;
+use crate::redis_acme;
 use crate::redis_cache;
 use crate::sqlite_cache;
 use crate::sqlite_data;
 
 use crate::{disk_fs, redis_fs};
 
-use crate::settings::{CacheStore, DataStore, FsStore, Settings};
+use crate::settings::{AcmeStore, CacheStore, DataStore, FsStore, Settings};
 
 use super::NEXT_FUTURE_ID;
 use std::net::SocketAddr;
@@ -147,6 +149,7 @@ pub struct Runtime {
   // pub stream_recv: Mutex<HashMap<u32, mpsc::UnboundedReceiver<Vec<u8>>>>,
   pub cache_store: Box<cache_store::CacheStore + 'static + Send + Sync>,
   pub data_store: Box<data_store::DataStore + 'static + Send + Sync>,
+  pub acme_store: Option<Box<acme_store::AcmeStore + 'static + Send + Sync>>,
   pub fs_store: Box<fs_store::FsStore + 'static + Send + Sync>,
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
@@ -245,6 +248,12 @@ impl Runtime {
           FsStore::Disk => Box::new(disk_fs::DiskFsStore::new()),
         },
         None => Box::new(disk_fs::DiskFsStore::new()),
+      },
+      acme_store: match settings.acme_store {
+        Some(ref store) => match store {
+          AcmeStore::Redis(conf) => Some(Box::new(redis_acme::RedisAcmeStore::new(&conf))),
+        },
+        None => None,
       },
       last_event_at: ATOMIC_USIZE_INIT,
     });
@@ -525,6 +534,7 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::AddEventListener => op_add_event_ln,
     msg::Any::LoadModule => op_load_module,
     msg::Any::ImageApplyTransforms => ops::image::op_image_transform,
+    msg::Any::AcmeValidateChallenge => ops::acme::op_validate_challenge,
     _ => unimplemented!(),
   };
 

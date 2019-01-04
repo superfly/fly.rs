@@ -37,7 +37,7 @@ pub mod utils;
 pub mod cache_store;
 pub mod data_store;
 pub mod fs_store;
-pub mod acme_challenge;
+pub mod acme_store;
 
 pub mod settings;
 

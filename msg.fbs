@@ -1,6 +1,7 @@
 include "src/ops/dns.fbs";
 include "src/ops/cache.fbs";
 include "src/ops/image.fbs";
+include "src/ops/acme.fbs";
 
 union Any {
   TimerStart,
@@ -36,6 +37,8 @@ union Any {
   LoadModuleResp,
   ImageApplyTransforms,
   ImageReady,
+  AcmeValidateChallenge,
+  AcmeValidateChallengeReady,
 }
 
 enum ErrorKind: byte {
