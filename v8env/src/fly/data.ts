@@ -30,7 +30,7 @@ export class Collection {
    * @param key key for data
    * @param obj value to store
    */
-  put(key: string, obj: string): Promise<boolean> {
+  put(key: string, obj: unknown): Promise<boolean> {
     const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     const fbbKey = fbb.createString(key);
