@@ -35,6 +35,7 @@ pub mod runtime;
 pub mod utils;
 
 pub mod cache_store;
+pub mod cache_store_notifier;
 pub mod data_store;
 pub mod fs_store;
 
@@ -53,6 +54,9 @@ mod compiler;
 mod disk_fs;
 mod postgres_data;
 mod redis_cache;
+mod redis_cache_notifier;
 mod redis_fs;
 mod sqlite_cache;
 mod sqlite_data;
+
+mod redis_pool;

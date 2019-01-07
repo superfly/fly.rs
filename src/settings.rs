@@ -27,6 +27,12 @@ pub struct RedisStoreConfig {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct RedisCacheNotifierConfig {
+  pub reader_url: String,
+  pub writer_url: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum FsStore {
   Redis(RedisStoreConfig),
@@ -48,9 +54,16 @@ pub enum CacheStore {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum CacheStoreNotifier {
+  Redis(RedisCacheNotifierConfig),
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
   pub data_store: Option<DataStore>,
   pub cache_store: Option<CacheStore>,
+  pub cache_store_notifier: Option<CacheStoreNotifier>,
   pub fs_store: Option<FsStore>,
 }
 
@@ -69,6 +82,7 @@ impl Default for Settings {
     Settings {
       data_store: None,
       cache_store: None,
+      cache_store_notifier: None,
       fs_store: None,
     }
   }

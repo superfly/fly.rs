@@ -73,7 +73,7 @@ use crate::sqlite_data;
 
 use crate::{disk_fs, redis_fs};
 
-use crate::settings::{CacheStore, DataStore, FsStore, Settings};
+use crate::settings::{CacheStore, CacheStoreNotifier, DataStore, FsStore, Settings};
 
 use super::NEXT_FUTURE_ID;
 use std::net::SocketAddr;
@@ -144,7 +144,6 @@ pub struct Runtime {
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
   pub dns_responses: Mutex<HashMap<u32, oneshot::Sender<ops::dns::JsDnsResponse>>>,
   pub streams: Mutex<HashMap<u32, mpsc::UnboundedSender<Vec<u8>>>>,
-  // pub stream_recv: Mutex<HashMap<u32, mpsc::UnboundedReceiver<Vec<u8>>>>,
   pub cache_store: Box<cache_store::CacheStore + 'static + Send + Sync>,
   pub data_store: Box<data_store::DataStore + 'static + Send + Sync>,
   pub fs_store: Box<fs_store::FsStore + 'static + Send + Sync>,
@@ -226,7 +225,13 @@ impl Runtime {
           CacheStore::Sqlite(conf) => {
             Box::new(sqlite_cache::SqliteCacheStore::new(conf.filename.clone()))
           }
-          CacheStore::Redis(conf) => Box::new(redis_cache::RedisCacheStore::new(&conf)),
+          CacheStore::Redis(conf) => Box::new(redis_cache::RedisCacheStore::new(
+            &conf,
+            match settings.cache_store_notifier {
+              None => None,
+              Some(CacheStoreNotifier::Redis(ref csnconf)) => Some(csnconf.clone()),
+            },
+          )),
         },
         None => Box::new(sqlite_cache::SqliteCacheStore::new("cache.db".to_string())),
       },
@@ -512,6 +517,8 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CacheGet => ops::cache::op_cache_get,
     msg::Any::CacheSet => ops::cache::op_cache_set,
     msg::Any::CacheDel => ops::cache::op_cache_del,
+    msg::Any::CacheNotifyDel => ops::cache::op_cache_notify_del,
+    msg::Any::CacheNotifyPurgeTag => ops::cache::op_cache_notify_purge_tag,
     msg::Any::CacheExpire => ops::cache::op_cache_expire,
     msg::Any::CryptoDigest => op_crypto_digest,
     msg::Any::CryptoRandomValues => op_crypto_random_values,

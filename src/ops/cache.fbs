@@ -32,3 +32,11 @@ table CacheExpire {
   key: string;
   ttl: uint;
 }
+
+table CacheNotifyDel {
+  key: string;
+}
+
+table CacheNotifyPurgeTag {
+  tag: string;
+}

@@ -12,6 +12,7 @@ use std::ops::Deref;
 use std::io::{Read, Seek, SeekFrom};
 
 use crate::cache_store::*;
+use crate::cache_store_notifier::{CacheOperation, CacheStoreNotifierError};
 
 impl From<rusqlite::Error> for CacheError {
   #[inline]
@@ -39,7 +40,8 @@ impl SqliteCacheStore {
     CREATE UNIQUE INDEX IF NOT EXISTS ON cache (key);
     CREATE INDEX IF NOT EXISTS ON cache (key, expires_at);",
         NO_PARAMS,
-      ).unwrap();
+      )
+      .unwrap();
 
     SqliteCacheStore { pool }
   }
@@ -62,7 +64,8 @@ impl CacheStore for SqliteCacheStore {
           expires_at IS NULL OR
           expires_at >= datetime('now')
         ) LIMIT 1",
-        ).unwrap();
+        )
+        .unwrap();
 
       let mut rows = stmt.query(&[&key])?;
 
@@ -138,7 +141,8 @@ impl CacheStore for SqliteCacheStore {
         .map_err(|_e| {
           error!("sqlite cache set error concatenating stream");
           CacheError::Unknown
-        }).and_then(move |b| {
+        })
+        .and_then(move |b| {
           let conn = pool.get().unwrap(); // TODO: no unwrap
 
           if let Some(ttl) = opts.ttl {
@@ -149,14 +153,16 @@ impl CacheStore for SqliteCacheStore {
       ON CONFLICT (key) DO
         UPDATE SET value=excluded.value,expires_at=excluded.expires_at
     ",
-              ).unwrap();
+              )
+              .unwrap();
 
             stmt
               .insert(&[
                 &key as &ToSql,
                 &b as &ToSql,
                 &format!("+{} seconds", ttl) as &ToSql,
-              ]).unwrap()
+              ])
+              .unwrap()
           } else {
             let mut stmt = conn
               .prepare(
@@ -165,7 +171,8 @@ impl CacheStore for SqliteCacheStore {
       ON CONFLICT (key) DO
         UPDATE SET value=excluded.value,expires_at=excluded.expires_at
     ",
-              ).unwrap();
+              )
+              .unwrap();
 
             stmt.insert(&[&key as &ToSql, &b as &ToSql]).unwrap()
           };
@@ -229,6 +236,14 @@ impl CacheStore for SqliteCacheStore {
   fn set_tags(&self, _key: String, _tags: Vec<String>) -> EmptyCacheFuture {
     unimplemented!()
   }
+
+  fn notify(
+    &self,
+    _op: CacheOperation,
+    _value: String,
+  ) -> Box<Future<Item = (), Error = CacheStoreNotifierError> + Send> {
+    Box::new(future::err(CacheStoreNotifierError::Unavailable))
+  }
 }
 
 #[cfg(test)]
@@ -254,7 +269,8 @@ mod tests {
         key.to_string(),
         Box::new(stream::once::<Vec<u8>, ()>(Ok(value.to_vec()))),
         opts,
-      ).wait()
+      )
+      .wait()
       .unwrap();
   }
 
