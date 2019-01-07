@@ -218,6 +218,8 @@ mod tests {
     use super::*;
 
     fn setup() -> RedisCacheNotifier {
+        redis::cmd("CONFIG").arg("SET").arg("notify-keyspace-events").arg("KEA").execute(&redis::Client::open("redis://localhost:6379").unwrap());
+
         RedisCacheNotifier::new(
             RedisCacheNotifierConfig {
                 writer_url: "redis://localhost:6379".to_string(),
@@ -225,6 +227,7 @@ mod tests {
             },
             "redis://localhost:6379".to_string(),
         )
+
     }
 
     #[test]
