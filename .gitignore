@@ -2,7 +2,6 @@ target
 **/*.rs.bk
 node_modules
 rls*.log
-/src/msg_generated.rs
 yarn-error.log
 *.bin
 *.db
