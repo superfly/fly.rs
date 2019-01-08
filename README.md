@@ -2,8 +2,8 @@
 
 # Fly DNS Apps
 
-[![Travis Status](https://travis-ci.com/superfly/fly.rs.svg?branch=master)](https://travis-ci.org/CraneStation/cranelift)
-[![Gitter chat](https://badges.gitter.im/superfly/fly.svg)](https://gitter.im/CraneStation/Lobby)
+[![Travis Status](https://travis-ci.com/superfly/fly.rs.svg?branch=master)](https://travis-ci.com/superfly/fly.rs)
+[![Gitter chat](https://badges.gitter.im/superfly/fly.svg)](https://gitter.im/superfly/fly)
 ![Minimum rustc 1.31](https://img.shields.io/badge/rustc-1.31+-green.svg)
 
 ## DNS Applications
