@@ -1,6 +1,0 @@
-[submodule "flatbuffers"]
-	path = third_party/flatbuffers
-	url = https://github.com/google/flatbuffers.git
-[submodule "libvips"]
-	path = vips/third_party/libvips
-	url = https://github.com/libvips/libvips.git
