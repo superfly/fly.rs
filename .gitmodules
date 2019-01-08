@@ -1,3 +1,0 @@
-[submodule "libvips"]
-	path = vips/third_party/libvips
-	url = https://github.com/libvips/libvips.git
