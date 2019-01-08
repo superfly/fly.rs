@@ -19,6 +19,7 @@ pub trait CacheStore {
   fn ttl(&self, key: String) -> Box<Future<Item = i32, Error = CacheError> + Send>;
   fn purge_tag(&self, tag: String) -> EmptyCacheFuture;
   fn set_tags(&self, key: String, tags: Vec<String>) -> EmptyCacheFuture;
+  fn set_meta(&self, key: String, meta: String) -> EmptyCacheFuture;
 }
 
 #[derive(Debug)]
