@@ -150,7 +150,9 @@ export enum Any{
   LoadModule= 35,
   LoadModuleResp= 36,
   ImageApplyTransforms= 37,
-  ImageReady= 38
+  ImageReady= 38,
+  AcmeGetChallenge= 39,
+  AcmeGetChallengeReady= 40
 };
 
 /**
@@ -3593,6 +3595,182 @@ static addOutId(builder:flatbuffers.Builder, outId:number) {
  * @returns flatbuffers.Offset
  */
 static endImageReady(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class AcmeGetChallenge {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns AcmeGetChallenge
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):AcmeGetChallenge {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param AcmeGetChallenge= obj
+ * @returns AcmeGetChallenge
+ */
+static getRootAsAcmeGetChallenge(bb:flatbuffers.ByteBuffer, obj?:AcmeGetChallenge):AcmeGetChallenge {
+  return (obj || new AcmeGetChallenge).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+hostname():string|null
+hostname(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+hostname(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+token():string|null
+token(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+token(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startAcmeGetChallenge(builder:flatbuffers.Builder) {
+  builder.startObject(2);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset hostnameOffset
+ */
+static addHostname(builder:flatbuffers.Builder, hostnameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, hostnameOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset tokenOffset
+ */
+static addToken(builder:flatbuffers.Builder, tokenOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, tokenOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endAcmeGetChallenge(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class AcmeGetChallengeReady {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns AcmeGetChallengeReady
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):AcmeGetChallengeReady {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param AcmeGetChallengeReady= obj
+ * @returns AcmeGetChallengeReady
+ */
+static getRootAsAcmeGetChallengeReady(bb:flatbuffers.ByteBuffer, obj?:AcmeGetChallengeReady):AcmeGetChallengeReady {
+  return (obj || new AcmeGetChallengeReady).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @returns number
+ */
+id():number {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_id(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeUint32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+contents():string|null
+contents(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+contents(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startAcmeGetChallengeReady(builder:flatbuffers.Builder) {
+  builder.startObject(2);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number id
+ */
+static addId(builder:flatbuffers.Builder, id:number) {
+  builder.addFieldInt32(0, id, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset contentsOffset
+ */
+static addContents(builder:flatbuffers.Builder, contentsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, contentsOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endAcmeGetChallengeReady(builder:flatbuffers.Builder):flatbuffers.Offset {
   var offset = builder.endObject();
   return offset;
 };

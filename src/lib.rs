@@ -38,6 +38,7 @@ pub mod cache_store;
 pub mod cache_store_notifier;
 pub mod data_store;
 pub mod fs_store;
+pub mod acme_store;
 
 pub mod settings;
 
@@ -56,6 +57,7 @@ mod postgres_data;
 mod redis_cache;
 mod redis_cache_notifier;
 mod redis_fs;
+mod redis_acme;
 mod sqlite_cache;
 mod sqlite_data;
 

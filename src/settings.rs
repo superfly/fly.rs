@@ -55,6 +55,12 @@ pub enum CacheStore {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
+pub enum AcmeStoreConfig {
+  Redis(RedisStoreConfig),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
 pub enum CacheStoreNotifier {
   Redis(RedisCacheNotifierConfig),
 }
@@ -65,6 +71,7 @@ pub struct Settings {
   pub cache_store: Option<CacheStore>,
   pub cache_store_notifier: Option<CacheStoreNotifier>,
   pub fs_store: Option<FsStore>,
+  pub acme_store: Option<AcmeStoreConfig>,
 }
 
 impl Settings {
@@ -84,6 +91,7 @@ impl Default for Settings {
       cache_store: None,
       cache_store_notifier: None,
       fs_store: None,
+      acme_store: None,
     }
   }
 }

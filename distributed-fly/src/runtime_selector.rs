@@ -81,6 +81,10 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                             namespace: Some(format!("app:{}:release:latest:file:", rel.app_id)),
                             url: global_settings.redis_url.clone(),
                         })),
+                        acme_store: Some(AcmeStoreConfig::Redis(RedisStoreConfig {
+                            url: global_settings.redis_url.clone(),
+                            namespace: None,
+                        })),
                     }
                 };
                 let mut rt = Runtime::new(

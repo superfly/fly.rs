@@ -1,0 +1,9 @@
+table AcmeGetChallenge {
+  hostname: string;
+  token: string;
+}
+
+table AcmeGetChallengeReady {
+  id: uint;
+  contents: string;
+}
