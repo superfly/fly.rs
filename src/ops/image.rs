@@ -1,26 +1,22 @@
-use image::{self, GenericImageView};
-use libwebp_sys as webp;
-
-use libc::{c_float, c_int, c_void};
-
+use crate::fly_image::webp::WebPEncodeOptions;
+use crate::get_next_stream_id;
 use crate::msg;
-use flatbuffers::FlatBufferBuilder;
-
 use crate::runtime::{JsBody, JsRuntime, Op};
 use crate::utils::*;
-use libfly::*;
-
-use crate::get_next_stream_id;
-
+use flatbuffers::FlatBufferBuilder;
 use futures::{sync::mpsc, Future, Stream};
+use image::{self, GenericImageView};
+use libc::{c_float, c_int, c_void};
+use libfly::*;
+use libwebp_sys as webp;
 
-#[derive(Debug)]
-struct WebPEncodeOptions {
-    pub lossless: bool,
-    pub near_lossless: bool,
-    pub quality: f32,
-    pub alpha_quality: f32,
-}
+// #[derive(Debug)]
+// struct WebPEncodeOptions {
+//     pub lossless: bool,
+//     pub near_lossless: bool,
+//     pub quality: f32,
+//     pub alpha_quality: f32,
+// }
 
 enum ImageTransform {
     WebPEncode(WebPEncodeOptions),

@@ -1,4 +1,4 @@
-import { sendAsync, streams, sendStreamChunks, sendStreamChunk } from '../../bridge'
+import { sendAsync, streams, sendStreamChunks } from '../../bridge'
 import * as fbs from "../../msg_generated";
 import * as flatbuffers from "../../flatbuffers";
 import { ReadableStream } from '@stardazed/streams';
