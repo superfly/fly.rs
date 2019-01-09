@@ -227,7 +227,10 @@ mod tests {
             },
             "redis://localhost:6379".to_string(),
         )
+    }
 
+    fn redis_conn() -> redis::Connection {
+        redis::Client::open("redis://localhost:6379").unwrap().get_connection().unwrap()
     }
 
     #[test]
@@ -260,6 +263,11 @@ mod tests {
 
         assert_eq!(res, ());
 
+        let mut conn_for_pubsub = redis_conn();
+        let mut pconn = conn_for_pubsub.as_pubsub();
+        pconn.subscribe(format!("__keyspace@0__:{}", key).as_str()).unwrap();
+        let _msg = pconn.get_message().unwrap(); // block until something happens on our key, such as DEL!
+
         let pushed = redis::cmd("ZREVRANGE")
             .arg(CACHE_NOTIFIER_KEY)
             .arg(0)
@@ -272,8 +280,6 @@ mod tests {
         assert_eq!(first.value, key);
         assert_eq!(first.ns, testns);
         assert_eq!(first.op, CacheOperation::Del);
-
-        std::thread::sleep(std::time::Duration::from_millis(50));
 
         assert!(redis::cmd("GET")
             .arg(key)
