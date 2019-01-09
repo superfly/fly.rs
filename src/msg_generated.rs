@@ -3221,7 +3221,7 @@ impl<'a> CacheNotifyDel<'a> {
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyDel::VT_KEY, None)
   }
 }
@@ -3297,7 +3297,7 @@ impl<'a> CacheNotifyPurgeTag<'a> {
     pub const VT_TAG: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn tag(&'a self) -> Option<&'a str> {
+  pub fn tag(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyPurgeTag::VT_TAG, None)
   }
 }
