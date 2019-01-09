@@ -2,8 +2,6 @@
 
 import { Console } from "./console";
 import * as timers from "./timers";
-// import * as textEncoding from "./text_encoding";
-// import * as fetch_ from "./fetch";
 import { libfly } from "./libfly";
 import { globalEval } from "./global-eval";
 import * as bridge from "./bridge";
