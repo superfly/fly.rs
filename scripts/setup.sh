@@ -3,12 +3,6 @@
 set -e
 
 if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update && brew install redis; fi
-cd third_party/flatbuffers
-cmake -G "Unix Makefiles"
-make flatc
-cd $TRAVIS_BUILD_DIR
-
-./scripts/fbs.sh
 
 source ~/.nvm/nvm.sh
 nvm install 10

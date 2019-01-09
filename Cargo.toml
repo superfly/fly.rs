@@ -15,7 +15,7 @@ env_logger = "*"
 lazy_static = "1.1"
 lazy-static-include = "1.2"
 libc = "*"
-flatbuffers = { path = "./third_party/flatbuffers/rust/flatbuffers" }
+flatbuffers = "0.5"
 hyper = "0.12"
 hyper-tls = "0.3"
 http = "*"

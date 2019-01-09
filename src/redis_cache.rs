@@ -385,6 +385,26 @@ impl CacheStore for RedisCacheStore {
       Err(e) => Err(CacheError::Failure(format!("{}", e))),
     }))
   }
+
+  fn set_meta(&self, key: String, meta: String) -> EmptyCacheFuture {
+    self.metric_ttls_total.inc();
+    let fullkey = self.cache_key(key);
+    debug!("redis cache set_meta key: {}", fullkey);
+
+    let pool = self.pool.clone();
+    Box::new(future::lazy(move || match pool.get() {
+      Err(e) => Err(CacheError::Failure(format!("{}", e))),
+      Ok(conn) => match redis::cmd("HSET")
+        .arg(&fullkey)
+        .arg("meta")
+        .arg(meta)
+        .query::<()>(&*conn)
+      {
+        Err(e) => Err(CacheError::Failure(format!("{}", e))),
+        Ok(_) => Ok(()),
+      },
+    }))
+  }
 }
 
 #[cfg(test)]
