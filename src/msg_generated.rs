@@ -638,35 +638,37 @@ pub enum Any {
   CacheSetReady = 12,
   CacheDel = 13,
   CacheExpire = 14,
-  CacheSetTags = 15,
-  CachePurgeTag = 16,
-  CacheSetMeta = 17,
-  CryptoDigest = 18,
-  CryptoDigestReady = 19,
-  CryptoRandomValues = 20,
-  CryptoRandomValuesReady = 21,
-  SourceMap = 22,
-  SourceMapReady = 23,
-  DataPut = 24,
-  DataGet = 25,
-  DataGetReady = 26,
-  DataDel = 27,
-  DataDropCollection = 28,
-  DnsQuery = 29,
-  DnsRequest = 30,
-  DnsResponse = 31,
-  AddEventListener = 32,
-  LoadModule = 33,
-  LoadModuleResp = 34,
-  ImageApplyTransforms = 35,
-  ImageReady = 36,
-  AcmeGetChallenge = 37,
-  AcmeGetChallengeReady = 38,
+  CacheNotifyDel = 15,
+  CacheNotifyPurgeTag = 16,
+  CacheSetTags = 17,
+  CachePurgeTag = 18,
+  CacheSetMeta = 19,
+  CryptoDigest = 20,
+  CryptoDigestReady = 21,
+  CryptoRandomValues = 22,
+  CryptoRandomValuesReady = 23,
+  SourceMap = 24,
+  SourceMapReady = 25,
+  DataPut = 26,
+  DataGet = 27,
+  DataGetReady = 28,
+  DataDel = 29,
+  DataDropCollection = 30,
+  DnsQuery = 31,
+  DnsRequest = 32,
+  DnsResponse = 33,
+  AddEventListener = 34,
+  LoadModule = 35,
+  LoadModuleResp = 36,
+  ImageApplyTransforms = 37,
+  ImageReady = 38,
+  AcmeGetChallenge = 39,
+  AcmeGetChallengeReady = 40,
 
 }
 
 const ENUM_MIN_ANY: u8 = 0;
-const ENUM_MAX_ANY: u8 = 38;
+const ENUM_MAX_ANY: u8 = 40;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
   type Inner = Self;
@@ -700,7 +702,7 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 39] = [
+const ENUM_VALUES_ANY:[Any; 41] = [
   Any::NONE,
   Any::TimerStart,
   Any::TimerReady,
@@ -716,6 +718,8 @@ const ENUM_VALUES_ANY:[Any; 39] = [
   Any::CacheSetReady,
   Any::CacheDel,
   Any::CacheExpire,
+  Any::CacheNotifyDel,
+  Any::CacheNotifyPurgeTag,
   Any::CacheSetTags,
   Any::CachePurgeTag,
   Any::CacheSetMeta,
@@ -743,7 +747,7 @@ const ENUM_VALUES_ANY:[Any; 39] = [
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 39] = [
+const ENUM_NAMES_ANY:[&'static str; 41] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -759,6 +763,8 @@ const ENUM_NAMES_ANY:[&'static str; 39] = [
     "CacheSetReady",
     "CacheDel",
     "CacheExpire",
+    "CacheNotifyDel",
+    "CacheNotifyPurgeTag",
     "CacheSetTags",
     "CachePurgeTag",
     "CacheSetMeta",
@@ -3185,6 +3191,158 @@ impl<'a: 'b, 'b> CacheExpireBuilder<'a, 'b> {
   }
 }
 
+pub enum CacheNotifyDelOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CacheNotifyDel<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CacheNotifyDel<'a> {
+    type Inner = CacheNotifyDel<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CacheNotifyDel<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CacheNotifyDel {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CacheNotifyDelArgs<'args>) -> flatbuffers::WIPOffset<CacheNotifyDel<'bldr>> {
+      let mut builder = CacheNotifyDelBuilder::new(_fbb);
+      if let Some(x) = args.key { builder.add_key(x); }
+      builder.finish()
+    }
+
+    pub const VT_KEY: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn key(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyDel::VT_KEY, None)
+  }
+}
+
+pub struct CacheNotifyDelArgs<'a> {
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for CacheNotifyDelArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CacheNotifyDelArgs {
+            key: None,
+        }
+    }
+}
+pub struct CacheNotifyDelBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CacheNotifyDelBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyDel::VT_KEY, key);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyDelBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CacheNotifyDelBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyDel<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum CacheNotifyPurgeTagOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CacheNotifyPurgeTag<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CacheNotifyPurgeTag<'a> {
+    type Inner = CacheNotifyPurgeTag<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CacheNotifyPurgeTag<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CacheNotifyPurgeTag {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CacheNotifyPurgeTagArgs<'args>) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'bldr>> {
+      let mut builder = CacheNotifyPurgeTagBuilder::new(_fbb);
+      if let Some(x) = args.tag { builder.add_tag(x); }
+      builder.finish()
+    }
+
+    pub const VT_TAG: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn tag(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyPurgeTag::VT_TAG, None)
+  }
+}
+
+pub struct CacheNotifyPurgeTagArgs<'a> {
+    pub tag: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for CacheNotifyPurgeTagArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CacheNotifyPurgeTagArgs {
+            tag: None,
+        }
+    }
+}
+pub struct CacheNotifyPurgeTagBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CacheNotifyPurgeTagBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyPurgeTag::VT_TAG, tag);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyPurgeTagBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CacheNotifyPurgeTagBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum CacheSetMetaOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -4203,6 +4361,26 @@ impl<'a> Base<'a> {
   pub fn msg_as_cache_expire(&'a self) -> Option<CacheExpire> {
     if self.msg_type() == Any::CacheExpire {
       self.msg().map(|u| CacheExpire::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_notify_del(&'a self) -> Option<CacheNotifyDel> {
+    if self.msg_type() == Any::CacheNotifyDel {
+      self.msg().map(|u| CacheNotifyDel::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_notify_purge_tag(&'a self) -> Option<CacheNotifyPurgeTag> {
+    if self.msg_type() == Any::CacheNotifyPurgeTag {
+      self.msg().map(|u| CacheNotifyPurgeTag::init_from_table(u))
     } else {
       None
     }

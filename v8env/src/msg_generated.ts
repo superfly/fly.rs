@@ -127,30 +127,32 @@ export enum Any{
   CacheSetReady= 12,
   CacheDel= 13,
   CacheExpire= 14,
-  CacheSetTags= 15,
-  CachePurgeTag= 16,
-  CacheSetMeta= 17,
-  CryptoDigest= 18,
-  CryptoDigestReady= 19,
-  CryptoRandomValues= 20,
-  CryptoRandomValuesReady= 21,
-  SourceMap= 22,
-  SourceMapReady= 23,
-  DataPut= 24,
-  DataGet= 25,
-  DataGetReady= 26,
-  DataDel= 27,
-  DataDropCollection= 28,
-  DnsQuery= 29,
-  DnsRequest= 30,
-  DnsResponse= 31,
-  AddEventListener= 32,
-  LoadModule= 33,
-  LoadModuleResp= 34,
-  ImageApplyTransforms= 35,
-  ImageReady= 36,
-  AcmeGetChallenge= 37,
-  AcmeGetChallengeReady= 38
+  CacheNotifyDel= 15,
+  CacheNotifyPurgeTag= 16,
+  CacheSetTags= 17,
+  CachePurgeTag= 18,
+  CacheSetMeta= 19,
+  CryptoDigest= 20,
+  CryptoDigestReady= 21,
+  CryptoRandomValues= 22,
+  CryptoRandomValuesReady= 23,
+  SourceMap= 24,
+  SourceMapReady= 25,
+  DataPut= 26,
+  DataGet= 27,
+  DataGetReady= 28,
+  DataDel= 29,
+  DataDropCollection= 30,
+  DnsQuery= 31,
+  DnsRequest= 32,
+  DnsResponse= 33,
+  AddEventListener= 34,
+  LoadModule= 35,
+  LoadModuleResp= 36,
+  ImageApplyTransforms= 37,
+  ImageReady= 38,
+  AcmeGetChallenge= 39,
+  AcmeGetChallengeReady= 40
 };
 
 /**
@@ -2722,6 +2724,132 @@ static addTtl(builder:flatbuffers.Builder, ttl:number) {
  * @returns flatbuffers.Offset
  */
 static endCacheExpire(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class CacheNotifyDel {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns CacheNotifyDel
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):CacheNotifyDel {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param CacheNotifyDel= obj
+ * @returns CacheNotifyDel
+ */
+static getRootAsCacheNotifyDel(bb:flatbuffers.ByteBuffer, obj?:CacheNotifyDel):CacheNotifyDel {
+  return (obj || new CacheNotifyDel).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startCacheNotifyDel(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endCacheNotifyDel(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class CacheNotifyPurgeTag {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns CacheNotifyPurgeTag
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):CacheNotifyPurgeTag {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param CacheNotifyPurgeTag= obj
+ * @returns CacheNotifyPurgeTag
+ */
+static getRootAsCacheNotifyPurgeTag(bb:flatbuffers.ByteBuffer, obj?:CacheNotifyPurgeTag):CacheNotifyPurgeTag {
+  return (obj || new CacheNotifyPurgeTag).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+tag():string|null
+tag(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+tag(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startCacheNotifyPurgeTag(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset tagOffset
+ */
+static addTag(builder:flatbuffers.Builder, tagOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, tagOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endCacheNotifyPurgeTag(builder:flatbuffers.Builder):flatbuffers.Offset {
   var offset = builder.endObject();
   return offset;
 };
