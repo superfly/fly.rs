@@ -6,6 +6,7 @@ use std::fmt::Display;
 extern crate r2d2_redis;
 use self::r2d2_redis::RedisConnectionManager;
 use self::r2d2_redis::{r2d2, redis};
+use crate::redis_pool::get_pool;
 
 pub struct RedisAcmeStore {
     pool: r2d2::Pool<RedisConnectionManager>,
@@ -15,7 +16,7 @@ pub struct RedisAcmeStore {
 impl RedisAcmeStore {
     pub fn new(conf: &RedisStoreConfig) -> Self {
         RedisAcmeStore {
-            pool: r2d2::Pool::new(RedisConnectionManager::new(conf.url.as_str()).unwrap()).unwrap(),
+            pool: get_pool(conf.url.clone()),
             ns: conf.namespace.as_ref().cloned(),
         }
     }
