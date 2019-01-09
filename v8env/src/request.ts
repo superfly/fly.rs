@@ -62,7 +62,7 @@ export class FlyRequest extends FlyBody implements Request {
 			// grab request body if we can
 			body = input.bodySource
 		}
-		// logger.debug('creating request! body typeof:', typeof Body, typeof init.body)
+
 		super(body)
 
 		// readonly attribute ByteString method;

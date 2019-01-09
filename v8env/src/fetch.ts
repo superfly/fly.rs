@@ -1,8 +1,6 @@
 /**
  * @module fetch
  */
-// import { logger } from './logger'
-// import refToStream, { isFlyStream } from './fly/streams'
 import { RequestInit, RequestInfo, HeadersInit } from './dom_types';
 import { FlyResponse } from './response';
 import { FlyRequest } from './request';
