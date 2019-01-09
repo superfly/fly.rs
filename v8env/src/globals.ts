@@ -21,6 +21,7 @@ import flyCache from './fly/cache';
 import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
+import * as streams from "./streams";
 
 declare global {
   interface Window {
@@ -117,3 +118,7 @@ window.DNSRecordType = dns.DNSRecordType;
 window.DNSMessageType = dns.DNSMessageType;
 window.DNSOpCode = dns.DNSOpCode;
 window.DNSResponseCode = dns.DNSResponseCode;
+
+Object.apply(window, {
+  ...streams,
+})
