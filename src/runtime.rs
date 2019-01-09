@@ -513,6 +513,8 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CacheSet => ops::cache::op_cache_set,
     msg::Any::CacheDel => ops::cache::op_cache_del,
     msg::Any::CacheExpire => ops::cache::op_cache_expire,
+    msg::Any::CacheSetMeta => ops::cache::op_cache_set_meta,
+    msg::Any::CachePurgeTag => ops::cache::op_cache_purge_tag,
     msg::Any::CryptoDigest => op_crypto_digest,
     msg::Any::CryptoRandomValues => op_crypto_random_values,
     msg::Any::SourceMap => op_source_map,

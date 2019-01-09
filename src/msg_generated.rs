@@ -638,30 +638,33 @@ pub enum Any {
   CacheSetReady = 12,
   CacheDel = 13,
   CacheExpire = 14,
-  CryptoDigest = 15,
-  CryptoDigestReady = 16,
-  CryptoRandomValues = 17,
-  CryptoRandomValuesReady = 18,
-  SourceMap = 19,
-  SourceMapReady = 20,
-  DataPut = 21,
-  DataGet = 22,
-  DataGetReady = 23,
-  DataDel = 24,
-  DataDropCollection = 25,
-  DnsQuery = 26,
-  DnsRequest = 27,
-  DnsResponse = 28,
-  AddEventListener = 29,
-  LoadModule = 30,
-  LoadModuleResp = 31,
-  ImageApplyTransforms = 32,
-  ImageReady = 33,
+  CacheSetTags = 15,
+  CachePurgeTag = 16,
+  CacheSetMeta = 17,
+  CryptoDigest = 18,
+  CryptoDigestReady = 19,
+  CryptoRandomValues = 20,
+  CryptoRandomValuesReady = 21,
+  SourceMap = 22,
+  SourceMapReady = 23,
+  DataPut = 24,
+  DataGet = 25,
+  DataGetReady = 26,
+  DataDel = 27,
+  DataDropCollection = 28,
+  DnsQuery = 29,
+  DnsRequest = 30,
+  DnsResponse = 31,
+  AddEventListener = 32,
+  LoadModule = 33,
+  LoadModuleResp = 34,
+  ImageApplyTransforms = 35,
+  ImageReady = 36,
 
 }
 
 const ENUM_MIN_ANY: u8 = 0;
-const ENUM_MAX_ANY: u8 = 33;
+const ENUM_MAX_ANY: u8 = 36;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
   type Inner = Self;
@@ -695,7 +698,7 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 34] = [
+const ENUM_VALUES_ANY:[Any; 37] = [
   Any::NONE,
   Any::TimerStart,
   Any::TimerReady,
@@ -711,6 +714,9 @@ const ENUM_VALUES_ANY:[Any; 34] = [
   Any::CacheSetReady,
   Any::CacheDel,
   Any::CacheExpire,
+  Any::CacheSetTags,
+  Any::CachePurgeTag,
+  Any::CacheSetMeta,
   Any::CryptoDigest,
   Any::CryptoDigestReady,
   Any::CryptoRandomValues,
@@ -733,7 +739,7 @@ const ENUM_VALUES_ANY:[Any; 34] = [
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 34] = [
+const ENUM_NAMES_ANY:[&'static str; 37] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -749,6 +755,9 @@ const ENUM_NAMES_ANY:[&'static str; 34] = [
     "CacheSetReady",
     "CacheDel",
     "CacheExpire",
+    "CacheSetTags",
+    "CachePurgeTag",
+    "CacheSetMeta",
     "CryptoDigest",
     "CryptoDigestReady",
     "CryptoRandomValues",
@@ -3170,6 +3179,258 @@ impl<'a: 'b, 'b> CacheExpireBuilder<'a, 'b> {
   }
 }
 
+pub enum CacheSetMetaOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CacheSetMeta<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CacheSetMeta<'a> {
+    type Inner = CacheSetMeta<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CacheSetMeta<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CacheSetMeta {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CacheSetMetaArgs<'args>) -> flatbuffers::WIPOffset<CacheSetMeta<'bldr>> {
+      let mut builder = CacheSetMetaBuilder::new(_fbb);
+      if let Some(x) = args.meta { builder.add_meta(x); }
+      if let Some(x) = args.key { builder.add_key(x); }
+      builder.finish()
+    }
+
+    pub const VT_KEY: flatbuffers::VOffsetT = 4;
+    pub const VT_META: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub fn key(&'a self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_KEY, None)
+  }
+  #[inline]
+  pub fn meta(&'a self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_META, None)
+  }
+}
+
+pub struct CacheSetMetaArgs<'a> {
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub meta: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for CacheSetMetaArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CacheSetMetaArgs {
+            key: None,
+            meta: None,
+        }
+    }
+}
+pub struct CacheSetMetaBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CacheSetMetaBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetMeta::VT_KEY, key);
+  }
+  #[inline]
+  pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetMeta::VT_META, meta);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetMetaBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CacheSetMetaBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetMeta<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum CacheSetTagsOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CacheSetTags<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CacheSetTags<'a> {
+    type Inner = CacheSetTags<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CacheSetTags<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CacheSetTags {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CacheSetTagsArgs<'args>) -> flatbuffers::WIPOffset<CacheSetTags<'bldr>> {
+      let mut builder = CacheSetTagsBuilder::new(_fbb);
+      if let Some(x) = args.tags { builder.add_tags(x); }
+      if let Some(x) = args.key { builder.add_key(x); }
+      builder.finish()
+    }
+
+    pub const VT_KEY: flatbuffers::VOffsetT = 4;
+    pub const VT_TAGS: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub fn key(&'a self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetTags::VT_KEY, None)
+  }
+  #[inline]
+  pub fn tags(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(CacheSetTags::VT_TAGS, None)
+  }
+}
+
+pub struct CacheSetTagsArgs<'a> {
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub tags: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<&'a  str>>>>,
+}
+impl<'a> Default for CacheSetTagsArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CacheSetTagsArgs {
+            key: None,
+            tags: None,
+        }
+    }
+}
+pub struct CacheSetTagsBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CacheSetTagsBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetTags::VT_KEY, key);
+  }
+  #[inline]
+  pub fn add_tags(&mut self, tags: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<&'b  str>>>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetTags::VT_TAGS, tags);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetTagsBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CacheSetTagsBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetTags<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum CachePurgeTagOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CachePurgeTag<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CachePurgeTag<'a> {
+    type Inner = CachePurgeTag<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CachePurgeTag<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CachePurgeTag {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CachePurgeTagArgs<'args>) -> flatbuffers::WIPOffset<CachePurgeTag<'bldr>> {
+      let mut builder = CachePurgeTagBuilder::new(_fbb);
+      if let Some(x) = args.tag { builder.add_tag(x); }
+      builder.finish()
+    }
+
+    pub const VT_TAG: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn tag(&'a self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CachePurgeTag::VT_TAG, None)
+  }
+}
+
+pub struct CachePurgeTagArgs<'a> {
+    pub tag: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for CachePurgeTagArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CachePurgeTagArgs {
+            tag: None,
+        }
+    }
+}
+pub struct CachePurgeTagBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CachePurgeTagBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CachePurgeTag::VT_TAG, tag);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CachePurgeTagBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CachePurgeTagBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CachePurgeTag<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum ImageWebPEncodeOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -3760,6 +4021,36 @@ impl<'a> Base<'a> {
   pub fn msg_as_cache_expire(&'a self) -> Option<CacheExpire> {
     if self.msg_type() == Any::CacheExpire {
       self.msg().map(|u| CacheExpire::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_set_tags(&'a self) -> Option<CacheSetTags> {
+    if self.msg_type() == Any::CacheSetTags {
+      self.msg().map(|u| CacheSetTags::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_purge_tag(&'a self) -> Option<CachePurgeTag> {
+    if self.msg_type() == Any::CachePurgeTag {
+      self.msg().map(|u| CachePurgeTag::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_set_meta(&'a self) -> Option<CacheSetMeta> {
+    if self.msg_type() == Any::CacheSetMeta {
+      self.msg().map(|u| CacheSetMeta::init_from_table(u))
     } else {
       None
     }
