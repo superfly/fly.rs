@@ -17,6 +17,8 @@ union Any {
   CacheSetReady,
   CacheDel,
   CacheExpire,
+  CacheNotifyDel,
+  CacheNotifyPurgeTag,
   CacheSetTags,
   CachePurgeTag,
   CacheSetMeta,
