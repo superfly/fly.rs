@@ -638,33 +638,35 @@ pub enum Any {
   CacheSetReady = 12,
   CacheDel = 13,
   CacheExpire = 14,
-  CacheSetTags = 15,
-  CachePurgeTag = 16,
-  CacheSetMeta = 17,
-  CryptoDigest = 18,
-  CryptoDigestReady = 19,
-  CryptoRandomValues = 20,
-  CryptoRandomValuesReady = 21,
-  SourceMap = 22,
-  SourceMapReady = 23,
-  DataPut = 24,
-  DataGet = 25,
-  DataGetReady = 26,
-  DataDel = 27,
-  DataDropCollection = 28,
-  DnsQuery = 29,
-  DnsRequest = 30,
-  DnsResponse = 31,
-  AddEventListener = 32,
-  LoadModule = 33,
-  LoadModuleResp = 34,
-  ImageApplyTransforms = 35,
-  ImageReady = 36,
+  CacheNotifyDel = 15,
+  CacheNotifyPurgeTag = 16,
+  CacheSetTags = 17,
+  CachePurgeTag = 18,
+  CacheSetMeta = 19,
+  CryptoDigest = 20,
+  CryptoDigestReady = 21,
+  CryptoRandomValues = 22,
+  CryptoRandomValuesReady = 23,
+  SourceMap = 24,
+  SourceMapReady = 25,
+  DataPut = 26,
+  DataGet = 27,
+  DataGetReady = 28,
+  DataDel = 29,
+  DataDropCollection = 30,
+  DnsQuery = 31,
+  DnsRequest = 32,
+  DnsResponse = 33,
+  AddEventListener = 34,
+  LoadModule = 35,
+  LoadModuleResp = 36,
+  ImageApplyTransforms = 37,
+  ImageReady = 38,
 
 }
 
 const ENUM_MIN_ANY: u8 = 0;
-const ENUM_MAX_ANY: u8 = 36;
+const ENUM_MAX_ANY: u8 = 38;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
   type Inner = Self;
@@ -698,7 +700,7 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 37] = [
+const ENUM_VALUES_ANY:[Any; 39] = [
   Any::NONE,
   Any::TimerStart,
   Any::TimerReady,
@@ -714,6 +716,8 @@ const ENUM_VALUES_ANY:[Any; 37] = [
   Any::CacheSetReady,
   Any::CacheDel,
   Any::CacheExpire,
+  Any::CacheNotifyDel,
+  Any::CacheNotifyPurgeTag,
   Any::CacheSetTags,
   Any::CachePurgeTag,
   Any::CacheSetMeta,
@@ -739,7 +743,7 @@ const ENUM_VALUES_ANY:[Any; 37] = [
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 37] = [
+const ENUM_NAMES_ANY:[&'static str; 39] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -755,6 +759,8 @@ const ENUM_NAMES_ANY:[&'static str; 37] = [
     "CacheSetReady",
     "CacheDel",
     "CacheExpire",
+    "CacheNotifyDel",
+    "CacheNotifyPurgeTag",
     "CacheSetTags",
     "CachePurgeTag",
     "CacheSetMeta",
@@ -1121,7 +1127,7 @@ impl<'a> DnsA<'a> {
     pub const VT_IP: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn ip(&'a self) -> Option<&'a str> {
+  pub fn ip(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsA::VT_IP, None)
   }
 }
@@ -1197,7 +1203,7 @@ impl<'a> DnsAaaa<'a> {
     pub const VT_IP: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn ip(&'a self) -> Option<&'a str> {
+  pub fn ip(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsAaaa::VT_IP, None)
   }
 }
@@ -1273,7 +1279,7 @@ impl<'a> DnsCname<'a> {
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn name(&'a self) -> Option<&'a str> {
+  pub fn name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsCname::VT_NAME, None)
   }
 }
@@ -1351,11 +1357,11 @@ impl<'a> DnsMx<'a> {
     pub const VT_EXCHANGE: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn preference(&'a self) -> u16 {
+  pub fn preference(&self) -> u16 {
     self._tab.get::<u16>(DnsMx::VT_PREFERENCE, Some(0)).unwrap()
   }
   #[inline]
-  pub fn exchange(&'a self) -> Option<&'a str> {
+  pub fn exchange(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsMx::VT_EXCHANGE, None)
   }
 }
@@ -1437,7 +1443,7 @@ impl<'a> DnsNs<'a> {
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn name(&'a self) -> Option<&'a str> {
+  pub fn name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsNs::VT_NAME, None)
   }
 }
@@ -1513,7 +1519,7 @@ impl<'a> DnsPtr<'a> {
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn name(&'a self) -> Option<&'a str> {
+  pub fn name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsPtr::VT_NAME, None)
   }
 }
@@ -1601,31 +1607,31 @@ impl<'a> DnsSoa<'a> {
     pub const VT_MINIMUM: flatbuffers::VOffsetT = 16;
 
   #[inline]
-  pub fn mname(&'a self) -> Option<&'a str> {
+  pub fn mname(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsSoa::VT_MNAME, None)
   }
   #[inline]
-  pub fn rname(&'a self) -> Option<&'a str> {
+  pub fn rname(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsSoa::VT_RNAME, None)
   }
   #[inline]
-  pub fn serial(&'a self) -> u32 {
+  pub fn serial(&self) -> u32 {
     self._tab.get::<u32>(DnsSoa::VT_SERIAL, Some(0)).unwrap()
   }
   #[inline]
-  pub fn refresh(&'a self) -> i32 {
+  pub fn refresh(&self) -> i32 {
     self._tab.get::<i32>(DnsSoa::VT_REFRESH, Some(0)).unwrap()
   }
   #[inline]
-  pub fn retry(&'a self) -> i32 {
+  pub fn retry(&self) -> i32 {
     self._tab.get::<i32>(DnsSoa::VT_RETRY, Some(0)).unwrap()
   }
   #[inline]
-  pub fn expire(&'a self) -> i32 {
+  pub fn expire(&self) -> i32 {
     self._tab.get::<i32>(DnsSoa::VT_EXPIRE, Some(0)).unwrap()
   }
   #[inline]
-  pub fn minimum(&'a self) -> u32 {
+  pub fn minimum(&self) -> u32 {
     self._tab.get::<u32>(DnsSoa::VT_MINIMUM, Some(0)).unwrap()
   }
 }
@@ -1743,19 +1749,19 @@ impl<'a> DnsSrv<'a> {
     pub const VT_TARGET: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn priority(&'a self) -> u16 {
+  pub fn priority(&self) -> u16 {
     self._tab.get::<u16>(DnsSrv::VT_PRIORITY, Some(0)).unwrap()
   }
   #[inline]
-  pub fn weight(&'a self) -> u16 {
+  pub fn weight(&self) -> u16 {
     self._tab.get::<u16>(DnsSrv::VT_WEIGHT, Some(0)).unwrap()
   }
   #[inline]
-  pub fn port(&'a self) -> u16 {
+  pub fn port(&self) -> u16 {
     self._tab.get::<u16>(DnsSrv::VT_PORT, Some(0)).unwrap()
   }
   #[inline]
-  pub fn target(&'a self) -> Option<&'a str> {
+  pub fn target(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsSrv::VT_TARGET, None)
   }
 }
@@ -1849,7 +1855,7 @@ impl<'a> DnsTxtData<'a> {
     pub const VT_DATA: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn data(&'a self) -> Option<&'a [u8]> {
+  pub fn data(&self) -> Option<&'a [u8]> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(DnsTxtData::VT_DATA, None).map(|v| v.safe_slice())
   }
 }
@@ -1925,7 +1931,7 @@ impl<'a> DnsTxt<'a> {
     pub const VT_DATA: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn data(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>> {
+  pub fn data(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>>>(DnsTxt::VT_DATA, None)
   }
 }
@@ -2005,15 +2011,15 @@ impl<'a> DnsRequest<'a> {
     pub const VT_QUERIES: flatbuffers::VOffsetT = 8;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(DnsRequest::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn message_type(&'a self) -> DnsMessageType {
+  pub fn message_type(&self) -> DnsMessageType {
     self._tab.get::<DnsMessageType>(DnsRequest::VT_MESSAGE_TYPE, Some(DnsMessageType::Query)).unwrap()
   }
   #[inline]
-  pub fn queries(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
+  pub fn queries(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>>>(DnsRequest::VT_QUERIES, None)
   }
 }
@@ -2107,19 +2113,19 @@ impl<'a> DnsQuery<'a> {
     pub const VT_NAME_SERVERS: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn name(&'a self) -> Option<&'a str> {
+  pub fn name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsQuery::VT_NAME, None)
   }
   #[inline]
-  pub fn rr_type(&'a self) -> DnsRecordType {
+  pub fn rr_type(&self) -> DnsRecordType {
     self._tab.get::<DnsRecordType>(DnsQuery::VT_RR_TYPE, Some(DnsRecordType::A)).unwrap()
   }
   #[inline]
-  pub fn dns_class(&'a self) -> DnsClass {
+  pub fn dns_class(&self) -> DnsClass {
     self._tab.get::<DnsClass>(DnsQuery::VT_DNS_CLASS, Some(DnsClass::IN)).unwrap()
   }
   #[inline]
-  pub fn name_servers(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+  pub fn name_servers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(DnsQuery::VT_NAME_SERVERS, None)
   }
 }
@@ -2223,27 +2229,27 @@ impl<'a> DnsRecord<'a> {
     pub const VT_TTL: flatbuffers::VOffsetT = 14;
 
   #[inline]
-  pub fn name(&'a self) -> Option<&'a str> {
+  pub fn name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsRecord::VT_NAME, None)
   }
   #[inline]
-  pub fn rr_type(&'a self) -> DnsRecordType {
+  pub fn rr_type(&self) -> DnsRecordType {
     self._tab.get::<DnsRecordType>(DnsRecord::VT_RR_TYPE, Some(DnsRecordType::A)).unwrap()
   }
   #[inline]
-  pub fn rdata_type(&'a self) -> DnsRecordData {
+  pub fn rdata_type(&self) -> DnsRecordData {
     self._tab.get::<DnsRecordData>(DnsRecord::VT_RDATA_TYPE, Some(DnsRecordData::NONE)).unwrap()
   }
   #[inline]
-  pub fn rdata(&'a self) -> Option<flatbuffers::Table<'a>> {
+  pub fn rdata(&self) -> Option<flatbuffers::Table<'a>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(DnsRecord::VT_RDATA, None)
   }
   #[inline]
-  pub fn dns_class(&'a self) -> DnsClass {
+  pub fn dns_class(&self) -> DnsClass {
     self._tab.get::<DnsClass>(DnsRecord::VT_DNS_CLASS, Some(DnsClass::IN)).unwrap()
   }
   #[inline]
-  pub fn ttl(&'a self) -> u32 {
+  pub fn ttl(&self) -> u32 {
     self._tab.get::<u32>(DnsRecord::VT_TTL, Some(0)).unwrap()
   }
   #[inline]
@@ -2453,35 +2459,35 @@ impl<'a> DnsResponse<'a> {
     pub const VT_QUERIES: flatbuffers::VOffsetT = 18;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(DnsResponse::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn op_code(&'a self) -> DnsOpCode {
+  pub fn op_code(&self) -> DnsOpCode {
     self._tab.get::<DnsOpCode>(DnsResponse::VT_OP_CODE, Some(DnsOpCode::Query)).unwrap()
   }
   #[inline]
-  pub fn message_type(&'a self) -> DnsMessageType {
+  pub fn message_type(&self) -> DnsMessageType {
     self._tab.get::<DnsMessageType>(DnsResponse::VT_MESSAGE_TYPE, Some(DnsMessageType::Query)).unwrap()
   }
   #[inline]
-  pub fn authoritative(&'a self) -> bool {
+  pub fn authoritative(&self) -> bool {
     self._tab.get::<bool>(DnsResponse::VT_AUTHORITATIVE, Some(false)).unwrap()
   }
   #[inline]
-  pub fn truncated(&'a self) -> bool {
+  pub fn truncated(&self) -> bool {
     self._tab.get::<bool>(DnsResponse::VT_TRUNCATED, Some(false)).unwrap()
   }
   #[inline]
-  pub fn response_code(&'a self) -> DnsResponseCode {
+  pub fn response_code(&self) -> DnsResponseCode {
     self._tab.get::<DnsResponseCode>(DnsResponse::VT_RESPONSE_CODE, Some(DnsResponseCode::NoError)).unwrap()
   }
   #[inline]
-  pub fn answers(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>> {
+  pub fn answers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>>>(DnsResponse::VT_ANSWERS, None)
   }
   #[inline]
-  pub fn queries(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
+  pub fn queries(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>>>(DnsResponse::VT_QUERIES, None)
   }
 }
@@ -2599,7 +2605,7 @@ impl<'a> CacheGet<'a> {
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheGet::VT_KEY, None)
   }
 }
@@ -2677,11 +2683,11 @@ impl<'a> CacheMeta<'a> {
     pub const VT_VALUE: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheMeta::VT_KEY, None)
   }
   #[inline]
-  pub fn value(&'a self) -> Option<&'a str> {
+  pub fn value(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheMeta::VT_VALUE, None)
   }
 }
@@ -2767,15 +2773,15 @@ impl<'a> CacheGetReady<'a> {
     pub const VT_META: flatbuffers::VOffsetT = 8;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(CacheGetReady::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn stream(&'a self) -> bool {
+  pub fn stream(&self) -> bool {
     self._tab.get::<bool>(CacheGetReady::VT_STREAM, Some(false)).unwrap()
   }
   #[inline]
-  pub fn meta(&'a self) -> Option<&'a str> {
+  pub fn meta(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheGetReady::VT_META, None)
   }
 }
@@ -2869,19 +2875,19 @@ impl<'a> CacheSet<'a> {
     pub const VT_META: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSet::VT_KEY, None)
   }
   #[inline]
-  pub fn ttl(&'a self) -> u32 {
+  pub fn ttl(&self) -> u32 {
     self._tab.get::<u32>(CacheSet::VT_TTL, Some(0)).unwrap()
   }
   #[inline]
-  pub fn tags(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+  pub fn tags(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(CacheSet::VT_TAGS, None)
   }
   #[inline]
-  pub fn meta(&'a self) -> Option<&'a str> {
+  pub fn meta(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSet::VT_META, None)
   }
 }
@@ -2975,7 +2981,7 @@ impl<'a> CacheSetReady<'a> {
     pub const VT_ID: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(CacheSetReady::VT_ID, Some(0)).unwrap()
   }
 }
@@ -3051,7 +3057,7 @@ impl<'a> CacheDel<'a> {
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheDel::VT_KEY, None)
   }
 }
@@ -3129,11 +3135,11 @@ impl<'a> CacheExpire<'a> {
     pub const VT_TTL: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheExpire::VT_KEY, None)
   }
   #[inline]
-  pub fn ttl(&'a self) -> u32 {
+  pub fn ttl(&self) -> u32 {
     self._tab.get::<u32>(CacheExpire::VT_TTL, Some(0)).unwrap()
   }
 }
@@ -3179,6 +3185,158 @@ impl<'a: 'b, 'b> CacheExpireBuilder<'a, 'b> {
   }
 }
 
+pub enum CacheNotifyDelOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CacheNotifyDel<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CacheNotifyDel<'a> {
+    type Inner = CacheNotifyDel<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CacheNotifyDel<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CacheNotifyDel {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CacheNotifyDelArgs<'args>) -> flatbuffers::WIPOffset<CacheNotifyDel<'bldr>> {
+      let mut builder = CacheNotifyDelBuilder::new(_fbb);
+      if let Some(x) = args.key { builder.add_key(x); }
+      builder.finish()
+    }
+
+    pub const VT_KEY: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn key(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyDel::VT_KEY, None)
+  }
+}
+
+pub struct CacheNotifyDelArgs<'a> {
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for CacheNotifyDelArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CacheNotifyDelArgs {
+            key: None,
+        }
+    }
+}
+pub struct CacheNotifyDelBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CacheNotifyDelBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyDel::VT_KEY, key);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyDelBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CacheNotifyDelBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyDel<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum CacheNotifyPurgeTagOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct CacheNotifyPurgeTag<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for CacheNotifyPurgeTag<'a> {
+    type Inner = CacheNotifyPurgeTag<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> CacheNotifyPurgeTag<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        CacheNotifyPurgeTag {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args CacheNotifyPurgeTagArgs<'args>) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'bldr>> {
+      let mut builder = CacheNotifyPurgeTagBuilder::new(_fbb);
+      if let Some(x) = args.tag { builder.add_tag(x); }
+      builder.finish()
+    }
+
+    pub const VT_TAG: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn tag(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyPurgeTag::VT_TAG, None)
+  }
+}
+
+pub struct CacheNotifyPurgeTagArgs<'a> {
+    pub tag: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for CacheNotifyPurgeTagArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        CacheNotifyPurgeTagArgs {
+            tag: None,
+        }
+    }
+}
+pub struct CacheNotifyPurgeTagBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> CacheNotifyPurgeTagBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyPurgeTag::VT_TAG, tag);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyPurgeTagBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    CacheNotifyPurgeTagBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum CacheSetMetaOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -3217,11 +3375,11 @@ impl<'a> CacheSetMeta<'a> {
     pub const VT_META: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_KEY, None)
   }
   #[inline]
-  pub fn meta(&'a self) -> Option<&'a str> {
+  pub fn meta(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_META, None)
   }
 }
@@ -3305,11 +3463,11 @@ impl<'a> CacheSetTags<'a> {
     pub const VT_TAGS: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetTags::VT_KEY, None)
   }
   #[inline]
-  pub fn tags(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+  pub fn tags(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(CacheSetTags::VT_TAGS, None)
   }
 }
@@ -3391,7 +3549,7 @@ impl<'a> CachePurgeTag<'a> {
     pub const VT_TAG: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn tag(&'a self) -> Option<&'a str> {
+  pub fn tag(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CachePurgeTag::VT_TAG, None)
   }
 }
@@ -3473,19 +3631,19 @@ impl<'a> ImageWebPEncode<'a> {
     pub const VT_NEAR_LOSSLESS: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn quality(&'a self) -> f32 {
+  pub fn quality(&self) -> f32 {
     self._tab.get::<f32>(ImageWebPEncode::VT_QUALITY, Some(0.0)).unwrap()
   }
   #[inline]
-  pub fn alpha_quality(&'a self) -> f32 {
+  pub fn alpha_quality(&self) -> f32 {
     self._tab.get::<f32>(ImageWebPEncode::VT_ALPHA_QUALITY, Some(0.0)).unwrap()
   }
   #[inline]
-  pub fn lossless(&'a self) -> bool {
+  pub fn lossless(&self) -> bool {
     self._tab.get::<bool>(ImageWebPEncode::VT_LOSSLESS, Some(false)).unwrap()
   }
   #[inline]
-  pub fn near_lossless(&'a self) -> bool {
+  pub fn near_lossless(&self) -> bool {
     self._tab.get::<bool>(ImageWebPEncode::VT_NEAR_LOSSLESS, Some(false)).unwrap()
   }
 }
@@ -3583,15 +3741,15 @@ impl<'a> ImageTransform<'a> {
     pub const VT_OPTIONS: flatbuffers::VOffsetT = 8;
 
   #[inline]
-  pub fn transform(&'a self) -> ImageTransformType {
+  pub fn transform(&self) -> ImageTransformType {
     self._tab.get::<ImageTransformType>(ImageTransform::VT_TRANSFORM, Some(ImageTransformType::ImageWebPEncode)).unwrap()
   }
   #[inline]
-  pub fn options_type(&'a self) -> ImageTransformOptions {
+  pub fn options_type(&self) -> ImageTransformOptions {
     self._tab.get::<ImageTransformOptions>(ImageTransform::VT_OPTIONS_TYPE, Some(ImageTransformOptions::NONE)).unwrap()
   }
   #[inline]
-  pub fn options(&'a self) -> Option<flatbuffers::Table<'a>> {
+  pub fn options(&self) -> Option<flatbuffers::Table<'a>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(ImageTransform::VT_OPTIONS, None)
   }
   #[inline]
@@ -3689,7 +3847,7 @@ impl<'a> ImageApplyTransforms<'a> {
     pub const VT_TRANSFORMS: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn transforms(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>> {
+  pub fn transforms(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>>>(ImageApplyTransforms::VT_TRANSFORMS, None)
   }
 }
@@ -3767,11 +3925,11 @@ impl<'a> ImageReady<'a> {
     pub const VT_OUT_ID: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn in_id(&'a self) -> u32 {
+  pub fn in_id(&self) -> u32 {
     self._tab.get::<u32>(ImageReady::VT_IN_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn out_id(&'a self) -> u32 {
+  pub fn out_id(&self) -> u32 {
     self._tab.get::<u32>(ImageReady::VT_OUT_ID, Some(0)).unwrap()
   }
 }
@@ -3863,27 +4021,27 @@ impl<'a> Base<'a> {
     pub const VT_MSG: flatbuffers::VOffsetT = 14;
 
   #[inline]
-  pub fn cmd_id(&'a self) -> u32 {
+  pub fn cmd_id(&self) -> u32 {
     self._tab.get::<u32>(Base::VT_CMD_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn sync(&'a self) -> bool {
+  pub fn sync(&self) -> bool {
     self._tab.get::<bool>(Base::VT_SYNC, Some(false)).unwrap()
   }
   #[inline]
-  pub fn error_kind(&'a self) -> ErrorKind {
+  pub fn error_kind(&self) -> ErrorKind {
     self._tab.get::<ErrorKind>(Base::VT_ERROR_KIND, Some(ErrorKind::NoError)).unwrap()
   }
   #[inline]
-  pub fn error(&'a self) -> Option<&'a str> {
+  pub fn error(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Base::VT_ERROR, None)
   }
   #[inline]
-  pub fn msg_type(&'a self) -> Any {
+  pub fn msg_type(&self) -> Any {
     self._tab.get::<Any>(Base::VT_MSG_TYPE, Some(Any::NONE)).unwrap()
   }
   #[inline]
-  pub fn msg(&'a self) -> Option<flatbuffers::Table<'a>> {
+  pub fn msg(&self) -> Option<flatbuffers::Table<'a>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(Base::VT_MSG, None)
   }
   #[inline]
@@ -4021,6 +4179,26 @@ impl<'a> Base<'a> {
   pub fn msg_as_cache_expire(&'a self) -> Option<CacheExpire> {
     if self.msg_type() == Any::CacheExpire {
       self.msg().map(|u| CacheExpire::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_notify_del(&'a self) -> Option<CacheNotifyDel> {
+    if self.msg_type() == Any::CacheNotifyDel {
+      self.msg().map(|u| CacheNotifyDel::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_cache_notify_purge_tag(&'a self) -> Option<CacheNotifyPurgeTag> {
+    if self.msg_type() == Any::CacheNotifyPurgeTag {
+      self.msg().map(|u| CacheNotifyPurgeTag::init_from_table(u))
     } else {
       None
     }
@@ -4351,11 +4529,11 @@ impl<'a> TimerStart<'a> {
     pub const VT_DELAY: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(TimerStart::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn delay(&'a self) -> u32 {
+  pub fn delay(&self) -> u32 {
     self._tab.get::<u32>(TimerStart::VT_DELAY, Some(0)).unwrap()
   }
 }
@@ -4439,11 +4617,11 @@ impl<'a> TimerReady<'a> {
     pub const VT_CANCELED: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(TimerReady::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn canceled(&'a self) -> bool {
+  pub fn canceled(&self) -> bool {
     self._tab.get::<bool>(TimerReady::VT_CANCELED, Some(false)).unwrap()
   }
 }
@@ -4525,7 +4703,7 @@ impl<'a> TimerClear<'a> {
     pub const VT_ID: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(TimerClear::VT_ID, Some(0)).unwrap()
   }
 }
@@ -4603,11 +4781,11 @@ impl<'a> HttpHeader<'a> {
     pub const VT_VALUE: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpHeader::VT_KEY, None)
   }
   #[inline]
-  pub fn value(&'a self) -> Option<&'a str> {
+  pub fn value(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpHeader::VT_VALUE, None)
   }
 }
@@ -4691,11 +4869,11 @@ impl<'a> StreamChunk<'a> {
     pub const VT_DONE: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(StreamChunk::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn done(&'a self) -> bool {
+  pub fn done(&self) -> bool {
     self._tab.get::<bool>(StreamChunk::VT_DONE, Some(false)).unwrap()
   }
 }
@@ -4785,23 +4963,23 @@ impl<'a> HttpRequest<'a> {
     pub const VT_HAS_BODY: flatbuffers::VOffsetT = 12;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(HttpRequest::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn method(&'a self) -> HttpMethod {
+  pub fn method(&self) -> HttpMethod {
     self._tab.get::<HttpMethod>(HttpRequest::VT_METHOD, Some(HttpMethod::Get)).unwrap()
   }
   #[inline]
-  pub fn url(&'a self) -> Option<&'a str> {
+  pub fn url(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpRequest::VT_URL, None)
   }
   #[inline]
-  pub fn headers(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
+  pub fn headers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(HttpRequest::VT_HEADERS, None)
   }
   #[inline]
-  pub fn has_body(&'a self) -> bool {
+  pub fn has_body(&self) -> bool {
     self._tab.get::<bool>(HttpRequest::VT_HAS_BODY, Some(false)).unwrap()
   }
 }
@@ -4907,19 +5085,19 @@ impl<'a> HttpResponse<'a> {
     pub const VT_HAS_BODY: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(HttpResponse::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn headers(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
+  pub fn headers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(HttpResponse::VT_HEADERS, None)
   }
   #[inline]
-  pub fn status(&'a self) -> u16 {
+  pub fn status(&self) -> u16 {
     self._tab.get::<u16>(HttpResponse::VT_STATUS, Some(0)).unwrap()
   }
   #[inline]
-  pub fn has_body(&'a self) -> bool {
+  pub fn has_body(&self) -> bool {
     self._tab.get::<bool>(HttpResponse::VT_HAS_BODY, Some(false)).unwrap()
   }
 }
@@ -5013,7 +5191,7 @@ impl<'a> HttpRequestStart<'a> {
     pub const VT_ID: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(HttpRequestStart::VT_ID, Some(0)).unwrap()
   }
 }
@@ -5095,19 +5273,19 @@ impl<'a> FetchHttpResponse<'a> {
     pub const VT_HAS_BODY: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn id(&'a self) -> u32 {
+  pub fn id(&self) -> u32 {
     self._tab.get::<u32>(FetchHttpResponse::VT_ID, Some(0)).unwrap()
   }
   #[inline]
-  pub fn headers(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
+  pub fn headers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(FetchHttpResponse::VT_HEADERS, None)
   }
   #[inline]
-  pub fn status(&'a self) -> u16 {
+  pub fn status(&self) -> u16 {
     self._tab.get::<u16>(FetchHttpResponse::VT_STATUS, Some(0)).unwrap()
   }
   #[inline]
-  pub fn has_body(&'a self) -> bool {
+  pub fn has_body(&self) -> bool {
     self._tab.get::<bool>(FetchHttpResponse::VT_HAS_BODY, Some(false)).unwrap()
   }
 }
@@ -5201,7 +5379,7 @@ impl<'a> CryptoDigest<'a> {
     pub const VT_ALGO: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn algo(&'a self) -> Option<&'a str> {
+  pub fn algo(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CryptoDigest::VT_ALGO, None)
   }
 }
@@ -5277,7 +5455,7 @@ impl<'a> CryptoDigestReady<'a> {
     pub const VT_BUFFER: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn buffer(&'a self) -> Option<&'a [u8]> {
+  pub fn buffer(&self) -> Option<&'a [u8]> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(CryptoDigestReady::VT_BUFFER, None).map(|v| v.safe_slice())
   }
 }
@@ -5353,7 +5531,7 @@ impl<'a> CryptoRandomValues<'a> {
     pub const VT_LEN: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn len(&'a self) -> u32 {
+  pub fn len(&self) -> u32 {
     self._tab.get::<u32>(CryptoRandomValues::VT_LEN, Some(0)).unwrap()
   }
 }
@@ -5429,7 +5607,7 @@ impl<'a> CryptoRandomValuesReady<'a> {
     pub const VT_BUFFER: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn buffer(&'a self) -> Option<&'a [u8]> {
+  pub fn buffer(&self) -> Option<&'a [u8]> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(CryptoRandomValuesReady::VT_BUFFER, None).map(|v| v.safe_slice())
   }
 }
@@ -5511,19 +5689,19 @@ impl<'a> Frame<'a> {
     pub const VT_NAME: flatbuffers::VOffsetT = 10;
 
   #[inline]
-  pub fn line(&'a self) -> u32 {
+  pub fn line(&self) -> u32 {
     self._tab.get::<u32>(Frame::VT_LINE, Some(0)).unwrap()
   }
   #[inline]
-  pub fn col(&'a self) -> u32 {
+  pub fn col(&self) -> u32 {
     self._tab.get::<u32>(Frame::VT_COL, Some(0)).unwrap()
   }
   #[inline]
-  pub fn filename(&'a self) -> Option<&'a str> {
+  pub fn filename(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Frame::VT_FILENAME, None)
   }
   #[inline]
-  pub fn name(&'a self) -> Option<&'a str> {
+  pub fn name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Frame::VT_NAME, None)
   }
 }
@@ -5617,7 +5795,7 @@ impl<'a> SourceMap<'a> {
     pub const VT_FRAMES: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn frames(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
+  pub fn frames(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>>>(SourceMap::VT_FRAMES, None)
   }
 }
@@ -5693,7 +5871,7 @@ impl<'a> SourceMapReady<'a> {
     pub const VT_FRAMES: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn frames(&'a self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
+  pub fn frames(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>>>(SourceMapReady::VT_FRAMES, None)
   }
 }
@@ -5773,15 +5951,15 @@ impl<'a> DataPut<'a> {
     pub const VT_JSON: flatbuffers::VOffsetT = 8;
 
   #[inline]
-  pub fn collection(&'a self) -> Option<&'a str> {
+  pub fn collection(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_COLLECTION, None)
   }
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_KEY, None)
   }
   #[inline]
-  pub fn json(&'a self) -> Option<&'a str> {
+  pub fn json(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_JSON, None)
   }
 }
@@ -5871,11 +6049,11 @@ impl<'a> DataGet<'a> {
     pub const VT_KEY: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn collection(&'a self) -> Option<&'a str> {
+  pub fn collection(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_COLLECTION, None)
   }
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_KEY, None)
   }
 }
@@ -5957,7 +6135,7 @@ impl<'a> DataGetReady<'a> {
     pub const VT_JSON: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn json(&'a self) -> Option<&'a str> {
+  pub fn json(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGetReady::VT_JSON, None)
   }
 }
@@ -6035,11 +6213,11 @@ impl<'a> DataDel<'a> {
     pub const VT_KEY: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn collection(&'a self) -> Option<&'a str> {
+  pub fn collection(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_COLLECTION, None)
   }
   #[inline]
-  pub fn key(&'a self) -> Option<&'a str> {
+  pub fn key(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_KEY, None)
   }
 }
@@ -6121,7 +6299,7 @@ impl<'a> DataDropCollection<'a> {
     pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn collection(&'a self) -> Option<&'a str> {
+  pub fn collection(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDropCollection::VT_COLLECTION, None)
   }
 }
@@ -6197,7 +6375,7 @@ impl<'a> AddEventListener<'a> {
     pub const VT_EVENT: flatbuffers::VOffsetT = 4;
 
   #[inline]
-  pub fn event(&'a self) -> EventType {
+  pub fn event(&self) -> EventType {
     self._tab.get::<EventType>(AddEventListener::VT_EVENT, Some(EventType::Fetch)).unwrap()
   }
 }
@@ -6275,11 +6453,11 @@ impl<'a> LoadModule<'a> {
     pub const VT_CONTAINING_FILE: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn module_specifier(&'a self) -> Option<&'a str> {
+  pub fn module_specifier(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_MODULE_SPECIFIER, None)
   }
   #[inline]
-  pub fn containing_file(&'a self) -> Option<&'a str> {
+  pub fn containing_file(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_CONTAINING_FILE, None)
   }
 }
@@ -6365,15 +6543,15 @@ impl<'a> LoadModuleResp<'a> {
     pub const VT_SOURCE_CODE: flatbuffers::VOffsetT = 8;
 
   #[inline]
-  pub fn module_id(&'a self) -> Option<&'a str> {
+  pub fn module_id(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_MODULE_ID, None)
   }
   #[inline]
-  pub fn file_name(&'a self) -> Option<&'a str> {
+  pub fn file_name(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_FILE_NAME, None)
   }
   #[inline]
-  pub fn source_code(&'a self) -> Option<&'a str> {
+  pub fn source_code(&self) -> Option<&'a str> {
     self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_SOURCE_CODE, None)
   }
 }
