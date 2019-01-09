@@ -76,7 +76,15 @@ There's an issue: [#5](https://github.com/superfly/fly.rs/issues/5)
 
 ## Development
 
+### Prerequisites
+
+- [rust](https://www.rust-lang.org/tools/install)
+- [flatc](https://github.com/google/flatbuffers/releases) (or `brew install flatbuffers` on a mac)
+- [node](https://nodejs.org)
+- [yarn](https://yarnpkg.com/en/docs/install)
+
 ### Setup
+
 
 - `wget -qO- https://github.com/superfly/libv8/releases/download/7.2.502.13/v8-osx-x64.tar.gz | tar xvz -C libfly`
 - `cd v8env`
