@@ -256,6 +256,9 @@ mod tests {
 
         let testns = "testns".to_string();
 
+        let mut conn_for_pubsub = redis_conn();
+        let mut pconn = conn_for_pubsub.as_pubsub();
+        pconn.subscribe(format!("__keyspace@0__:{}", key).as_str()).unwrap();
         let res = store
             .notify(CacheOperation::Del, testns.clone(), key.to_string())
             .wait()
@@ -263,9 +266,6 @@ mod tests {
 
         assert_eq!(res, ());
 
-        let mut conn_for_pubsub = redis_conn();
-        let mut pconn = conn_for_pubsub.as_pubsub();
-        pconn.subscribe(format!("__keyspace@0__:{}", key).as_str()).unwrap();
         let _msg = pconn.get_message().unwrap(); // block until something happens on our key, such as DEL!
 
         let pushed = redis::cmd("ZREVRANGE")
