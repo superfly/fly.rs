@@ -70,6 +70,13 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                             url: global_settings.redis_cache_url.clone(),
                             namespace: Some(rel.app_id.to_string()),
                         })), // TODO: use redis store
+                        cache_store_notifier: match global_settings.redis_cache_notifier_url {
+                            Some(ref url) => Some(CacheStoreNotifier::Redis(RedisCacheNotifierConfig{
+                                reader_url: url.clone(),
+                                writer_url: global_settings.redis_cache_notifier_writer_url.as_ref().unwrap_or(url).clone(),
+                            })),
+                            None => None,
+                        },
                         fs_store: Some(FsStore::Redis(RedisStoreConfig {
                             namespace: Some(format!("app:{}:release:latest:file:", rel.app_id)),
                             url: global_settings.redis_url.clone(),

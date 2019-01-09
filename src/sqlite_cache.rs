@@ -12,6 +12,7 @@ use std::ops::Deref;
 use std::io::{Read, Seek, SeekFrom};
 
 use crate::cache_store::*;
+use crate::cache_store_notifier::{CacheOperation, CacheStoreNotifierError};
 
 impl From<rusqlite::Error> for CacheError {
   #[inline]
@@ -235,6 +236,14 @@ impl CacheStore for SqliteCacheStore {
 
   fn set_tags(&self, _key: String, _tags: Vec<String>) -> EmptyCacheFuture {
     unimplemented!()
+  }
+
+  fn notify(
+    &self,
+    _op: CacheOperation,
+    _value: String,
+  ) -> Box<Future<Item = (), Error = CacheStoreNotifierError> + Send> {
+    Box::new(future::err(CacheStoreNotifierError::Unavailable))
   }
 
   fn set_meta(&self, key: String, meta: String) -> EmptyCacheFuture {

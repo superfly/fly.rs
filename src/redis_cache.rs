@@ -4,7 +4,7 @@ use crate::cache_store::*;
 
 extern crate r2d2_redis;
 
-use crate::settings::RedisStoreConfig;
+use crate::settings::{RedisCacheNotifierConfig, RedisStoreConfig};
 
 use std::fmt::Display;
 use std::time;
@@ -16,6 +16,11 @@ use crate::metrics::*;
 use std::sync::Arc;
 
 use prometheus::{Histogram, IntCounter};
+
+use crate::cache_store_notifier::{CacheOperation, CacheStoreNotifier, CacheStoreNotifierError};
+use crate::redis_cache_notifier::RedisCacheNotifier;
+
+use crate::redis_pool::get_pool;
 
 lazy_static! {
   static ref REPLACE_HASH: redis::Script = redis::Script::new(
@@ -32,20 +37,24 @@ lazy_static! {
     return res
   "#
   );
-  static ref SET_TAGS: redis::Script = redis::Script::new(
-    r#"
-    local key = KEYS[1]
-    local ts = table.remove(ARGV, 1)
+  static ref SET_TAGS: redis::Script = {
+    let src = format!(
+      r#"
+      local key = KEYS[1]
+      local ts = table.remove(ARGV, 1)
 
-    local res = redis.call("HSET", key, "ts", ts) -- update timestamp
+      local res = redis.call("HSET", key, "ts", ts) -- update timestamp
 
-    for i, tag in ipairs(ARGV) do
-      redis.call("HSET", key, "tag:"..tag, 1)
-    end
+      for i, tag in ipairs(ARGV) do
+        redis.call("HSET", key, "{}:"..tag, 1)
+      end
 
-    return res
-  "#
-  );
+      return res
+    "#,
+      TAG_PREFIX
+    );
+    redis::Script::new(src.as_str())
+  };
   static ref GET_CACHE: redis::Script = redis::Script::new(
     r#"
     local key = KEYS[1]
@@ -65,9 +74,13 @@ lazy_static! {
 use self::r2d2_redis::RedisConnectionManager;
 use self::r2d2_redis::{r2d2, redis};
 
+static CACHE_PREFIX: &str = "v2:cache";
+static TAG_PREFIX: &str = "v2:tag";
+
 pub struct RedisCacheStore {
   pool: r2d2::Pool<RedisConnectionManager>,
   ns: String,
+  notifier: Option<RedisCacheNotifier>,
   metric_get_duration: Histogram,
   metric_set_duration: Histogram,
   metric_hits_total: IntCounter,
@@ -84,12 +97,17 @@ pub struct RedisCacheStore {
 }
 
 impl RedisCacheStore {
-  pub fn new(conf: &RedisStoreConfig) -> Self {
+  pub fn new(conf: &RedisStoreConfig, notifier_conf: Option<RedisCacheNotifierConfig>) -> Self {
     let ns = conf.namespace.as_ref().cloned().unwrap_or("".to_string());
     let ns_str = ns.as_str();
+
     RedisCacheStore {
-      pool: r2d2::Pool::new(RedisConnectionManager::new(conf.url.as_str()).unwrap()).unwrap(),
+      pool: get_pool(conf.url.clone()),
       ns: ns.clone(),
+      notifier: match notifier_conf {
+        None => None,
+        Some(csnconf) => Some(RedisCacheNotifier::new(csnconf, conf.url.clone())),
+      },
       metric_get_duration: CACHE_GET_DURATION.with_label_values(&["redis", ns_str]),
       metric_set_duration: CACHE_SET_DURATION.with_label_values(&["redis", ns_str]),
       metric_hits_total: CACHE_HITS_TOTAL.with_label_values(&["redis", ns_str]),
@@ -107,11 +125,11 @@ impl RedisCacheStore {
   }
 
   fn cache_key<S: Display>(&self, key: S) -> String {
-    format!("cache:{}:{}", self.ns, key)
+    format!("{}:{}:{}", CACHE_PREFIX, self.ns, key)
   }
 
   fn tag_key<S: Display>(&self, tag: S) -> String {
-    format!("tag:{}:{}", self.ns, tag)
+    format!("{}:{}:{}", TAG_PREFIX, self.ns, tag)
   }
 }
 
@@ -153,7 +171,7 @@ impl CacheStore for RedisCacheStore {
               if let Some(tags) = opts.tags {
                 for tag in tags.iter() {
                   match redis::cmd("ZADD")
-                    .arg(format!("tag:{}:{}", ns, tag))
+                    .arg(format!("{}:{}:{}", TAG_PREFIX, ns, tag))
                     .arg(ts)
                     .arg(&fullkey)
                     .query::<()>(&*conn)
@@ -317,29 +335,8 @@ impl CacheStore for RedisCacheStore {
     let pool = self.pool.clone();
 
     Box::new(future::lazy(move || match pool.get() {
-      Ok(conn) => match redis::cmd("ZRANGE")
-        .arg(&tagkey)
-        .arg(0)
-        .arg(-1)
-        .arg("WITHSCORES")
-        .query::<HashMap<String, i32>>(&*conn)
-      {
-        Ok(keysts) => {
-          for (key, tagts) in keysts.iter() {
-            match redis::cmd("HGET").arg(key).arg("ts").query::<i32>(&*conn) {
-              Ok(ref ts) => {
-                if ts == tagts {
-                  match redis::cmd("DEL").arg(key).query::<()>(&*conn) {
-                    Ok(_) => {}
-                    Err(e) => return Err(CacheError::Failure(format!("{}", e))),
-                  }
-                }
-              }
-              Err(e) => return Err(CacheError::Failure(format!("{}", e))),
-            };
-          }
-          Ok(())
-        }
+      Ok(conn) => match purge_tag(&*conn, tagkey) {
+        Ok(_) => Ok(()),
         Err(e) => Err(CacheError::Failure(format!("{}", e))),
       },
       Err(e) => Err(CacheError::Failure(format!("{}", e))),
@@ -368,7 +365,7 @@ impl CacheStore for RedisCacheStore {
           Ok(_) => {
             for tag in tags.iter() {
               match redis::cmd("ZADD")
-                .arg(format!("tag:{}:{}", ns, tag))
+                .arg(format!("{}:{}:{}", TAG_PREFIX, ns, tag))
                 .arg(ts)
                 .arg(&fullkey)
                 .query::<()>(&*conn)
@@ -384,6 +381,20 @@ impl CacheStore for RedisCacheStore {
       }
       Err(e) => Err(CacheError::Failure(format!("{}", e))),
     }))
+  }
+
+  fn notify(
+    &self,
+    op: CacheOperation,
+    value: String,
+  ) -> Box<Future<Item = (), Error = CacheStoreNotifierError> + Send> {
+    if self.notifier.is_none() {
+      return Box::new(future::err(CacheStoreNotifierError::Unavailable));
+    }
+
+    let notifier = self.notifier.as_ref().unwrap();
+
+    notifier.notify(op, self.ns.clone(), value)
   }
 
   fn set_meta(&self, key: String, meta: String) -> EmptyCacheFuture {
@@ -407,6 +418,22 @@ impl CacheStore for RedisCacheStore {
   }
 }
 
+pub fn purge_tag(conn: &redis::Connection, tagkey: String) -> Result<(), redis::RedisError> {
+  let keysts = redis::cmd("ZRANGE")
+    .arg(&tagkey)
+    .arg(0)
+    .arg(-1)
+    .arg("WITHSCORES")
+    .query::<HashMap<String, i32>>(conn)?;
+  for (key, tagts) in keysts.iter() {
+    let ref ts = redis::cmd("HGET").arg(key).arg("ts").query::<i32>(conn)?;
+    if ts == tagts {
+      redis::cmd("DEL").arg(key).execute(conn);
+    }
+  }
+  Ok(())
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -414,10 +441,13 @@ mod tests {
   use self::rand::{thread_rng, RngCore};
 
   fn setup() -> RedisCacheStore {
-    RedisCacheStore::new(&RedisStoreConfig {
-      url: "redis://localhost:6379".to_string(),
-      namespace: Some("test".to_string()),
-    })
+    RedisCacheStore::new(
+      &RedisStoreConfig {
+        url: "redis://localhost:6379".to_string(),
+        namespace: Some("test".to_string()),
+      },
+      None,
+    )
   }
 
   fn set_value(

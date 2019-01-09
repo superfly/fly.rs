@@ -1,5 +1,5 @@
-use flatbuffers::FlatBufferBuilder;
 use crate::msg;
+use flatbuffers::FlatBufferBuilder;
 
 extern crate trust_dns as dns;
 extern crate trust_dns_proto as dns_proto;
@@ -10,9 +10,9 @@ use self::dns_resolver::config::ResolverConfig;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use libfly::*;
 use crate::runtime::{JsRuntime, Op, EVENT_LOOP};
 use crate::utils::*;
+use libfly::*;
 
 use futures::Future;
 
@@ -147,7 +147,8 @@ fn dns_query(
                     ip: Some(ipstr),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::AAAA(ip) => {
                 let ipstr = builder.create_string(&ip.to_string());
@@ -157,7 +158,8 @@ fn dns_query(
                     ip: Some(ipstr),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::CNAME(name) => {
                 let namestr = builder.create_string(&name.to_utf8());
@@ -167,7 +169,8 @@ fn dns_query(
                     name: Some(namestr),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::MX(mx) => {
                 let exstr = builder.create_string(&mx.exchange().to_utf8());
@@ -178,7 +181,8 @@ fn dns_query(
                     preference: mx.preference(),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::NS(name) => {
                 let namestr = builder.create_string(&name.to_utf8());
@@ -188,7 +192,8 @@ fn dns_query(
                     name: Some(namestr),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::PTR(name) => {
                 let namestr = builder.create_string(&name.to_utf8());
@@ -198,7 +203,8 @@ fn dns_query(
                     name: Some(namestr),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::SOA(soa) => {
                 let mnamestr = builder.create_string(&soa.mname().to_utf8());
@@ -215,7 +221,8 @@ fn dns_query(
                     minimum: soa.minimum(),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::SRV(srv) => {
                 let targetstr = builder.create_string(&srv.target().to_utf8());
@@ -228,7 +235,8 @@ fn dns_query(
                     target: Some(targetstr),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               RData::TXT(txt) => {
                 let coll: Vec<_> = txt
@@ -242,7 +250,8 @@ fn dns_query(
                         ..Default::default()
                       },
                     )
-                  }).collect();
+                  })
+                  .collect();
                 let data = builder.create_vector(&coll);
                 msg::DnsTxt::create(
                   builder,
@@ -250,7 +259,8 @@ fn dns_query(
                     data: Some(data),
                     ..Default::default()
                   },
-                ).as_union_value()
+                )
+                .as_union_value()
               }
               _ => unimplemented!(),
             };
@@ -266,7 +276,8 @@ fn dns_query(
                 ..Default::default()
               },
             )
-          }).collect();
+          })
+          .collect();
         let res_answers = builder.create_vector(&answers);
         let dns_msg = msg::DnsResponse::create(
           builder,

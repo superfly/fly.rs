@@ -248,7 +248,7 @@ export function del(key: string) {
  * 
  * See {@link fly/cache/global} 
  */
-// import { default as global } from "./global"
+import { default as global } from "./global"
 import { ReadableStream as WhatWGReadableStream } from '@stardazed/streams';
 import { bufferFromStream } from '../../body_mixin';
 import { ReadableStream } from '../../dom_types';
@@ -264,8 +264,8 @@ const cache = {
   setMeta,
   expire,
   del,
+  global,
   setTags,
   purgeTag,
-  // global
 }
 export default cache
