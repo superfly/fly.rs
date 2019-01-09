@@ -1,4 +1,4 @@
-use crate::fly_image::webp::WebPEncodeOptions;
+use crate::fly_image::encoding::WebPEncodeOptions;
 use crate::get_next_stream_id;
 use crate::msg;
 use crate::runtime::{JsBody, JsRuntime, Op};

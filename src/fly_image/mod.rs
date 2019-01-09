@@ -1,1 +1,1 @@
-pub mod webp;
+pub mod encoding;
