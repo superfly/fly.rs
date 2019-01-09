@@ -127,25 +127,28 @@ export enum Any{
   CacheSetReady= 12,
   CacheDel= 13,
   CacheExpire= 14,
-  CryptoDigest= 15,
-  CryptoDigestReady= 16,
-  CryptoRandomValues= 17,
-  CryptoRandomValuesReady= 18,
-  SourceMap= 19,
-  SourceMapReady= 20,
-  DataPut= 21,
-  DataGet= 22,
-  DataGetReady= 23,
-  DataDel= 24,
-  DataDropCollection= 25,
-  DnsQuery= 26,
-  DnsRequest= 27,
-  DnsResponse= 28,
-  AddEventListener= 29,
-  LoadModule= 30,
-  LoadModuleResp= 31,
-  ImageApplyTransforms= 32,
-  ImageReady= 33
+  CacheSetTags= 15,
+  CachePurgeTag= 16,
+  CacheSetMeta= 17,
+  CryptoDigest= 18,
+  CryptoDigestReady= 19,
+  CryptoRandomValues= 20,
+  CryptoRandomValuesReady= 21,
+  SourceMap= 22,
+  SourceMapReady= 23,
+  DataPut= 24,
+  DataGet= 25,
+  DataGetReady= 26,
+  DataDel= 27,
+  DataDropCollection= 28,
+  DnsQuery= 29,
+  DnsRequest= 30,
+  DnsResponse= 31,
+  AddEventListener= 32,
+  LoadModule= 33,
+  LoadModuleResp= 34,
+  ImageApplyTransforms= 35,
+  ImageReady= 36
 };
 
 /**
@@ -2717,6 +2720,263 @@ static addTtl(builder:flatbuffers.Builder, ttl:number) {
  * @returns flatbuffers.Offset
  */
 static endCacheExpire(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class CacheSetMeta {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns CacheSetMeta
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):CacheSetMeta {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param CacheSetMeta= obj
+ * @returns CacheSetMeta
+ */
+static getRootAsCacheSetMeta(bb:flatbuffers.ByteBuffer, obj?:CacheSetMeta):CacheSetMeta {
+  return (obj || new CacheSetMeta).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+meta():string|null
+meta(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+meta(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startCacheSetMeta(builder:flatbuffers.Builder) {
+  builder.startObject(2);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset metaOffset
+ */
+static addMeta(builder:flatbuffers.Builder, metaOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, metaOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endCacheSetMeta(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class CacheSetTags {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns CacheSetTags
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):CacheSetTags {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param CacheSetTags= obj
+ * @returns CacheSetTags
+ */
+static getRootAsCacheSetTags(bb:flatbuffers.ByteBuffer, obj?:CacheSetTags):CacheSetTags {
+  return (obj || new CacheSetTags).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param number index
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array
+ */
+tags(index: number):string
+tags(index: number,optionalEncoding:flatbuffers.Encoding):string|Uint8Array
+tags(index: number,optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb!.__vector(this.bb_pos + offset) + index * 4, optionalEncoding) : null;
+};
+
+/**
+ * @returns number
+ */
+tagsLength():number {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startCacheSetTags(builder:flatbuffers.Builder) {
+  builder.startObject(2);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset tagsOffset
+ */
+static addTags(builder:flatbuffers.Builder, tagsOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, tagsOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param Array.<flatbuffers.Offset> data
+ * @returns flatbuffers.Offset
+ */
+static createTagsVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
+  builder.startVector(4, data.length, 4);
+  for (var i = data.length - 1; i >= 0; i--) {
+    builder.addOffset(data[i]);
+  }
+  return builder.endVector();
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number numElems
+ */
+static startTagsVector(builder:flatbuffers.Builder, numElems:number) {
+  builder.startVector(4, numElems, 4);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endCacheSetTags(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class CachePurgeTag {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns CachePurgeTag
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):CachePurgeTag {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param CachePurgeTag= obj
+ * @returns CachePurgeTag
+ */
+static getRootAsCachePurgeTag(bb:flatbuffers.ByteBuffer, obj?:CachePurgeTag):CachePurgeTag {
+  return (obj || new CachePurgeTag).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+tag():string|null
+tag(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+tag(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startCachePurgeTag(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset tagOffset
+ */
+static addTag(builder:flatbuffers.Builder, tagOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, tagOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endCachePurgeTag(builder:flatbuffers.Builder):flatbuffers.Offset {
   var offset = builder.endObject();
   return offset;
 };

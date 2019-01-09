@@ -32,3 +32,17 @@ table CacheExpire {
   key: string;
   ttl: uint;
 }
+
+table CacheSetMeta {
+  key: string;
+  meta: string;
+}
+
+table CacheSetTags {
+  key: string;
+  tags: [string];
+}
+
+table CachePurgeTag {
+  tag: string;
+}
