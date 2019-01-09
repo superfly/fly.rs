@@ -40,3 +40,17 @@ table CacheNotifyDel {
 table CacheNotifyPurgeTag {
   tag: string;
 }
+
+table CacheSetMeta {
+  key: string;
+  meta: string;
+}
+
+table CacheSetTags {
+  key: string;
+  tags: [string];
+}
+
+table CachePurgeTag {
+  tag: string;
+}

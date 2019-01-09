@@ -27,6 +27,7 @@ pub trait CacheStore {
     op: CacheOperation,
     value: String,
   ) -> Box<Future<Item = (), Error = CacheStoreNotifierError> + Send>;
+  fn set_meta(&self, key: String, meta: String) -> EmptyCacheFuture;
 }
 
 #[derive(Debug)]

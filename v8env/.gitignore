@@ -3,5 +3,4 @@ docs
 node_modules
 lib
 dist
-src/msg_generated.ts
 .rpt2_cache

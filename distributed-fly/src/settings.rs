@@ -43,7 +43,7 @@ pub struct GlobalSettings {
     // pub uv_threadpool_size: String,
     // pub logger_host: String,
     // pub logger_port: String,
-    pub sentry_dns: Option<String>,
+    pub sentry_dsn: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

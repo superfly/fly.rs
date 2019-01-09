@@ -35,6 +35,7 @@ impl SqliteCacheStore {
         "CREATE TABLE IF NOT EXISTS cache (
       key TEXT PRIMARY KEY NOT NULL,
       value BLOB NOT NULL,
+      meta TEXT,
       expires_at DATETIME
     );
     CREATE UNIQUE INDEX IF NOT EXISTS ON cache (key);
@@ -243,6 +244,30 @@ impl CacheStore for SqliteCacheStore {
     _value: String,
   ) -> Box<Future<Item = (), Error = CacheStoreNotifierError> + Send> {
     Box::new(future::err(CacheStoreNotifierError::Unavailable))
+  }
+
+  fn set_meta(&self, key: String, meta: String) -> EmptyCacheFuture {
+    debug!("sqlite cache set_meta key: {}", key);
+
+    let pool = self.pool.clone();
+    Box::new(future::lazy(move || -> CacheResult<()> {
+      let conn = pool.get().unwrap(); // TODO: no unwrap
+
+      let mut stmt = match conn.prepare(
+        "UPDATE cache
+      SET meta = ?
+      WHERE key = ?",
+      ) {
+        Ok(s) => s,
+        Err(e) => return Err(e.into()),
+      };
+      let ret = match stmt.execute(&[&meta, &key]) {
+        Ok(r) => r,
+        Err(e) => return Err(e.into()),
+      };
+      debug!("sqlite cache set_meta for key: {} returned: {}", key, ret);
+      Ok(())
+    }))
   }
 }
 
