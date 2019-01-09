@@ -660,11 +660,13 @@ pub enum Any {
   LoadModuleResp = 34,
   ImageApplyTransforms = 35,
   ImageReady = 36,
+  AcmeGetChallenge = 37,
+  AcmeGetChallengeReady = 38,
 
 }
 
 const ENUM_MIN_ANY: u8 = 0;
-const ENUM_MAX_ANY: u8 = 36;
+const ENUM_MAX_ANY: u8 = 38;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
   type Inner = Self;
@@ -698,7 +700,7 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 37] = [
+const ENUM_VALUES_ANY:[Any; 39] = [
   Any::NONE,
   Any::TimerStart,
   Any::TimerReady,
@@ -735,11 +737,13 @@ const ENUM_VALUES_ANY:[Any; 37] = [
   Any::LoadModule,
   Any::LoadModuleResp,
   Any::ImageApplyTransforms,
-  Any::ImageReady
+  Any::ImageReady,
+  Any::AcmeGetChallenge,
+  Any::AcmeGetChallengeReady
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 37] = [
+const ENUM_NAMES_ANY:[&'static str; 39] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -776,7 +780,9 @@ const ENUM_NAMES_ANY:[&'static str; 37] = [
     "LoadModule",
     "LoadModuleResp",
     "ImageApplyTransforms",
-    "ImageReady"
+    "ImageReady",
+    "AcmeGetChallenge",
+    "AcmeGetChallengeReady"
 ];
 
 pub fn enum_name_any(e: Any) -> &'static str {
@@ -3817,6 +3823,182 @@ impl<'a: 'b, 'b> ImageReadyBuilder<'a, 'b> {
   }
 }
 
+pub enum AcmeGetChallengeOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct AcmeGetChallenge<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for AcmeGetChallenge<'a> {
+    type Inner = AcmeGetChallenge<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> AcmeGetChallenge<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        AcmeGetChallenge {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args AcmeGetChallengeArgs<'args>) -> flatbuffers::WIPOffset<AcmeGetChallenge<'bldr>> {
+      let mut builder = AcmeGetChallengeBuilder::new(_fbb);
+      if let Some(x) = args.token { builder.add_token(x); }
+      if let Some(x) = args.hostname { builder.add_hostname(x); }
+      builder.finish()
+    }
+
+    pub const VT_HOSTNAME: flatbuffers::VOffsetT = 4;
+    pub const VT_TOKEN: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub fn hostname(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallenge::VT_HOSTNAME, None)
+  }
+  #[inline]
+  pub fn token(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallenge::VT_TOKEN, None)
+  }
+}
+
+pub struct AcmeGetChallengeArgs<'a> {
+    pub hostname: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub token: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for AcmeGetChallengeArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        AcmeGetChallengeArgs {
+            hostname: None,
+            token: None,
+        }
+    }
+}
+pub struct AcmeGetChallengeBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> AcmeGetChallengeBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_hostname(&mut self, hostname: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallenge::VT_HOSTNAME, hostname);
+  }
+  #[inline]
+  pub fn add_token(&mut self, token: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallenge::VT_TOKEN, token);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> AcmeGetChallengeBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    AcmeGetChallengeBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<AcmeGetChallenge<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum AcmeGetChallengeReadyOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct AcmeGetChallengeReady<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for AcmeGetChallengeReady<'a> {
+    type Inner = AcmeGetChallengeReady<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> AcmeGetChallengeReady<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        AcmeGetChallengeReady {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args AcmeGetChallengeReadyArgs<'args>) -> flatbuffers::WIPOffset<AcmeGetChallengeReady<'bldr>> {
+      let mut builder = AcmeGetChallengeReadyBuilder::new(_fbb);
+      if let Some(x) = args.contents { builder.add_contents(x); }
+      builder.add_id(args.id);
+      builder.finish()
+    }
+
+    pub const VT_ID: flatbuffers::VOffsetT = 4;
+    pub const VT_CONTENTS: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub fn id(&self) -> u32 {
+    self._tab.get::<u32>(AcmeGetChallengeReady::VT_ID, Some(0)).unwrap()
+  }
+  #[inline]
+  pub fn contents(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallengeReady::VT_CONTENTS, None)
+  }
+}
+
+pub struct AcmeGetChallengeReadyArgs<'a> {
+    pub id: u32,
+    pub contents: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for AcmeGetChallengeReadyArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        AcmeGetChallengeReadyArgs {
+            id: 0,
+            contents: None,
+        }
+    }
+}
+pub struct AcmeGetChallengeReadyBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> AcmeGetChallengeReadyBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_id(&mut self, id: u32) {
+    self.fbb_.push_slot::<u32>(AcmeGetChallengeReady::VT_ID, id, 0);
+  }
+  #[inline]
+  pub fn add_contents(&mut self, contents: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallengeReady::VT_CONTENTS, contents);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> AcmeGetChallengeReadyBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    AcmeGetChallengeReadyBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<AcmeGetChallengeReady<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum BaseOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -4241,6 +4423,26 @@ impl<'a> Base<'a> {
   pub fn msg_as_image_ready(&'a self) -> Option<ImageReady> {
     if self.msg_type() == Any::ImageReady {
       self.msg().map(|u| ImageReady::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_acme_get_challenge(&'a self) -> Option<AcmeGetChallenge> {
+    if self.msg_type() == Any::AcmeGetChallenge {
+      self.msg().map(|u| AcmeGetChallenge::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_acme_get_challenge_ready(&'a self) -> Option<AcmeGetChallengeReady> {
+    if self.msg_type() == Any::AcmeGetChallengeReady {
+      self.msg().map(|u| AcmeGetChallengeReady::init_from_table(u))
     } else {
       None
     }
