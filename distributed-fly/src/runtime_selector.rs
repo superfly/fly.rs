@@ -71,10 +71,16 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                             namespace: Some(rel.app_id.to_string()),
                         })), // TODO: use redis store
                         cache_store_notifier: match global_settings.redis_cache_notifier_url {
-                            Some(ref url) => Some(CacheStoreNotifier::Redis(RedisCacheNotifierConfig{
-                                reader_url: url.clone(),
-                                writer_url: global_settings.redis_cache_notifier_writer_url.as_ref().unwrap_or(url).clone(),
-                            })),
+                            Some(ref url) => {
+                                Some(CacheStoreNotifier::Redis(RedisCacheNotifierConfig {
+                                    reader_url: url.clone(),
+                                    writer_url: global_settings
+                                        .redis_cache_notifier_writer_url
+                                        .as_ref()
+                                        .unwrap_or(url)
+                                        .clone(),
+                                }))
+                            }
                             None => None,
                         },
                         fs_store: Some(FsStore::Redis(RedisStoreConfig {
@@ -97,6 +103,14 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     "<app config>",
                     &format!("window.app = {{ config: {} }};", merged_conf),
                 );
+
+                // load compatability shims if provided
+                if let Some(shims) = rel.shims {
+                    for (idx, code) in shims.iter().enumerate() {
+                        rt.eval(&format!("shim-{}.js", idx), code);
+                    }
+                }
+
                 rt.eval("app.js", &rel.source);
                 let app = rel.app;
                 let app_id = rel.app_id;
