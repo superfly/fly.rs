@@ -22,6 +22,7 @@ import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
 import * as streams from "./streams";
+import { AppRelease } from "./app";
 
 declare global {
   interface Window {
@@ -60,6 +61,7 @@ declare global {
     data: typeof flyData
     http: typeof flyHttp
     Image: typeof Image
+    app: AppRelease;
   }
   // TODO: remove
   const fly: Fly
