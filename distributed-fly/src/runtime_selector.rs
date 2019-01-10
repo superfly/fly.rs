@@ -95,7 +95,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
                     "<app config>",
-                    &format!("window.app = {{ config: {} }};", merged_conf),
+                    &format!("window.fly.app = {{ config: {} }};", merged_conf),
                 );
                 rt.eval("app.js", &rel.source);
                 let app = rel.app;
