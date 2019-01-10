@@ -5,8 +5,10 @@ use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use super::REDIS_POOL;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
+use r2d2_redis::redis;
 
 pub struct DistributedRuntimeSelector {
     pub runtimes: RwLock<HashMap<String, Box<Runtime>>>,
@@ -104,10 +106,19 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     &format!("window.fly.app = {{ config: {} }};", merged_conf),
                 );
 
-                // load compatability shims if provided
-                if let Some(shims) = rel.shims {
-                    for (idx, code) in shims.iter().enumerate() {
-                        rt.eval(&format!("shim-{}.js", idx), code);
+                // load external libraries if requested
+                if let Some(libs) = rel.libs {
+                    match fetch_libs(&libs[..]) {
+                        Ok(lib_sources) => {
+                            for (key, source) in lib_sources.iter() {
+                                if let Some(source) = source {
+                                    rt.eval(&format!("<lib:{}>", key), source);
+                                } else {
+                                    warn!("app {} requested missing lib: {}", &rel.app_id, &key);
+                                }
+                            }
+                        }
+                        Err(e) => warn!("error loading libs for app {}: {}", &rel.app, e),
                     }
                 }
 
@@ -135,4 +146,22 @@ impl RuntimeSelector for DistributedRuntimeSelector {
             None => Ok(None),
         }
     }
+}
+
+fn fetch_libs<'a>(keys: &'a [String]) -> Result<Vec<(&'a String, Option<String>)>, String> {
+    let conn = match REDIS_POOL.get() {
+        Ok(c) => c,
+        Err(e) => return Err(format!("error getting pool connection: {}", e)),
+    };
+
+    let libs: Vec<Option<String>> = match redis::cmd("HMGET")
+        .arg("libs")
+        .arg(keys)
+        .query::<(i32, Vec<Option<String>>)>(&*conn)
+    {
+        Ok(result) => result.1,
+        Err(e) => return Err(format!("error getting libs: {}", e)),
+    };
+
+    Ok(keys.iter().zip(libs.into_iter()).collect())
 }
