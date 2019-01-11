@@ -5,6 +5,7 @@ use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use crate::libs::fetch_libs;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
 
@@ -104,10 +105,19 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     &format!("window.fly.app = {{ config: {} }};", merged_conf),
                 );
 
-                // load compatability shims if provided
-                if let Some(shims) = rel.shims {
-                    for (idx, code) in shims.iter().enumerate() {
-                        rt.eval(&format!("shim-{}.js", idx), code);
+                // load external libraries if requested
+                if let Some(libs) = rel.libs {
+                    match fetch_libs(&libs[..]) {
+                        Ok(lib_sources) => {
+                            for (key, source) in lib_sources.iter() {
+                                if let Some(source) = source {
+                                    rt.eval(&format!("<lib:{}>", key), source);
+                                } else {
+                                    warn!("app {} requested missing lib: {}", &rel.app_id, &key);
+                                }
+                            }
+                        }
+                        Err(e) => warn!("error loading libs for app {}: {}", &rel.app, e),
                     }
                 }
 
