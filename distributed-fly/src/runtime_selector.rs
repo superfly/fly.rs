@@ -5,10 +5,9 @@ use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use super::REDIS_POOL;
+use crate::libs::fetch_libs;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
-use r2d2_redis::redis;
 
 pub struct DistributedRuntimeSelector {
     pub runtimes: RwLock<HashMap<String, Box<Runtime>>>,
@@ -146,22 +145,4 @@ impl RuntimeSelector for DistributedRuntimeSelector {
             None => Ok(None),
         }
     }
-}
-
-fn fetch_libs<'a>(keys: &'a [String]) -> Result<Vec<(&'a String, Option<String>)>, String> {
-    let conn = match REDIS_POOL.get() {
-        Ok(c) => c,
-        Err(e) => return Err(format!("error getting pool connection: {}", e)),
-    };
-
-    let libs: Vec<Option<String>> = match redis::cmd("HMGET")
-        .arg("libs")
-        .arg(keys)
-        .query::<(i32, Vec<Option<String>>)>(&*conn)
-    {
-        Ok(result) => result.1,
-        Err(e) => return Err(format!("error getting libs: {}", e)),
-    };
-
-    Ok(keys.iter().zip(libs.into_iter()).collect())
 }
