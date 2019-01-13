@@ -215,13 +215,12 @@ table AddEventListener {
 }
 
 table LoadModule {
-  module_specifier: string;
-  containing_file: string;
+  specifier_url: string;
+  referer_origin_url: string;
 }
 
 table LoadModuleResp {
-  module_id: string;
-  file_name: string;
+  origin_url: string;
   source_code: string;
 }
 

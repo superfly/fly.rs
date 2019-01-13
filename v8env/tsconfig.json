@@ -18,7 +18,8 @@
     "noLib": true,
     // "noUnusedLocals": true,
     // "skipLibCheck": true,
-    "types": []
+    "types": [],
+    "resolveJsonModule": true
   },
   "typedocOptions": {
     "out": "./docs/api/",

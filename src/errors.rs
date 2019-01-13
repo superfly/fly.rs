@@ -147,3 +147,12 @@ impl From<String> for FlyError {
     }
   }
 }
+
+impl From<()> for FlyError {
+  #[inline]
+  fn from(err: ()) -> FlyError {
+    FlyError {
+      repr: Repr::Simple("Errored with non message error.".to_string()),
+    }
+  }
+}

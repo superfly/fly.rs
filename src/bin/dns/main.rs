@@ -20,13 +20,13 @@ extern crate libfly;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
 use fly::{dns_server::DnsServer, fixed_runtime_selector::FixedRuntimeSelector};
-use fly::compiler::{ ModuleResolver, JsonSecretsResolver, LocalDiskModuleResolver };
+use fly::module_resolver::{ ModuleResolver, JsonSecretsResolver, LocalDiskModuleResolver };
 
 use env_logger::Env;
 
 extern crate clap;
 
-use std::path::{Path, PathBuf};
+use std::path::{ Path, PathBuf };
 
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
@@ -84,7 +84,7 @@ fn main() {
           serde_json::from_str("{}").unwrap()
         }
       };
-      module_resolvers.push(Box::new(JsonSecretsResolver::new("@secrets-namespace/".to_string(), json_value)));
+      module_resolvers.push(Box::new(JsonSecretsResolver::new(json_value)));
     },
     false => {
       info!("Secrets file invalid");

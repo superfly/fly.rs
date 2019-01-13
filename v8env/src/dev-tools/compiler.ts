@@ -114,6 +114,10 @@ class ModuleCache {
   public has(fileName: ModuleFileName): boolean {
     return this.moduleIndex.has(fileName);
   }
+  
+  public keys(): Array<string> {
+    return Array.from(this.moduleIndex.keys());
+  }
 }
 
 export interface CompilerOptions {
@@ -194,6 +198,7 @@ export class Compiler {
    * cache the result. Re-compilation can be forced using '--recompile' flag.
    */
   compile(moduleInfo: ModuleInfo): OutputCode {
+    trace("compile()", { moduleInfo });
     const recompile = false; // only relevant for persistent cache
     // If module already has ouputCode return that(Nothing to compile).
     if (!recompile && moduleInfo.outputCode) {
@@ -388,7 +393,10 @@ const settings: ts.CompilerOptions = {
   inlineSourceMap: true,
   inlineSources: true,
   stripComments: true,
-  target: ts.ScriptTarget.ESNext
+  target: ts.ScriptTarget.ESNext,
+  esModuleInterop: true,
+  moduleResolution: 2,
+  resolveJsonModule: true,
 }
 
 function createLanguageService(compiler: Compiler): ts.LanguageService {

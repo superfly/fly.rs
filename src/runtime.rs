@@ -75,7 +75,7 @@ use crate::{disk_fs, redis_fs};
 
 use crate::settings::{CacheStore, DataStore, FsStore, Settings};
 
-use crate::compiler::{ Compiler, ModuleResolver, LocalDiskModuleResolver };
+use crate::module_resolver::{ LoadedModule, RefererInfo, StandardModuleResolverManager, ModuleResolverManager, ModuleResolver, LocalDiskModuleResolver };
 
 use super::NEXT_FUTURE_ID;
 use std::net::SocketAddr;
@@ -153,7 +153,8 @@ pub struct Runtime {
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   pub last_event_at: AtomicUsize,
-  pub compiler: Mutex<Compiler>,
+  pub module_resolver_manager: Mutex<Box<ModuleResolverManager>>,
+  pub metadata_cache: Mutex<HashMap<i32, Box<LoadedModule>>>,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
 }
@@ -251,7 +252,8 @@ impl Runtime {
         None => Box::new(disk_fs::DiskFsStore::new()),
       },
       last_event_at: ATOMIC_USIZE_INIT,
-      compiler: Mutex::new(Compiler::new(rt_module_resolvers)),
+      module_resolver_manager: Mutex::new(Box::new(StandardModuleResolverManager::new(rt_module_resolvers))),
+      metadata_cache: Mutex::new(HashMap::new()),
     });
 
     (*rt).ptr.0 = unsafe {
@@ -260,6 +262,7 @@ impl Runtime {
         data: rt.as_ref() as *const _ as *mut libc::c_void,
         recv_cb: msg_from_js,
         print_cb: print_from_js,
+        resolve_cb: resolve_callback,
         soft_memory_limit: 128,
         hard_memory_limit: 256,
       });
@@ -382,6 +385,22 @@ impl Runtime {
     }
 
     Some(Ok(res))
+  }
+
+  pub fn get_module_metadata(&self, hash: &i32) -> Option<Box<LoadedModule>> {
+    return match self.metadata_cache.lock().unwrap().get(hash) {
+      Some(v) => Some((*v).clone()),
+      None => None,
+    };
+  }
+
+  pub fn insert_module_metadata(&mut self, hash: i32, module_metadata: LoadedModule) {
+    let locked_cache = self.metadata_cache.get_mut().unwrap();
+    if locked_cache.contains_key(&hash) {
+      error!("Attempted to overwrite entry in module metadata cache.");
+    } else {
+      locked_cache.insert(hash, Box::new(module_metadata));
+    }
   }
 }
 
@@ -595,6 +614,51 @@ pub unsafe extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *co
   };
 
   log!(lvl, "console/{}: {}", &rt.name, &msg);
+}
+
+pub unsafe extern "C" fn resolve_callback(raw: *const js_runtime, specifier: *const libc::c_char, referer_identity_hash: i32) -> js_compiled_module {
+  let rt = Runtime::from_raw(raw);
+  let specifier_str = CStr::from_ptr(specifier).to_string_lossy().into_owned();
+
+  let referer_loaded_module = match rt.get_module_metadata(&referer_identity_hash) {
+    Some(v) => v,
+    None => {
+      error!("Failed to find module hash in metadata cache! Exiting.");
+      std::process::exit(1);
+    },
+  };
+
+  let loaded_module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_str, RefererInfo {
+    origin_url: referer_loaded_module.origin_url,
+    is_wasm: Some(referer_loaded_module.loaded_source.is_wasm),
+    source_code: Some(referer_loaded_module.loaded_source.source),
+    indentifier_hash: Some(referer_identity_hash),
+  }) {
+    Ok(v) => v,
+    Err(e) => {
+      error!("Failed to resolve and load module! Exiting.");
+      std::process::exit(1);
+    },
+  };
+
+  let module_data = js_module_data {
+    origin_url: CString::new(loaded_module.origin_url).unwrap().as_ptr(),
+    source_map_url: CString::new("").unwrap().as_ptr(),
+    is_wasm: loaded_module.loaded_source.is_wasm,
+    source_code: fly_simple_buf {
+      ptr: CString::new(loaded_module.loaded_source.source.as_str()).unwrap().as_ptr(),
+      len: loaded_module.loaded_source.source.len() as i32,
+    }
+  };
+
+  let compile_result = js_compile_module(raw, module_data);
+
+  if compile_result.success {
+    return compile_result.compiled_module;
+  } else {
+    error!("Module compile failed! Exiting.");
+    std::process::exit(1);
+  }
 }
 
 fn op_timer_start(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
@@ -1115,25 +1179,28 @@ fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let rt = _ptr.to_runtime();
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_load_module().unwrap();
-  let module_specifier = msg.module_specifier().unwrap().to_string();
-  let containing_file = msg.containing_file().unwrap().to_string();
+  let specifier_url = msg.specifier_url().unwrap().to_string();
+  let referer_origin_url = msg.referer_origin_url().unwrap().to_string();
 
-  let module = match rt.compiler.lock().unwrap().fetch_module(&module_specifier, &containing_file) {
+  let module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_url, RefererInfo {
+    origin_url: referer_origin_url,
+    is_wasm: Some(false),
+    source_code: None,
+    indentifier_hash: None,
+  }) {
     Ok(m) => m,
     Err(e) => return odd_future(e.into()),
   };
 
   Box::new(future::lazy(move || {
     let builder = &mut FlatBufferBuilder::new();
-    let module_id = builder.create_string(&module.module_id);
-    let file_name = builder.create_string(&module.file_name);
-    let source_code = builder.create_string(&module.source_code);
+    let origin_url = builder.create_string(&module.origin_url);
+    let source_code = builder.create_string(&module.loaded_source.source);
 
     let msg = msg::LoadModuleResp::create(
       builder,
       &msg::LoadModuleRespArgs {
-        module_id: Some(module_id),
-        file_name: Some(file_name),
+        origin_url: Some(origin_url),
         source_code: Some(source_code),
       },
     );
