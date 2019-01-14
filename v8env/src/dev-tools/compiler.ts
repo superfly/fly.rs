@@ -57,11 +57,12 @@ const hostPathPrefix: string = "host_";
 
 export function originUrlToFileName(originUrl: string): string {
   const parsedUrl = new URL(originUrl);
-  return "/" + protocolPathPrefix + parsedUrl.protocol + "/" + hostPathPrefix + parsedUrl.host + parsedUrl.pathname;
+  return "/" + protocolPathPrefix + parsedUrl.protocol + "/" + hostPathPrefix + parsedUrl.host + parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
 };
 
 export function fileNameToOriginUrl(fileName: string): string {
   const fileNameParts = fileName.split("/");
+  // These indexes had me a little confused at first. fileName should always start with a "/" so fileNameParts[0] = ""
   return fileNameParts[1].replace(protocolPathPrefix, "") + "//" + fileNameParts[2].replace(hostPathPrefix, "") + "/" + fileNameParts.slice(3).join("/");
 }
 
