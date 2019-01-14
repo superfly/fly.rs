@@ -1,6 +1,6 @@
-import someSecret from "@secrets-namespace/someSecret";
+import secrets from "secrets:///someSecret.js";
 
-console.log(someSecret);
+console.log(secrets.someSecret);
 
 console.log("hello world")
 const helloWorldStr = "Hello World";

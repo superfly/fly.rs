@@ -252,7 +252,7 @@ impl Runtime {
         None => Box::new(disk_fs::DiskFsStore::new()),
       },
       last_event_at: ATOMIC_USIZE_INIT,
-      module_resolver_manager: Mutex::new(Box::new(StandardModuleResolverManager::new(rt_module_resolvers))),
+      module_resolver_manager: Mutex::new(Box::new(StandardModuleResolverManager::new(rt_module_resolvers, None))),
       metadata_cache: Mutex::new(HashMap::new()),
     });
 
@@ -628,12 +628,12 @@ pub unsafe extern "C" fn resolve_callback(raw: *const js_runtime, specifier: *co
     },
   };
 
-  let loaded_module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_str, RefererInfo {
+  let loaded_module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_str, Some(RefererInfo {
     origin_url: referer_loaded_module.origin_url,
     is_wasm: Some(referer_loaded_module.loaded_source.is_wasm),
     source_code: Some(referer_loaded_module.loaded_source.source),
     indentifier_hash: Some(referer_identity_hash),
-  }) {
+  })) {
     Ok(v) => v,
     Err(e) => {
       error!("Failed to resolve and load module! Exiting.");
@@ -1180,14 +1180,18 @@ fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_load_module().unwrap();
   let specifier_url = msg.specifier_url().unwrap().to_string();
-  let referer_origin_url = msg.referer_origin_url().unwrap().to_string();
 
-  let module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_url, RefererInfo {
-    origin_url: referer_origin_url,
-    is_wasm: Some(false),
-    source_code: None,
-    indentifier_hash: None,
-  }) {
+  let referer_info = match msg.referer_origin_url() {
+    Some(v) => Some(RefererInfo {
+      origin_url: v.to_string(),
+      is_wasm: Some(false),
+      source_code: None,
+      indentifier_hash: None,
+    }),
+    None => None,
+  };
+
+  let module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_url, referer_info) {
     Ok(m) => m,
     Err(e) => return odd_future(e.into()),
   };

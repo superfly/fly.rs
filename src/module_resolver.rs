@@ -48,7 +48,7 @@ pub trait ModuleResolver: Send {
     fn resolve_module(
         &self, 
         module_specifier: Url,
-        referer_info: RefererInfo,
+        referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData>;
     fn get_protocol(&self) -> String;
 }
@@ -57,13 +57,17 @@ pub trait ModuleResolver: Send {
  * This trait is a used as the "front door" of the dynamic module resolution system.
  */
 pub trait ModuleResolverManager: Send {
-    fn resovle_module(&self, specifier: String, referer_info: RefererInfo) -> FlyResult<LoadedModule>;
+    fn resovle_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule>;
 }
 
 /**
  * Parse url or join it to the working url if it's relative. working_url_str << MUST BE AN ABSOLUTE PATH.
  */
 fn parse_url(url_str: &str, working_url_str: &str) -> Result<url::Url, url::ParseError> {
+    info!(
+      "parse_url {} from {}",
+      &url_str, &working_url_str
+    );
     // TODO: Add some additional logic to this thing to account for file paths without the "file://" protocol denotation.
     let mut url_parsed = match url::Url::parse(url_str) {
         Ok(v) => v,
@@ -117,17 +121,16 @@ impl SourceLoader for LocalDiskRawLoader {
 }
 
 pub struct LocalDiskModuleResolver {
-    pub root: PathBuf,
+    pub default_working_url: String,
 }
 
 impl LocalDiskModuleResolver {
-    pub fn new(root: Option<&Path>) -> Self {
-        let root = match root {
-            None => std::env::current_dir().expect("invalid current directory"),
-            Some(path) => path.to_path_buf(),
+    pub fn new(default_working_url: Option<String>) -> Self {
+        let default_working_url = match default_working_url {
+            None => url::Url::from_directory_path(std::env::current_dir().expect("invalid current directory")).unwrap().as_str().to_string(),
+            Some(default_working_url) => default_working_url,
         };
-
-        Self { root }
+        Self { default_working_url }
     }
 }
 
@@ -135,18 +138,22 @@ impl ModuleResolver for LocalDiskModuleResolver {
     fn resolve_module(
         &self,
         module_specifier: Url,
-        referer_info: RefererInfo,
+        referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
+        let referer_origin_url = match referer_info {
+            Some(v) => v.origin_url,
+            None => self.default_working_url.clone(),
+        };
         println!(
             "resolve_module {} from {}",
-            module_specifier, referer_info.origin_url
+            module_specifier, referer_origin_url
         );
 
         let mut module_file_path = module_specifier.to_file_path()?;
 
         if module_file_path.is_file() {
             return Ok(ModuleSourceData {
-                origin_url: format!("{}{}", "file://",  module_file_path.to_str().unwrap().to_string()),
+                origin_url: url::Url::from_file_path(module_file_path.clone()).unwrap().as_str().to_string(),
                 source_loader: Box::new(LocalDiskRawLoader::new(module_file_path, None)),
             });
         }
@@ -154,7 +161,7 @@ impl ModuleResolver for LocalDiskModuleResolver {
         info!("trying module {} ({})", module_file_path.display(), did_set);
         if module_file_path.is_file() {
             return Ok(ModuleSourceData {
-                origin_url: format!("{}{}", "file://",  module_file_path.to_str().unwrap().to_string()),
+                origin_url: url::Url::from_file_path(module_file_path.clone()).unwrap().as_str().to_string(),
                 source_loader: Box::new(LocalDiskRawLoader::new(module_file_path, None)),
             });
         }
@@ -162,7 +169,7 @@ impl ModuleResolver for LocalDiskModuleResolver {
         info!("trying module {} ({})", module_file_path.display(), did_set);
         if module_file_path.is_file() {
             return Ok(ModuleSourceData {
-                origin_url: format!("{}{}", "file://",  module_file_path.to_str().unwrap().to_string()),
+                origin_url: url::Url::from_file_path(module_file_path.clone()).unwrap().as_str().to_string(),
                 source_loader: Box::new(LocalDiskRawLoader::new(module_file_path, None)),
             });
         }
@@ -171,7 +178,7 @@ impl ModuleResolver for LocalDiskModuleResolver {
 
         Err(FlyError::from(format!(
             "Could not resolve {} from {} ",
-            module_specifier, referer_info.origin_url
+            module_specifier, referer_origin_url
         )))
     }
     fn get_protocol(&self) -> String {
@@ -180,11 +187,11 @@ impl ModuleResolver for LocalDiskModuleResolver {
 }
 
 pub struct FunctionModuleResolver {
-  resolve_fn: Box<Fn(Url, RefererInfo) -> FlyResult<ModuleSourceData> + Send>,
+  resolve_fn: Box<Fn(Url, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>,
 }
 
 impl FunctionModuleResolver {
-  pub fn new(resolve_fn: Box<Fn(Url, RefererInfo) -> FlyResult<ModuleSourceData> + Send>) -> Self {
+  pub fn new(resolve_fn: Box<Fn(Url, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>) -> Self {
     Self { resolve_fn }
   }
 }
@@ -193,11 +200,15 @@ impl ModuleResolver for FunctionModuleResolver {
     fn resolve_module(
         &self,
         module_specifier: Url,
-        referer_info: RefererInfo,
+        referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
+        let referer_origin_url = match referer_info.clone() {
+            Some(v) => v.origin_url,
+            None => "".to_string(),
+        };
         println!(
             "resolve_module {} from {}",
-            module_specifier, referer_info.origin_url
+            module_specifier, referer_origin_url
         );
         (self.resolve_fn)(module_specifier, referer_info)
     }
@@ -218,7 +229,9 @@ impl JsonSecretsLoader {
 
 impl SourceLoader for JsonSecretsLoader {
     fn load_source(&self) -> FlyResult<LoadedSourceCode> {
-        let source_code = format!("export default JSON.stringify(`{}`)", self.json_value.to_string().replace("`", ""));
+        let source_code = format!("export default JSON.parse(`{}`);", self.json_value.to_string().replace("`", ""));
+
+        info!("Loaded json secrets {}", source_code);
 
         return Ok(LoadedSourceCode {
             is_wasm: false,
@@ -242,7 +255,7 @@ impl ModuleResolver for JsonSecretsResolver {
     fn resolve_module(
         &self,
         module_specifier: Url,
-        referer_info: RefererInfo,
+        _referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
         // TODO: add some origin checks for referer.
         return Ok(ModuleSourceData {
@@ -257,10 +270,11 @@ impl ModuleResolver for JsonSecretsResolver {
 
 pub struct StandardModuleResolverManager {
     protocol_resolver_map: HashMap<String, Vec<Box<ModuleResolver>>>,
+    default_working_url: String,
 }
 
 impl StandardModuleResolverManager {
-    pub fn new(resolvers: Vec<Box<ModuleResolver>>) -> Self {
+    pub fn new(resolvers: Vec<Box<ModuleResolver>>, default_working_url: Option<String>) -> Self {
         // Create protocol to resolver map and map out resolvers.
         let mut protocol_resolver_map: HashMap<String, Vec<Box<ModuleResolver>>> = HashMap::new();
         for resolver in resolvers {
@@ -273,14 +287,27 @@ impl StandardModuleResolverManager {
                 }
             }
         }
-        Self { protocol_resolver_map }
+        let default_working_url = match default_working_url {
+            None => url::Url::from_directory_path(std::env::current_dir().expect("invalid current directory")).unwrap().as_str().to_string(),
+            Some(default_working_url) => default_working_url,
+        };
+        Self { protocol_resolver_map, default_working_url }
     }
 }
 
 impl ModuleResolverManager for StandardModuleResolverManager {
-    fn resovle_module(&self, specifier: String, referer_info: RefererInfo) -> FlyResult<LoadedModule> {
+    fn resovle_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule> {
+        let referer_origin_url = match referer_info.clone() {
+            Some(v) => v.origin_url,
+            None => self.default_working_url.clone(),
+        };
         // Parse the specifier with the referer origin_url as the working path/url.
-        let specifier_url = parse_url(specifier.as_str(), referer_info.origin_url.as_str())?;
+        info!(
+            "resolve_module {} from {}",
+            &specifier, &referer_origin_url
+        );
+
+        let specifier_url = parse_url(specifier.as_str(), referer_origin_url.as_str())?;
 
         // Try to get a vector of the resolvers for the protocol we are tring to resolve.
         let resolvers = match self.protocol_resolver_map.get(specifier_url.scheme()) {
@@ -288,7 +315,7 @@ impl ModuleResolverManager for StandardModuleResolverManager {
             None => {
                 return Err(FlyError::from(format!(
                     "Could not resolve {} from {}: no resolvers for protocol {} setup.",
-                    specifier, &referer_info.origin_url, specifier_url.scheme()
+                    specifier, &referer_origin_url, specifier_url.scheme()
                 )));
             },
         };
@@ -309,7 +336,7 @@ impl ModuleResolverManager for StandardModuleResolverManager {
 
         Err(FlyError::from(format!(
             "Could not resolve {} from {}: exausted all resolvers.",
-            specifier, referer_info.origin_url
+            specifier, referer_origin_url
         )))
     }
 }

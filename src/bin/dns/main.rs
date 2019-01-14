@@ -26,7 +26,7 @@ use env_logger::Env;
 
 extern crate clap;
 
-use std::path::{ Path, PathBuf };
+use std::path::{ PathBuf };
 
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 

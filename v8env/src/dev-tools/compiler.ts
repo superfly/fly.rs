@@ -52,10 +52,20 @@ enum MediaType {
   Unknown
 }
 
+const protocolPathPrefix: string = "protocol_";
+const hostPathPrefix: string = "host_";
+
+export function originUrlToFileName(originUrl: string): string {
+  const parsedUrl = new URL(originUrl);
+  return "/" + protocolPathPrefix + parsedUrl.protocol + "/" + hostPathPrefix + parsedUrl.host + parsedUrl.pathname;
+};
+
+export function fileNameToOriginUrl(fileName: string): string {
+  const fileNameParts = fileName.split("/");
+  return fileNameParts[1].replace(protocolPathPrefix, "") + "//" + fileNameParts[2].replace(hostPathPrefix, "") + "/" + fileNameParts.slice(3).join("/");
+}
+
 class ModuleInfo implements ts.IScriptSnapshot {
-  public readonly moduleId: ModuleId;
-  public readonly fileName: ModuleFileName;
-  public version: number = 1;
   public inputCode: SourceCode = "";
   public outputCode?: OutputCode;
   public exports = {};
@@ -63,14 +73,12 @@ class ModuleInfo implements ts.IScriptSnapshot {
   public factory?: AmdFactory;
   public gatheringDeps = false;
   public deps?: ModuleId[];
-  public readonly mediaType: MediaType;
 
-  public constructor(moduleId: ModuleId, fileName: ModuleFileName, version?: number, type: MediaType = MediaType.Unknown)
-  {
-    this.moduleId = moduleId;
-    this.fileName = fileName;
-    this.version = version || 1;
-    this.mediaType = type;
+  public constructor(
+    public readonly originUrl: string,
+    public version: number = 1,
+    public readonly mediaType: MediaType = MediaType.Unknown
+  ) {
   }
 
   reload() {
@@ -94,25 +102,34 @@ class ModuleInfo implements ts.IScriptSnapshot {
   getChangeRange(oldSnapshot: ts.IScriptSnapshot): ts.TextChangeRange | undefined {
     return
   }
+
+  get fileName(): string {
+    return originUrlToFileName(this.originUrl);
+  }
 }
 
 class ModuleCache {
+  // Maps module originUrl <==> ModuleInfo
   private readonly moduleIndex = new Map<string, ModuleInfo>();
 
-  public get(fileName: ModuleFileName): ModuleInfo {
-    const moduleInfo = this.moduleIndex.get(fileName);
+  public get(originUrl: string): ModuleInfo {
+    const moduleInfo = this.moduleIndex.get(originUrl);
     if (!moduleInfo) {
-      throw new Error(`Module ${fileName} not found`)
+      throw new Error(`Module ${originUrl} not found`)
     }
     return moduleInfo
   }
 
+  public getByFileName(fileName: string): ModuleInfo {
+    return this.get(fileNameToOriginUrl(fileName));
+  }
+
   public set(moduleInfo: ModuleInfo) {
-    this.moduleIndex.set(moduleInfo.fileName, moduleInfo);
+    this.moduleIndex.set(moduleInfo.originUrl, moduleInfo);
   }
   
-  public has(fileName: ModuleFileName): boolean {
-    return this.moduleIndex.has(fileName);
+  public has(originUrl: ModuleFileName): boolean {
+    return this.moduleIndex.has(originUrl);
   }
   
   public keys(): Array<string> {
@@ -139,10 +156,10 @@ export class Compiler {
     this.globalEval = options.globalEval;
   }
 
-  public run(moduleSpecifier: ModuleSpecifier, containingFile: ContainingFile) {
-    trace("run()", { moduleSpecifier, containingFile });
+  public run(specifierUrl: ModuleSpecifier, containingFile?: ContainingFile) {
+    trace("run()", { specifierUrl, containingFile });
     // Load entry point module and put it's file name in the scriptFileNames field as a new array
-    const moduleMetaData = this.resolveModule(moduleSpecifier, containingFile);
+    const moduleMetaData = this.resolveModule(specifierUrl, containingFile);
     this.scriptFileNames = [moduleMetaData.fileName];
     // If the module doesn't have any dependencies(hasn't been loaded before) instantiate it
     if (!moduleMetaData.deps) {
@@ -153,44 +170,46 @@ export class Compiler {
     return moduleMetaData;
   }
 
-  public resolveModule(moduleSpecifier: string, containingFile: string): ModuleInfo {
-    trace("resolveModule()", { moduleSpecifier, containingFile })
+  public resolveModule(specifierUrl: string, refererOriginUrl?: string): ModuleInfo {
+    trace("resolveModule()", { specifierUrl, refererOriginUrl })
     // attempt to load module from cache
-    let fn = this.fileNameCache.get([moduleSpecifier, containingFile]);
+    let fn = this.fileNameCache.get([specifierUrl, refererOriginUrl]);
     if (fn && this.moduleCache.has(fn)) {
       // return if found
       return this.moduleCache.get(fn);
     }
-    let { moduleId, fileName, sourceCode } = fetchModule(moduleSpecifier, containingFile);
+    let { originUrl, loadedSource } = fetchModule(specifierUrl, refererOriginUrl);
 
     // If module id is null or undef resolve failed.
-    if (!moduleId) {
-      throw new Error(`Failed to resolve '${moduleSpecifier}' from '${containingFile}'`)
+    if (!originUrl) {
+      throw new Error(`Failed to resolve '${specifierUrl}' from '${refererOriginUrl}'`);
     }
 
     // If module cache already contains module return it
-    if (this.moduleCache.has(fileName)) {
-      return this.moduleCache.get(fileName)
+    if (this.moduleCache.has(originUrl)) {
+      return this.moduleCache.get(originUrl)
     }
-
-    console.log("Loading new module with mediaType %s", mediaType(moduleId));
 
     // Create new ModuleInfo object and fill it with info 
-    const moduleInfo = new ModuleInfo(moduleId, fileName, 0, mediaType(moduleId))
-    moduleInfo.inputCode = sourceCode
+    const moduleInfo = new ModuleInfo(originUrl, 0, mediaType(originUrl));
+    moduleInfo.inputCode = loadedSource.source;
     // Put module into cache for the next guy to pick it up
-    this.moduleCache.set(moduleInfo)
-    this.fileNameCache.set([moduleSpecifier, containingFile], fileName);
-    return moduleInfo
+    this.moduleCache.set(moduleInfo);
+    this.fileNameCache.set([specifierUrl, refererOriginUrl], originUrl);
+    return moduleInfo;
   }
 
-  getModuleInfo(fileName: ModuleFileName): ModuleInfo {
-    if (this.moduleCache.has(fileName)) {
-      return this.moduleCache.get(fileName);
+  getModuleInfo(originUrl: string): ModuleInfo {
+    if (this.moduleCache.has(originUrl)) {
+      return this.moduleCache.get(originUrl);
     }
-    const moduleInfo = this.resolveModule(fileName, "")
-    this.moduleCache.set(moduleInfo)
-    return moduleInfo
+    const moduleInfo = this.resolveModule(originUrl);
+    this.moduleCache.set(moduleInfo);
+    return moduleInfo;
+  }
+
+  getModuleInfoByFileName(fileName: string): ModuleInfo {
+    return this.getModuleInfo(fileNameToOriginUrl(fileName));
   }
 
   /**
@@ -204,7 +223,7 @@ export class Compiler {
     if (!recompile && moduleInfo.outputCode) {
       return moduleInfo.outputCode;
     }
-    const { fileName, inputCode, moduleId } = moduleInfo;
+    const { originUrl, inputCode, fileName } = moduleInfo;
     const output = this.languageService.getEmitOutput(fileName);
     // Get the relevant diagnosetics - this is 3x faster than
     // `getPreEmitDiagnostics`.
@@ -245,7 +264,7 @@ export class Compiler {
 
   public transform(moduleId: string): string {
     trace("transform()", { moduleId });
-    const moduleMetaData = this.resolveModule(moduleId, "");
+    const moduleMetaData = this.resolveModule(moduleId);
     this.scriptFileNames = [moduleId];
     return this.compile(moduleMetaData)
   }
@@ -257,7 +276,7 @@ export class Compiler {
   drainRunQueue(): void {
     trace(
       "drainRunQueue()",
-      this.runQueue.map(moduleInfo => moduleInfo.moduleId)
+      this.runQueue.map(moduleInfo => moduleInfo.originUrl)
     );
     // For each module in the runQueue 
     let moduleMetaData: ModuleInfo | undefined;
@@ -279,7 +298,7 @@ export class Compiler {
    * just add the module factory to the run queue.
    */
   instantiateModule(moduleInfo: ModuleInfo): void {
-    trace("instantiateModule()", moduleInfo.moduleId);
+    trace("instantiateModule()", moduleInfo.originUrl);
 
     // if the module has already run, we can short circuit.
     // it is intentional though that if we have already resolved dependencies,
@@ -291,7 +310,7 @@ export class Compiler {
     }
 
     /**
-     * I assume the global part has some use but it may be not longer needed
+     * I assume the global part has some use but it may be not longer be needed
      */
     this.global.define = this.makeDefine(moduleInfo);
     this.globalEval(this.compile(moduleInfo));
@@ -317,7 +336,7 @@ export class Compiler {
       // if (dep in DenoCompiler._builtins) {
       //   return DenoCompiler._builtins[dep];
       // }
-      const dependencyMetaData = this.getModuleInfo(dep);
+      const dependencyMetaData = this.getModuleInfoByFileName(dep);
       assert(dependencyMetaData != null, `Missing dependency "${dep}".`);
       // TypeScript does not track assert, therefore using not null operator
       return dependencyMetaData!.exports;
@@ -344,7 +363,7 @@ export class Compiler {
           return dep;
         }
         // Resolve the dependency and instantiate it if not currently gathering deps to avoid loading deps more than once
-        const dependencyMetaData = this.resolveModule(dep, moduleInfo.fileName);
+        const dependencyMetaData = this.resolveModule(dep, moduleInfo.originUrl);
         if (!dependencyMetaData.gatheringDeps) {
           this.instantiateModule(dependencyMetaData);
         }
@@ -376,7 +395,7 @@ export class Compiler {
       );
       const [moduleSpecifier] = deps;
       try {
-        const requiredMetaData = this.run(moduleSpecifier, moduleInfo.fileName);
+        const requiredMetaData = this.run(moduleSpecifier, moduleInfo.originUrl);
         callback(requiredMetaData.exports);
       } catch (e) {
         errback(e);
@@ -390,14 +409,12 @@ const settings: ts.CompilerOptions = {
   module: ts.ModuleKind.AMD,
   // module: ts.ModuleKind.ESNext,
   outDir: "$fly$",
+  baseUrl: "",
   inlineSourceMap: true,
   inlineSources: true,
   stripComments: true,
   target: ts.ScriptTarget.ESNext,
-  esModuleInterop: true,
-  moduleResolution: 2,
-  resolveJsonModule: true,
-}
+};
 
 function createLanguageService(compiler: Compiler): ts.LanguageService {
   return ts.createLanguageService({
@@ -409,7 +426,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
     },
     getScriptVersion(fileName: string): string {
       trace("getScriptVersion()", { fileName })
-      const moduleInfo = compiler.getModuleInfo(fileName);
+      const moduleInfo = compiler.getModuleInfoByFileName(fileName);
       if (!moduleInfo) {
         return ""
       }
@@ -417,7 +434,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
     },
     getScriptSnapshot(fileName: string): ts.IScriptSnapshot | undefined {
       trace("getScriptSnapshot()", { fileName })
-      return compiler.getModuleInfo(fileName)
+      return compiler.getModuleInfoByFileName(fileName);
     },
     getCurrentDirectory(): string {
       return ""
@@ -425,7 +442,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
     getDefaultLibFileName(options: ts.CompilerOptions): string {
       trace("getDefaultLibFileName()");
       const moduleSpecifier = "lib.fly.runtime.d.ts";
-      const moduleInfo = compiler.resolveModule(moduleSpecifier, ContainerName);
+      const moduleInfo = compiler.resolveModule(ContainerName + moduleSpecifier);
       return moduleInfo.fileName;
     },
     getNewLine: (): string => {
@@ -446,14 +463,14 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       return moduleNames.map(moduleName => {
         const moduleInfo = compiler.resolveModule(moduleName, containingFile)
         // an empty string will cause typescript to bomb, maybe fail here instead?
-        const resolvedFileName = moduleInfo && moduleInfo.moduleId || ""
-        const isExternal = false; // need cwd/cjs logic for this maybe?
-        return { resolvedFileName, isExternal }
+        const resolvedFileName = moduleInfo && moduleInfo.fileName || ""
+        const isExternalLibraryImport = false; // need cwd/cjs logic for this maybe?
+        return { resolvedFileName, isExternalLibraryImport }
       })
     },
     getScriptKind(fileName: string): ts.ScriptKind {
       trace("getScriptKind()", { fileName });
-      const moduleMetaData = compiler.getModuleInfo(fileName);
+      const moduleMetaData = compiler.getModuleInfoByFileName(fileName);
       if (moduleMetaData) {
         switch (moduleMetaData.mediaType) {
           case MediaType.TypeScript:
@@ -473,7 +490,8 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       return true;
     },
     fileExists(path: string): boolean {
-      const info = compiler.getModuleInfo(path);
+      console.log("Typescript ls doing file exists check.");
+      const info = compiler.getModuleInfoByFileName(path);
       const exists = info != null;
       trace("fileExists()", { path, exists });
       return exists;
@@ -488,8 +506,8 @@ const diagnosticHost: ts.FormatDiagnosticsHost = {
 }
 
 // TODO: move this to resolver?
-function mediaType(moduleId): MediaType {
-  switch (extname(moduleId)) {
+function mediaType(originUrl): MediaType {
+  switch (extname(originUrl)) {
     case ".ts": return MediaType.TypeScript;
     case ".js": return MediaType.JavaScript;
     case ".json": return MediaType.Json;
