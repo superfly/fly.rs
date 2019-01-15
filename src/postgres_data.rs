@@ -16,7 +16,7 @@ use self::postgres_openssl::openssl::ssl::SslMethod;
 
 use crate::settings::PostgresStoreConfig;
 
-extern crate serde_json;
+use serde_json;
 
 use futures::{future, Future};
 

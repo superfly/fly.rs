@@ -8,6 +8,8 @@ use url::{ Url };
 
 use std::collections::{ HashMap };
 
+use serde_json;
+
 #[derive(Clone, Debug)]
 pub struct RefererInfo {
     pub origin_url: String,
@@ -255,12 +257,27 @@ impl ModuleResolver for JsonSecretsResolver {
     fn resolve_module(
         &self,
         module_specifier: Url,
-        _referer_info: Option<RefererInfo>,
+        referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
         // TODO: add some origin checks for referer.
+        let mut value = self.json_value.clone();
+        let path_segs = module_specifier.path_segments().unwrap();
+        for path_seg in path_segs {
+            if value[path_seg] != serde_json::Value::Null {
+                value = value[path_seg].clone();
+            } else {
+                return Err(FlyError::from(format!(
+                    "Could not resolve {} from {} ",
+                    module_specifier, match referer_info {
+                        Some(v) => v.origin_url,
+                        None => "".to_string(),
+                    }
+                )));
+            }
+        }
         return Ok(ModuleSourceData {
-            origin_url: module_specifier.to_string(),
-            source_loader: Box::new(JsonSecretsLoader::new(&self.json_value)),
+            origin_url: format!("{}{}", module_specifier.to_string(), ".js"),
+            source_loader: Box::new(JsonSecretsLoader::new(&value)),
         });
     }
     fn get_protocol(&self) -> String {
