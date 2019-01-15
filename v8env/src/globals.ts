@@ -23,6 +23,7 @@ import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
 import * as streams from "./streams";
 import { AppRelease } from "./app";
+import { runtime } from "./runtime";
 
 declare global {
   interface Window {
@@ -111,6 +112,7 @@ window.fly = {
   data: flyData,
   http: flyHttp,
   Image: Image,
+  runtime,
 }
 
 window.DNSRequest = dns.DNSRequest;

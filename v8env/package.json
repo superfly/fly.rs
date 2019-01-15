@@ -42,6 +42,7 @@
         "@types/text-encoding": "0.0.33",
         "chai": "^4.2.0",
         "expect": "^23.6.0",
+        "magic-string": "^0.25.1",
         "mocha": "^5.2.0",
         "pako": "^1.0.7",
         "rollup": "^0.65.0",
