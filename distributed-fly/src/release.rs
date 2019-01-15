@@ -37,6 +37,7 @@ pub struct Release {
   pub source: String,
   pub config: Value,
   pub secrets: Value,
+  pub libs: Option<Vec<String>>,
 }
 
 impl Release {

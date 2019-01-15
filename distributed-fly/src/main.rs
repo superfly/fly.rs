@@ -51,7 +51,7 @@ extern crate prometheus;
 mod cert;
 mod metrics;
 mod proxy;
-
+mod libs;
 use crate::metrics::*;
 use fly::metrics::*;
 
@@ -74,8 +74,8 @@ fn main() {
     env_logger::init_from_env(env);
 
     let _guard = {
-        if let Some(ref sentry_dns) = GLOBAL_SETTINGS.read().unwrap().sentry_dns {
-            Some(sentry::init(sentry_dns.as_str()))
+        if let Some(ref sentry_dsn) = GLOBAL_SETTINGS.read().unwrap().sentry_dsn {
+            Some(sentry::init(sentry_dsn.as_str()))
         } else {
             None
         }

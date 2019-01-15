@@ -5,6 +5,7 @@ use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use crate::libs::fetch_libs;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
 
@@ -70,9 +71,26 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                             url: global_settings.redis_cache_url.clone(),
                             namespace: Some(rel.app_id.to_string()),
                         })), // TODO: use redis store
+                        cache_store_notifier: match global_settings.redis_cache_notifier_url {
+                            Some(ref url) => {
+                                Some(CacheStoreNotifier::Redis(RedisCacheNotifierConfig {
+                                    reader_url: url.clone(),
+                                    writer_url: global_settings
+                                        .redis_cache_notifier_writer_url
+                                        .as_ref()
+                                        .unwrap_or(url)
+                                        .clone(),
+                                }))
+                            }
+                            None => None,
+                        },
                         fs_store: Some(FsStore::Redis(RedisStoreConfig {
                             namespace: Some(format!("app:{}:release:latest:file:", rel.app_id)),
                             url: global_settings.redis_url.clone(),
+                        })),
+                        acme_store: Some(AcmeStoreConfig::Redis(RedisStoreConfig {
+                            url: global_settings.redis_url.clone(),
+                            namespace: None,
                         })),
                     }
                 };
@@ -84,8 +102,25 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
                     "<app config>",
-                    &format!("window.app = {{ config: {} }};", merged_conf),
+                    &format!("window.fly.app = {{ config: {} }};", merged_conf),
                 );
+
+                // load external libraries if requested
+                if let Some(libs) = rel.libs {
+                    match fetch_libs(&libs[..]) {
+                        Ok(lib_sources) => {
+                            for (key, source) in lib_sources.iter() {
+                                if let Some(source) = source {
+                                    rt.eval(&format!("<lib:{}>", key), source);
+                                } else {
+                                    warn!("app {} requested missing lib: {}", &rel.app_id, &key);
+                                }
+                            }
+                        }
+                        Err(e) => warn!("error loading libs for app {}: {}", &rel.app, e),
+                    }
+                }
+
                 rt.eval("app.js", &rel.source);
                 let app = rel.app;
                 let app_id = rel.app_id;

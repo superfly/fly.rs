@@ -42,7 +42,22 @@ export function get(key: string): Promise<ArrayBufferLike | null> {
   })
 }
 
+export interface CacheEntry {
+  stream: ReadableStream | null,
+  meta: string | null,
+}
+
+export function getEntry(key: string): Promise<CacheEntry> {
+  return _get(key).then(raw => { return { stream: raw[0], meta: raw[1] } })
+}
+
 export function getStream(key: string): Promise<ReadableStream | null> {
+  return _get(key).then(raw => raw[0])
+}
+
+
+
+function _get(key: string): Promise<[ReadableStream | null, string | null]> {
   const fbb = flatbuffers.createBuilder()
   const keyFbs = fbb.createString(key);
   fbs.CacheGet.startCacheGet(fbb);
@@ -50,8 +65,7 @@ export function getStream(key: string): Promise<ReadableStream | null> {
   return sendAsync(fbb, fbs.Any.CacheGet, fbs.CacheGet.endCacheGet(fbb)).then(baseMsg => {
     const msg = new fbs.CacheGetReady();
     baseMsg.msg(msg);
-    const id = msg.id()
-    return msg.stream() ?
+    const stream = msg.stream() ?
       new WhatWGReadableStream({
         start(controller) {
           streams.set(msg.id(), (chunkMsg: fbs.StreamChunk, raw: Uint8Array) => {
@@ -62,7 +76,8 @@ export function getStream(key: string): Promise<ReadableStream | null> {
             }
           })
         }
-      }) : null
+      }) : null;
+    return <[ReadableStream | null, string | null]>[stream, msg.meta()]
   })
 }
 
@@ -79,36 +94,6 @@ export function getString(key: string): Promise<string | null> {
     return new TextDecoder("utf-8").decode(buf)
   })
 }
-
-/**
- * Get multiple values from the cache.
- * @param keys list of keys to retrieve
- * @returns List of results in the same order as the provided keys
- */
-// export function getMulti(keys: string[]): Promise<(ArrayBuffer | null)[]> {
-//   return new Promise<(ArrayBuffer | null)[]>(function cacheGetMultiPromise(resolve, reject) {
-//     bridge.dispatch(
-//       "flyCacheGetMulti",
-//       JSON.stringify(keys),
-//       function cacheGetMultiCallback(err: string | null | undefined, ...values: (ArrayBuffer | null)[]) {
-//         if (err != null) {
-//           reject(err)
-//           return
-//         }
-//         resolve(values)
-//       })
-//   })
-// }
-
-/**
- * Get multiple string values from the cache
- * @param keys list of keys to retrieve
- * @returns list of results in the same order as the provided keys
- */
-// export async function getMultiString(keys: string[]) {
-//   const raw = await getMulti(keys)
-//   return raw.map((b) => b ? new TextDecoder("utf-8").decode(b) : null)
-// }
 
 /**
  * Sets a value at the specified key, with an optional ttl
@@ -184,45 +169,55 @@ export function expire(key: string, ttl: number) {
   })
 }
 
+export function setMeta(key: string, meta: string) {
+  const fbb = flatbuffers.createBuilder()
+  const keyFbb = fbb.createString(key)
+  const metaFbb = fbb.createString(meta)
+  fbs.CacheSetMeta.startCacheSetMeta(fbb);
+  fbs.CacheSetMeta.addKey(fbb, keyFbb);
+  fbs.CacheSetMeta.addMeta(fbb, metaFbb);
+
+  return sendAsync(fbb, fbs.Any.CacheSetMeta, fbs.CacheSetMeta.endCacheSetMeta(fbb)).then(baseMsg => {
+    return true
+  })
+}
+
 /**
  * Replace tags for a given cache key
  * @param key The key to modify
  * @param tags Tags to apply to key
  * @returns true if tags were successfully updated
  */
-// export function setTags(key: string, tags: string[]) {
-//   return new Promise<boolean>(function cacheSetTagsPromise(resolve, reject) {
-//     bridge.dispatch("flyCacheSetTags", key, tags, function cacheSetTagsCallback(err: string | null, ok?: boolean) {
-//       if (err != null) {
-//         reject(err)
-//         return
-//       }
-//       resolve(ok)
-//     })
-//   })
-// }
+export function setTags(key: string, tags: string[]) {
+  const fbb = flatbuffers.createBuilder()
+  const keyFbb = fbb.createString(key)
+
+  const tagsFbb = fbs.CacheSet.createTagsVector(fbb, tags.map(t => fbb.createString(t)));
+
+  fbs.CacheSetTags.startCacheSetTags(fbb);
+  fbs.CacheSetTags.addKey(fbb, keyFbb);
+  fbs.CacheSetTags.addTags(fbb, tagsFbb);
+
+  return sendAsync(fbb, fbs.Any.CacheSetTags, fbs.CacheSetTags.endCacheSetTags(fbb)).then(_baseMsg => {
+    return true
+  })
+}
 
 /**
  * Purges all cache entries with the given tag
  * @param tag Tag to purge
  */
-// export function purgeTag(tag: string) {
-//   return new Promise<string[]>(function cachePurgeTagsPromise(resolve, reject) {
-//     bridge.dispatch("flyCachePurgeTags", tag, function cachePurgeTagsCallback(err: string | null, keys?: string) {
-//       if (err != null || !keys) {
-//         reject(err || "weird result")
-//         return
-//       }
-//       const result = JSON.parse(keys)
-//       if (result instanceof Array) {
-//         resolve(<string[]>result)
-//         return
-//       } else {
-//         reject("got back gibberish")
-//       }
-//     })
-//   })
-// }
+export function purgeTag(tag: string) {
+  const fbb = flatbuffers.createBuilder()
+  const tagFbb = fbb.createString(tag)
+
+  fbs.CachePurgeTag.startCachePurgeTag(fbb);
+  fbs.CachePurgeTag.addTag(fbb, tagFbb);
+
+  return sendAsync(fbb, fbs.Any.CachePurgeTag, fbs.CachePurgeTag.endCachePurgeTag(fbb)).then(_baseMsg => {
+    return true
+  })
+}
 
 
 /**
@@ -253,7 +248,7 @@ export function del(key: string) {
  * 
  * See {@link fly/cache/global} 
  */
-// import { default as global } from "./global"
+import { default as global } from "./global"
 import { ReadableStream as WhatWGReadableStream } from '@stardazed/streams';
 import { bufferFromStream } from '../../body_mixin';
 import { ReadableStream } from '../../dom_types';
@@ -262,13 +257,15 @@ const cache = {
   get,
   getString,
   getStream,
+  getEntry, // w/ meta
   // getMulti,
   // getMultiString,
   set,
+  setMeta,
   expire,
   del,
-  // setTags,
-  // purgeTag,
-  // global
+  global,
+  setTags,
+  purgeTag,
 }
 export default cache

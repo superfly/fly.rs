@@ -2,8 +2,6 @@
 
 import { Console } from "./console";
 import * as timers from "./timers";
-// import * as textEncoding from "./text_encoding";
-// import * as fetch_ from "./fetch";
 import { libfly } from "./libfly";
 import { globalEval } from "./global-eval";
 import * as bridge from "./bridge";
@@ -23,6 +21,8 @@ import flyCache from './fly/cache';
 import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
+import * as streams from "./streams";
+import { AppRelease } from "./app";
 
 declare global {
   interface Window {
@@ -61,6 +61,7 @@ declare global {
     data: typeof flyData
     http: typeof flyHttp
     Image: typeof Image
+    app: AppRelease;
   }
   // TODO: remove
   const fly: Fly
@@ -119,3 +120,7 @@ window.DNSRecordType = dns.DNSRecordType;
 window.DNSMessageType = dns.DNSMessageType;
 window.DNSOpCode = dns.DNSOpCode;
 window.DNSResponseCode = dns.DNSResponseCode;
+
+Object.apply(window, {
+  ...streams,
+})

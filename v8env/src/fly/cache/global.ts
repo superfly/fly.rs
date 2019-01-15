@@ -14,8 +14,10 @@
  * @module fly/cache/global
  */
 /**  */
-declare var bridge: any
-
+// declare var bridge: any
+import { sendAsync } from '../../bridge'
+import * as fbs from "../../msg_generated";
+import * as flatbuffers from "../../flatbuffers";
 /**
  * Notifies all caches to delete data at the specified key.
  * @param key the key to delete
@@ -23,14 +25,12 @@ declare var bridge: any
  *  eventually consisten, this may return before every cache is updated.
  */
 export async function del(key: string): Promise<boolean> {
-  return new Promise<boolean>(function globalDelPromise(resolve, reject) {
-    bridge.dispatch("flyCacheNotify", "del", key, function globalDelCallback(err: string | null, ok?: boolean) {
-      if (err != null) {
-        reject(err)
-        return
-      }
-      resolve(ok)
-    })
+  const fbb = flatbuffers.createBuilder()
+  const keyFbb = fbb.createString(key)
+  fbs.CacheNotifyDel.startCacheNotifyDel(fbb);
+  fbs.CacheNotifyDel.addKey(fbb, keyFbb);
+  return sendAsync(fbb, fbs.Any.CacheNotifyDel, fbs.CacheNotifyDel.endCacheNotifyDel(fbb)).then(_baseMsg => {
+    return true
   })
 }
 
@@ -41,14 +41,12 @@ export async function del(key: string): Promise<boolean> {
  *  eventually consisten, this may return before every cache is updated.
  */
 export async function purgeTag(tag: string): Promise<boolean> {
-  return new Promise<boolean>(function globalDelPromise(resolve, reject) {
-    bridge.dispatch("flyCacheNotify", "purgeTag", tag, function globalPurgeTagCallback(err: string | null, ok?: boolean) {
-      if (err != null) {
-        reject(err)
-        return
-      }
-      resolve(ok)
-    })
+  const fbb = flatbuffers.createBuilder()
+  const tagFbb = fbb.createString(tag)
+  fbs.CacheNotifyPurgeTag.startCacheNotifyPurgeTag(fbb);
+  fbs.CacheNotifyPurgeTag.addTag(fbb, tagFbb);
+  return sendAsync(fbb, fbs.Any.CacheNotifyPurgeTag, fbs.CacheNotifyPurgeTag.endCacheNotifyPurgeTag(fbb)).then(_baseMsg => {
+    return true
   })
 }
 

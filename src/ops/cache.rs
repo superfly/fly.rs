@@ -12,6 +12,7 @@ use crate::get_next_stream_id;
 use futures::{Future, Stream};
 
 use crate::cache_store::*;
+use crate::cache_store_notifier::*;
 
 pub fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_del().unwrap();
@@ -153,4 +154,76 @@ pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
         ))
       }),
   )
+}
+
+pub fn op_cache_notify_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_cache_notify_del().unwrap();
+
+  let rt = ptr.to_runtime();
+  let key = msg.key().unwrap().to_string();
+
+  Box::new(
+    rt.cache_store
+      .notify(CacheOperation::Del, key)
+      .map_err(|e| match e {
+        CacheStoreNotifierError::Unknown => "cache notifier unknown error".to_string().into(),
+        CacheStoreNotifierError::Failure(s) => s.into(),
+        CacheStoreNotifierError::Unavailable => {
+          "cache notifications is not available".to_string().into()
+        }
+      })
+      .and_then(|_| Ok(None)),
+  )
+}
+
+pub fn op_cache_notify_purge_tag(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_cache_notify_purge_tag().unwrap();
+
+  let rt = ptr.to_runtime();
+
+  let tag = msg.tag().unwrap().to_string();
+
+  Box::new(
+    rt.cache_store
+      .notify(CacheOperation::PurgeTag, tag)
+      .map_err(|e| match e {
+        CacheStoreNotifierError::Unknown => "cache notifier unknown error".to_string().into(),
+        CacheStoreNotifierError::Failure(s) => s.into(),
+        CacheStoreNotifierError::Unavailable => {
+          "cache notifications is not available".to_string().into()
+        }
+      })
+      .and_then(|_| Ok(None)),
+  )
+}
+
+pub fn op_cache_set_meta(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_cache_set_meta().unwrap();
+  let key = msg.key().unwrap().to_string();
+  let meta = msg.meta().unwrap().to_string();
+
+  let rt = ptr.to_runtime();
+
+  rt.spawn(
+    rt.cache_store
+      .set_meta(key, meta)
+      .map_err(|e| error!("error cache set_meta future! {:?}", e)),
+  );
+
+  ok_future(None)
+}
+
+pub fn op_cache_purge_tag(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+  let msg = base.msg_as_cache_purge_tag().unwrap();
+  let tag = msg.tag().unwrap().to_string();
+
+  let rt = ptr.to_runtime();
+
+  rt.spawn(
+    rt.cache_store
+      .purge_tag(tag)
+      .map_err(|e| error!("error cache purge_tag future! {:?}", e)),
+  );
+
+  ok_future(None)
 }

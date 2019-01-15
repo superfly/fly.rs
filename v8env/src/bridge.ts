@@ -13,6 +13,7 @@ import { Response, ResponseInit } from "./dom_types";
 import { FlyResponse } from "./response";
 import { ReadableStream, ReadableStreamSource, StreamStrategy } from "@stardazed/streams";
 import { DNSRequest, DNSQuery, DNSResponse, DNSDataA, DNSDataAAAA, DNSDataCNAME, DNSDataMX, DNSDataNS, DNSDataPTR, DNSDataSOA, DNSDataSRV, DNSDataTXT } from './dns';
+import { isAcmeChallengeRequest, handleAcmeChallenge } from "./acme";
 
 let nextCmdId = 1; // 0 is for events
 const promiseTable = new Map<number, util.Resolvable<fbs.Base>>();
@@ -106,29 +107,35 @@ export function addEventListener(name: string, fn: Function) {
             }) : null
         })
 
-        try {
-          fn.call(window, {
-            request: req,
-            respondWith(resfn: any) {
-              try {
-                let ret = resfn;
-                if (typeof ret === "function") {
-                  ret = resfn()
+        if (isAcmeChallengeRequest(req)) {
+          handleAcmeChallenge(req)
+            .then(res => handleRes(id, res))
+            .catch(err => handleError(id, err));
+        } else {
+          try {
+            fn.call(window, {
+              request: req,
+              respondWith(resfn: any) {
+                try {
+                  let ret = resfn;
+                  if (typeof ret === "function") {
+                    ret = resfn()
+                  }
+                  if (ret instanceof Promise) {
+                    ret.then(handleRes.bind(null, id)).catch(handleError.bind(null, id))
+                  } else if (ret instanceof Response) {
+                    handleRes(id, ret)
+                  }
+                } catch (e) {
+                  console.log("error in fetch event respondWith")
+                  handleError(id, e)
                 }
-                if (ret instanceof Promise) {
-                  ret.then(handleRes.bind(null, id)).catch(handleError.bind(null, id))
-                } else if (ret instanceof Response) {
-                  handleRes(id, ret)
-                }
-              } catch (e) {
-                console.log("error in fetch event respondWith")
-                handleError(id, e)
               }
-            }
-          })
-        } catch (e) {
-          console.log("error in fetch event handler function")
-          handleError(id, e)
+            })
+          } catch (e) {
+            console.log("error in fetch event handler function")
+            handleError(id, e)
+          }
         }
       })
       event_type = fbs.EventType.Fetch;
