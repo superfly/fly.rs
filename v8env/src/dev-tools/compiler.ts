@@ -462,7 +462,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       trace("resolveModuleNames()", { moduleNames, containingFile, reusedNames });
 
       return moduleNames.map(moduleName => {
-        const moduleInfo = compiler.resolveModule(moduleName, containingFile)
+        const moduleInfo = compiler.resolveModule(moduleName, fileNameToOriginUrl(containingFile))
         // an empty string will cause typescript to bomb, maybe fail here instead?
         const resolvedFileName = moduleInfo && moduleInfo.fileName || ""
         const isExternalLibraryImport = false; // need cwd/cjs logic for this maybe?

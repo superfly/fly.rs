@@ -1,4 +1,4 @@
-import someSecret from "secrets:///someSecret";
+import someSecret from "secrets:///secretObject/subSecret";
 
 console.log(someSecret);
 
