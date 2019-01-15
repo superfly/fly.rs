@@ -6266,9 +6266,9 @@ static getRootAsLoadModule(bb:flatbuffers.ByteBuffer, obj?:LoadModule):LoadModul
  * @param flatbuffers.Encoding= optionalEncoding
  * @returns string|Uint8Array|null
  */
-moduleSpecifier():string|null
-moduleSpecifier(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-moduleSpecifier(optionalEncoding?:any):string|Uint8Array|null {
+specifierUrl():string|null
+specifierUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+specifierUrl(optionalEncoding?:any):string|Uint8Array|null {
   var offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
@@ -6277,9 +6277,9 @@ moduleSpecifier(optionalEncoding?:any):string|Uint8Array|null {
  * @param flatbuffers.Encoding= optionalEncoding
  * @returns string|Uint8Array|null
  */
-containingFile():string|null
-containingFile(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-containingFile(optionalEncoding?:any):string|Uint8Array|null {
+refererOriginUrl():string|null
+refererOriginUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+refererOriginUrl(optionalEncoding?:any):string|Uint8Array|null {
   var offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
@@ -6293,18 +6293,18 @@ static startLoadModule(builder:flatbuffers.Builder) {
 
 /**
  * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset moduleSpecifierOffset
+ * @param flatbuffers.Offset specifierUrlOffset
  */
-static addModuleSpecifier(builder:flatbuffers.Builder, moduleSpecifierOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, moduleSpecifierOffset, 0);
+static addSpecifierUrl(builder:flatbuffers.Builder, specifierUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, specifierUrlOffset, 0);
 };
 
 /**
  * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset containingFileOffset
+ * @param flatbuffers.Offset refererOriginUrlOffset
  */
-static addContainingFile(builder:flatbuffers.Builder, containingFileOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, containingFileOffset, 0);
+static addRefererOriginUrl(builder:flatbuffers.Builder, refererOriginUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, refererOriginUrlOffset, 0);
 };
 
 /**
@@ -6348,21 +6348,10 @@ static getRootAsLoadModuleResp(bb:flatbuffers.ByteBuffer, obj?:LoadModuleResp):L
  * @param flatbuffers.Encoding= optionalEncoding
  * @returns string|Uint8Array|null
  */
-moduleId():string|null
-moduleId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-moduleId(optionalEncoding?:any):string|Uint8Array|null {
+originUrl():string|null
+originUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+originUrl(optionalEncoding?:any):string|Uint8Array|null {
   var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-fileName():string|null
-fileName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-fileName(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
 
@@ -6373,7 +6362,7 @@ fileName(optionalEncoding?:any):string|Uint8Array|null {
 sourceCode():string|null
 sourceCode(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 sourceCode(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 8);
+  var offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
 
@@ -6381,23 +6370,15 @@ sourceCode(optionalEncoding?:any):string|Uint8Array|null {
  * @param flatbuffers.Builder builder
  */
 static startLoadModuleResp(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(2);
 };
 
 /**
  * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset moduleIdOffset
+ * @param flatbuffers.Offset originUrlOffset
  */
-static addModuleId(builder:flatbuffers.Builder, moduleIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, moduleIdOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset fileNameOffset
- */
-static addFileName(builder:flatbuffers.Builder, fileNameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, fileNameOffset, 0);
+static addOriginUrl(builder:flatbuffers.Builder, originUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, originUrlOffset, 0);
 };
 
 /**
@@ -6405,7 +6386,7 @@ static addFileName(builder:flatbuffers.Builder, fileNameOffset:flatbuffers.Offse
  * @param flatbuffers.Offset sourceCodeOffset
  */
 static addSourceCode(builder:flatbuffers.Builder, sourceCodeOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, sourceCodeOffset, 0);
+  builder.addFieldOffset(1, sourceCodeOffset, 0);
 };
 
 /**

@@ -12,6 +12,10 @@ use crate::settings::PostgresStoreConfig;
 
 use serde_json;
 
+use std::collections::HashMap;
+
+use std::sync::{Mutex};
+
 use futures::{future, Future};
 
 lazy_static! {
