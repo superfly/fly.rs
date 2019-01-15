@@ -77,7 +77,7 @@ function runtimeInfo(path) {
       if (filter(id)) {
         const build = execSync('./scripts/build-number.sh', {
           cwd: '..'
-        }).toString().trim();
+        }).toString();
 
         const magicString = new MagicString(`export const runtime = { build: "${build}" };`);
 

@@ -23,7 +23,7 @@ import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
 import * as streams from "./streams";
 import { AppRelease } from "./app";
-import { runtime } from "./runtime";
+import { runtime, Runtime } from "./runtime";
 
 declare global {
   interface Window {
@@ -63,6 +63,7 @@ declare global {
     http: typeof flyHttp
     Image: typeof Image
     app: AppRelease;
+    runtime: Runtime;
   }
   // TODO: remove
   const fly: Fly

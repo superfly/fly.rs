@@ -4,4 +4,4 @@ if [ -z "$CI" ]; then
   version="$version-dev"
 fi
 
-echo $version
+printf "$version"
