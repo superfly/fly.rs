@@ -121,6 +121,6 @@ window.DNSMessageType = dns.DNSMessageType;
 window.DNSOpCode = dns.DNSOpCode;
 window.DNSResponseCode = dns.DNSResponseCode;
 
-Object.apply(window, {
+Object.assign(window, {
   ...streams,
-})
+});
