@@ -7,8 +7,9 @@ import * as path from 'path';
 import virtual from 'rollup-plugin-virtual';
 import { createFilter } from "rollup-pluginutils";
 import globalsPlugin from "rollup-plugin-node-globals";
-
+import { execSync } from 'child_process';
 import typescript from "typescript";
+import MagicString from "magic-string";
 
 const typescriptPath = path.resolve(
   __dirname,
@@ -67,6 +68,28 @@ function strings(
   };
 }
 
+function runtimeInfo(path) {
+  const filter = createFilter([path]);
+
+  return {
+    name: "runtimeInfo",
+    transform: (code, id) => {
+      if (filter(id)) {
+        const build = execSync('./scripts/build-number.sh', {
+          cwd: '..'
+        }).toString();
+
+        const magicString = new MagicString(`export const runtime = { build: "${build}" };`);
+
+        return {
+          code: magicString.toString(),
+          map: magicString.generateMap()
+        };
+      }
+    }
+  }
+}
+
 export default [
   {
     input: 'src/index.ts',
@@ -77,6 +100,7 @@ export default [
       sourcemap: true,
     },
     plugins: [
+      runtimeInfo(path.resolve(__dirname, "src/runtime.ts")),
       typescriptPlugin({ useTsconfigDeclarationDir: true }),
       resolvePlugin({
         jsnext: true,
