@@ -1,8 +1,10 @@
 use crate::errors::*;
 
-use std::path::{ PathBuf, Path };
+use std::path::{ PathBuf };
 
 use std::marker::{ Send };
+
+use std::clone::{ Clone };
 
 use url::{ Url };
 
@@ -49,7 +51,7 @@ pub trait SourceLoader: Send {
 pub trait ModuleResolver: Send {
     fn resolve_module(
         &self, 
-        module_specifier: Url,
+        module_specifier: &str,
         referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData>;
     fn get_protocol(&self) -> String;
@@ -139,7 +141,7 @@ impl LocalDiskModuleResolver {
 impl ModuleResolver for LocalDiskModuleResolver {
     fn resolve_module(
         &self,
-        module_specifier: Url,
+        module_specifier: &str,
         referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
         let referer_origin_url = match referer_info {
@@ -151,7 +153,9 @@ impl ModuleResolver for LocalDiskModuleResolver {
             module_specifier, referer_origin_url
         );
 
-        let mut module_file_path = module_specifier.to_file_path()?;
+        let module_specifier_url = parse_url(module_specifier, referer_origin_url.as_str())?;
+
+        let mut module_file_path = module_specifier_url.to_file_path()?;
 
         if module_file_path.is_file() {
             return Ok(ModuleSourceData {
@@ -189,11 +193,11 @@ impl ModuleResolver for LocalDiskModuleResolver {
 }
 
 pub struct FunctionModuleResolver {
-  resolve_fn: Box<Fn(Url, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>,
+  resolve_fn: Box<Fn(&str, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>,
 }
 
 impl FunctionModuleResolver {
-  pub fn new(resolve_fn: Box<Fn(Url, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>) -> Self {
+  pub fn new(resolve_fn: Box<Fn(&str, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>) -> Self {
     Self { resolve_fn }
   }
 }
@@ -201,7 +205,7 @@ impl FunctionModuleResolver {
 impl ModuleResolver for FunctionModuleResolver {
     fn resolve_module(
         &self,
-        module_specifier: Url,
+        module_specifier: &str,
         referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
         let referer_origin_url = match referer_info.clone() {
@@ -256,22 +260,24 @@ impl JsonSecretsResolver {
 impl ModuleResolver for JsonSecretsResolver {
     fn resolve_module(
         &self,
-        module_specifier: Url,
+        module_specifier: &str,
         referer_info: Option<RefererInfo>,
     ) -> FlyResult<ModuleSourceData> {
+        let referer_origin_url = match referer_info {
+            Some(v) => v.origin_url,
+            None => "secrets:///".to_string(),
+        };
+        let module_specifier_url = parse_url(module_specifier, referer_origin_url.as_str())?;
         // TODO: add some origin checks for referer.
         let mut value = self.json_value.clone();
-        let path_segs = module_specifier.path_segments().unwrap();
+        let path_segs = module_specifier_url.path_segments().unwrap();
         for path_seg in path_segs {
             if value[path_seg] != serde_json::Value::Null {
                 value = value[path_seg].clone();
             } else {
                 return Err(FlyError::from(format!(
                     "Could not resolve {} from {} ",
-                    module_specifier, match referer_info {
-                        Some(v) => v.origin_url,
-                        None => "".to_string(),
-                    }
+                    module_specifier_url, referer_origin_url
                 )));
             }
         }
@@ -338,7 +344,7 @@ impl ModuleResolverManager for StandardModuleResolverManager {
         };
 
         for resolver in resolvers {
-            let resolver_result = resolver.resolve_module(specifier_url.clone(), referer_info.clone());
+            let resolver_result = resolver.resolve_module(specifier.as_str(), referer_info.clone());
             if let Err(e) = resolver_result {
                 info!("Resolver failed trying the next one: {}", e);
             } else {
