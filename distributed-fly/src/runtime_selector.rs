@@ -98,7 +98,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     Some(rel.app_id.to_string()),
                     Some(rel.version.to_string()),
                     &settings,
-                    None,
+                    Some(vec![]),
                 );
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(

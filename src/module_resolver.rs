@@ -6,8 +6,6 @@ use std::marker::{ Send };
 
 use std::clone::{ Clone };
 
-use url::{ Url };
-
 use std::collections::{ HashMap };
 
 use serde_json;
@@ -48,7 +46,7 @@ pub trait SourceLoader: Send {
 /**
  * Resolves a module specifier and returns a "strategy" for loading the module to ES6 or WASM code.
  */
-pub trait ModuleResolver: Send {
+pub trait ModuleResolver: Send + Sync {
     fn resolve_module(
         &self, 
         module_specifier: &str,
@@ -60,7 +58,7 @@ pub trait ModuleResolver: Send {
 /**
  * This trait is a used as the "front door" of the dynamic module resolution system.
  */
-pub trait ModuleResolverManager: Send {
+pub trait ModuleResolverManager: Send + Sync {
     fn resovle_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule>;
 }
 
@@ -193,11 +191,11 @@ impl ModuleResolver for LocalDiskModuleResolver {
 }
 
 pub struct FunctionModuleResolver {
-  resolve_fn: Box<Fn(&str, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>,
+  resolve_fn: Box<Fn(&str, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send + Sync>,
 }
 
 impl FunctionModuleResolver {
-  pub fn new(resolve_fn: Box<Fn(&str, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send>) -> Self {
+  pub fn new(resolve_fn: Box<Fn(&str, Option<RefererInfo>) -> FlyResult<ModuleSourceData> + Send + Sync>) -> Self {
     Self { resolve_fn }
   }
 }

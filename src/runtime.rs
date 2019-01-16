@@ -25,6 +25,8 @@ use tokio::timer::Delay;
 
 use std::time::{Duration, Instant};
 
+use std::sync::RwLock;
+
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use futures::future;
@@ -157,8 +159,8 @@ pub struct Runtime {
   pub fetch_events: Option<mpsc::UnboundedSender<JsHttpRequest>>,
   pub resolv_events: Option<mpsc::UnboundedSender<ops::dns::JsDnsRequest>>,
   pub last_event_at: AtomicUsize,
-  pub module_resolver_manager: Mutex<Box<ModuleResolverManager>>,
-  pub metadata_cache: Mutex<HashMap<i32, Box<LoadedModule>>>,
+  pub module_resolver_manager: Box<ModuleResolverManager>,
+  metadata_cache: RwLock<HashMap<i32, Box<LoadedModule>>>,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
 }
@@ -270,8 +272,8 @@ impl Runtime {
         None => None,
       },
       last_event_at: ATOMIC_USIZE_INIT,
-      module_resolver_manager: Mutex::new(Box::new(StandardModuleResolverManager::new(rt_module_resolvers, None))),
-      metadata_cache: Mutex::new(HashMap::new()),
+      module_resolver_manager: Box::new(StandardModuleResolverManager::new(rt_module_resolvers, None)),
+      metadata_cache: RwLock::new(HashMap::new()),
     });
 
     (*rt).ptr.0 = unsafe {
@@ -406,7 +408,7 @@ impl Runtime {
   }
 
   pub fn get_module_metadata(&self, hash: &i32) -> Option<Box<LoadedModule>> {
-    return match self.metadata_cache.lock().unwrap().get(hash) {
+    return match self.metadata_cache.read().unwrap().get(hash) {
       Some(v) => Some((*v).clone()),
       None => None,
     };
@@ -651,7 +653,7 @@ pub unsafe extern "C" fn resolve_callback(raw: *const js_runtime, specifier: *co
     },
   };
 
-  let loaded_module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_str, Some(RefererInfo {
+  let loaded_module = match rt.module_resolver_manager.resovle_module(specifier_str, Some(RefererInfo {
     origin_url: referer_loaded_module.origin_url,
     is_wasm: Some(referer_loaded_module.loaded_source.is_wasm),
     source_code: Some(referer_loaded_module.loaded_source.source),
@@ -1214,7 +1216,7 @@ fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     None => None,
   };
 
-  let module = match rt.module_resolver_manager.lock().unwrap().resovle_module(specifier_url, referer_info) {
+  let module = match rt.module_resolver_manager.resovle_module(specifier_url, referer_info) {
     Ok(m) => m,
     Err(e) => return odd_future(e.into()),
   };
