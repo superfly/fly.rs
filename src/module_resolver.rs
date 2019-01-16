@@ -59,7 +59,7 @@ pub trait ModuleResolver: Send + Sync {
  * This trait is a used as the "front door" of the dynamic module resolution system.
  */
 pub trait ModuleResolverManager: Send + Sync {
-    fn resovle_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule>;
+    fn resolve_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule>;
 }
 
 /**
