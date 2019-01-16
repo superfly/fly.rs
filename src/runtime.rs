@@ -653,7 +653,7 @@ pub unsafe extern "C" fn resolve_callback(raw: *const js_runtime, specifier: *co
     },
   };
 
-  let loaded_module = match rt.module_resolver_manager.resovle_module(specifier_str, Some(RefererInfo {
+  let loaded_module = match rt.module_resolver_manager.resolve_module(specifier_str, Some(RefererInfo {
     origin_url: referer_loaded_module.origin_url,
     is_wasm: Some(referer_loaded_module.loaded_source.is_wasm),
     source_code: Some(referer_loaded_module.loaded_source.source),
@@ -1216,7 +1216,7 @@ fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     None => None,
   };
 
-  let module = match rt.module_resolver_manager.resovle_module(specifier_url, referer_info) {
+  let module = match rt.module_resolver_manager.resolve_module(specifier_url, referer_info) {
     Ok(m) => m,
     Err(e) => return odd_future(e.into()),
   };

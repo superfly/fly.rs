@@ -317,7 +317,7 @@ impl StandardModuleResolverManager {
 }
 
 impl ModuleResolverManager for StandardModuleResolverManager {
-    fn resovle_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule> {
+    fn resolve_module(&self, specifier: String, referer_info: Option<RefererInfo>) -> FlyResult<LoadedModule> {
         let referer_origin_url = match referer_info.clone() {
             Some(v) => v.origin_url,
             None => self.default_working_url.clone(),
