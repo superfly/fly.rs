@@ -2,16 +2,23 @@ console.log("hello world")
 const helloWorldStr = "Hello World";
 const helloWorld = new TextEncoder().encode(helloWorldStr);
 
+console.log("runtime", fly.runtime);
+console.log("window", Object.keys(window));
+console.log("window.window", Object.keys(window.window));
+console.log("window.fly", Object.keys(window.fly));
+
 addEventListener("fetch", function (event) {
   const req = event.request;
   // console.log("req url:", event.request.url);
   let url = new URL(req.url)
+  console.log("handling request", { url });
   if (url.pathname == "/echo")
     event.respondWith(new Response(req.body, { headers: { foo: "bar" } }))
 
   else if (url.pathname == "/null")
     event.respondWith(new Response(null, { headers: {} }))
-
+  else if (url.pathname == "/space%20space")
+    event.respondWith(new Response("HELLO WITH A SPACE", { headers: {} }))
   else if (url.pathname == "/hello-world")
     event.respondWith(new Response(helloWorld))
 

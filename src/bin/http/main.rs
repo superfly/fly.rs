@@ -1,9 +1,5 @@
-#[macro_use]
-extern crate log;
-
 extern crate clap;
 
-extern crate env_logger;
 extern crate fly;
 extern crate tokio;
 
@@ -24,14 +20,17 @@ use fly::http_server::serve_http;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
 
-use env_logger::Env;
+use slog::o;
+use slog::Drain;
+use slog::*;
 
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
 fn main() {
-    let env = Env::default().filter_or("LOG_LEVEL", "info");
-
-    env_logger::init_from_env(env);
+    let decorator = slog_term::TermDecorator::new().build();
+    let drain = slog_term::FullFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+    let logger = slog::Logger::root(drain, o!("version" => "0.5"));
 
     let matches = clap::App::new("fly-http")
         .version("0.0.1-alpha")
@@ -56,15 +55,15 @@ fn main() {
         )
         .get_matches();
 
-    info!("V8 version: {}", libfly::version());
+    info!(logger, "V8 version: {}", libfly::version());
 
     let entry_file = matches.value_of("input").unwrap();
-    let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap());
+    let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap(), &logger);
 
-    debug!("Loading dev tools");
+    debug!(logger, "Loading dev tools");
     runtime.eval_file("v8env/dist/dev-tools.js");
     runtime.eval("<installDevTools>", "installDevTools();");
-    debug!("Loading dev tools done");
+    debug!(logger, "Loading dev tools done");
     runtime.eval(entry_file, &format!("dev.run('{}')", entry_file));
 
     let bind = match matches.value_of("bind") {
@@ -82,7 +81,7 @@ fn main() {
         tokio::spawn(
             runtime
                 .run()
-                .map_err(|e| error!("error running runtime event loop: {}", e)),
+                .map_err(|e| println!("error running runtime event loop: {}", e)),
         );
         unsafe { SELECTOR = Some(FixedRuntimeSelector::new(runtime)) }
         let server = Server::bind(&addr)
@@ -99,7 +98,7 @@ fn main() {
             }))
             .map_err(|e| eprintln!("server error: {}", e));
 
-        info!("Listening on http://{}", addr);
+        info!(logger, "Listening on http://{}", addr);
         server
     }));
 }
