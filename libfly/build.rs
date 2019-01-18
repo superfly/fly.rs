@@ -35,10 +35,17 @@ fn main() {
     .cpp(true)
     .static_flag(true)
     .extra_warnings(false)
-    .flag("--std=c++11")
-    // .cpp_set_stdlib("c++")
+    // .flag("--std=c++11")
+    .flag("-static-libstdc++")
+    // .cpp_set_stdlib("stdc++")
+    .cpp_link_stdlib(None)
+    .static_crt(true)
     .compile("libfly.a");
 
+
+  println!("cargo:rustc-link-search=native=/usr/lib");
+  println!("cargo:rustc-link-lib=static=stdc++");
+  // println!("cargo:rustc-link-lib=static=c");
   println!(
     "cargo:rustc-link-search=native={}/v8/out.gn/lib/obj",
     crate_dir
