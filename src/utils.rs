@@ -10,6 +10,15 @@ use futures::{future, Future, Stream};
 
 use std::ptr;
 
+pub fn take_last_n(str: &str, n: usize) -> Option<&str> {
+  if str.len() >= n {
+    Some(&str[str.len()-n..])
+  } else {
+    None
+  }
+}
+
+
 pub fn serialize_response(
   cmd_id: u32,
   builder: &mut FlatBufferBuilder,

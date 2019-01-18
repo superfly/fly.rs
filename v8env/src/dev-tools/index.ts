@@ -14,7 +14,7 @@ class FlyDevTools implements DevTools {
 
   run(path: string) {
     console.log(`RUN!`, { path });
-    this.compiler.run(path, ".");
+    this.compiler.run(path);
   }
 }
 

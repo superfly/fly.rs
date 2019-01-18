@@ -6646,34 +6646,34 @@ impl<'a> LoadModule<'a> {
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
         args: &'args LoadModuleArgs<'args>) -> flatbuffers::WIPOffset<LoadModule<'bldr>> {
       let mut builder = LoadModuleBuilder::new(_fbb);
-      if let Some(x) = args.containing_file { builder.add_containing_file(x); }
-      if let Some(x) = args.module_specifier { builder.add_module_specifier(x); }
+      if let Some(x) = args.referer_origin_url { builder.add_referer_origin_url(x); }
+      if let Some(x) = args.specifier_url { builder.add_specifier_url(x); }
       builder.finish()
     }
 
-    pub const VT_MODULE_SPECIFIER: flatbuffers::VOffsetT = 4;
-    pub const VT_CONTAINING_FILE: flatbuffers::VOffsetT = 6;
+    pub const VT_SPECIFIER_URL: flatbuffers::VOffsetT = 4;
+    pub const VT_REFERER_ORIGIN_URL: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn module_specifier(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_MODULE_SPECIFIER, None)
+  pub fn specifier_url(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_SPECIFIER_URL, None)
   }
   #[inline]
-  pub fn containing_file(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_CONTAINING_FILE, None)
+  pub fn referer_origin_url(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_REFERER_ORIGIN_URL, None)
   }
 }
 
 pub struct LoadModuleArgs<'a> {
-    pub module_specifier: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub containing_file: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub specifier_url: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub referer_origin_url: Option<flatbuffers::WIPOffset<&'a  str>>,
 }
 impl<'a> Default for LoadModuleArgs<'a> {
     #[inline]
     fn default() -> Self {
         LoadModuleArgs {
-            module_specifier: None,
-            containing_file: None,
+            specifier_url: None,
+            referer_origin_url: None,
         }
     }
 }
@@ -6683,12 +6683,12 @@ pub struct LoadModuleBuilder<'a: 'b, 'b> {
 }
 impl<'a: 'b, 'b> LoadModuleBuilder<'a, 'b> {
   #[inline]
-  pub fn add_module_specifier(&mut self, module_specifier: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModule::VT_MODULE_SPECIFIER, module_specifier);
+  pub fn add_specifier_url(&mut self, specifier_url: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModule::VT_SPECIFIER_URL, specifier_url);
   }
   #[inline]
-  pub fn add_containing_file(&mut self, containing_file: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModule::VT_CONTAINING_FILE, containing_file);
+  pub fn add_referer_origin_url(&mut self, referer_origin_url: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModule::VT_REFERER_ORIGIN_URL, referer_origin_url);
   }
   #[inline]
   pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> LoadModuleBuilder<'a, 'b> {
@@ -6735,22 +6735,16 @@ impl<'a> LoadModuleResp<'a> {
         args: &'args LoadModuleRespArgs<'args>) -> flatbuffers::WIPOffset<LoadModuleResp<'bldr>> {
       let mut builder = LoadModuleRespBuilder::new(_fbb);
       if let Some(x) = args.source_code { builder.add_source_code(x); }
-      if let Some(x) = args.file_name { builder.add_file_name(x); }
-      if let Some(x) = args.module_id { builder.add_module_id(x); }
+      if let Some(x) = args.origin_url { builder.add_origin_url(x); }
       builder.finish()
     }
 
-    pub const VT_MODULE_ID: flatbuffers::VOffsetT = 4;
-    pub const VT_FILE_NAME: flatbuffers::VOffsetT = 6;
-    pub const VT_SOURCE_CODE: flatbuffers::VOffsetT = 8;
+    pub const VT_ORIGIN_URL: flatbuffers::VOffsetT = 4;
+    pub const VT_SOURCE_CODE: flatbuffers::VOffsetT = 6;
 
   #[inline]
-  pub fn module_id(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_MODULE_ID, None)
-  }
-  #[inline]
-  pub fn file_name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_FILE_NAME, None)
+  pub fn origin_url(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_ORIGIN_URL, None)
   }
   #[inline]
   pub fn source_code(&self) -> Option<&'a str> {
@@ -6759,16 +6753,14 @@ impl<'a> LoadModuleResp<'a> {
 }
 
 pub struct LoadModuleRespArgs<'a> {
-    pub module_id: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub file_name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub origin_url: Option<flatbuffers::WIPOffset<&'a  str>>,
     pub source_code: Option<flatbuffers::WIPOffset<&'a  str>>,
 }
 impl<'a> Default for LoadModuleRespArgs<'a> {
     #[inline]
     fn default() -> Self {
         LoadModuleRespArgs {
-            module_id: None,
-            file_name: None,
+            origin_url: None,
             source_code: None,
         }
     }
@@ -6779,12 +6771,8 @@ pub struct LoadModuleRespBuilder<'a: 'b, 'b> {
 }
 impl<'a: 'b, 'b> LoadModuleRespBuilder<'a, 'b> {
   #[inline]
-  pub fn add_module_id(&mut self, module_id: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModuleResp::VT_MODULE_ID, module_id);
-  }
-  #[inline]
-  pub fn add_file_name(&mut self, file_name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModuleResp::VT_FILE_NAME, file_name);
+  pub fn add_origin_url(&mut self, origin_url: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModuleResp::VT_ORIGIN_URL, origin_url);
   }
   #[inline]
   pub fn add_source_code(&mut self, source_code: flatbuffers::WIPOffset<&'b  str>) {

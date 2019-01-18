@@ -10,8 +10,11 @@ use postgres_openssl::openssl::ssl::SslMethod;
 
 use crate::settings::PostgresStoreConfig;
 
+use serde_json;
+
 use std::collections::HashMap;
-use std::sync::Mutex;
+
+use std::sync::{Mutex};
 
 use futures::{future, Future};
 

@@ -1,10 +1,6 @@
 use crate::errors::*;
 
-use std::path::{Path, PathBuf};
-
-pub struct Compiler {
-  pub root: PathBuf,
-}
+use crate::module_resolver::{ ModuleResolver };
 
 pub struct ModuleInfo {
   pub module_id: String,
@@ -12,19 +8,18 @@ pub struct ModuleInfo {
   pub source_code: String,
 }
 
+pub struct Compiler {
+  pub module_resolvers: Vec<Box<ModuleResolver>>,
+}
+
 impl Compiler {
   #[allow(dead_code)]
-  pub fn new(root: Option<&Path>) -> Self {
-    let root = match root {
-      None => std::env::current_dir().expect("invalid current directory"),
-      Some(path) => path.to_path_buf(),
-    };
-
-    Self { root }
+  pub fn new(module_resolvers: Vec<Box<ModuleResolver>>) -> Self {
+    Self { module_resolvers }
   }
 
   pub fn fetch_module(
-    self: &Self,
+    &self,
     module_specifier: &str,
     containing_file: &str,
   ) -> FlyResult<ModuleInfo> {
@@ -32,73 +27,12 @@ impl Compiler {
       "fetch_module {} from {}",
       &module_specifier, &containing_file
     );
-    let (module_id, file_name) = self.resolve_module(&module_specifier, &containing_file)?;
-    let source_code = std::fs::read_to_string(&module_id)?;
-    Ok(ModuleInfo {
-      module_id: module_id,
-      file_name: file_name,
-      source_code: source_code,
-    })
-  }
-
-  #[allow(dead_code)]
-  pub fn resolve_module(
-    self: &Self,
-    module_specifier: &str,
-    containing_file: &str,
-  ) -> FlyResult<(String, String)> {
-    println!(
-      "resolve_module {} from {}",
-      module_specifier, containing_file
-    );
-
-    let mut base = PathBuf::from(containing_file);
-    if base.is_file() {
-      base.pop();
+    for resolver in &self.module_resolvers {
+      match resolver.resolve_module(module_specifier, containing_file) {
+        Ok(m) => return Ok(m),
+        Err(_err) => info!("resolver failed moving on"),
+      };
     }
-
-    let mut module_id = base.join(module_specifier); //.canonicalize().unwrap();
-    info!("trying module {}", module_id.display());
-
-    if module_id.is_file() {
-      return Ok((
-        module_id.to_str().unwrap().to_string(),
-        module_id
-          .canonicalize()
-          .unwrap()
-          .to_str()
-          .unwrap()
-          .to_owned(),
-      ));
-    }
-    let did_set = module_id.set_extension("ts");
-    info!("trying module {} ({})", module_id.display(), did_set);
-    if module_id.is_file() {
-      return Ok((
-        module_id.to_str().unwrap().to_string(),
-        module_id
-          .canonicalize()
-          .unwrap()
-          .to_str()
-          .unwrap()
-          .to_owned(),
-      ));
-    }
-    let did_set = module_id.set_extension("js");
-    info!("trying module {} ({})", module_id.display(), did_set);
-    if module_id.is_file() {
-      return Ok((
-        module_id.to_str().unwrap().to_string(),
-        module_id
-          .canonicalize()
-          .unwrap()
-          .to_str()
-          .unwrap()
-          .to_owned(),
-      ));
-    }
-    error!("NOPE");
-
     Err(FlyError::from(format!(
       "Could not resolve {} from {}",
       module_specifier, containing_file
@@ -141,22 +75,24 @@ mod tests {
       ),
     ];
     let current_dir = std::env::current_dir().expect("current_dir failed");
-    let compiler = Compiler::new(None);
+    let local_disk_resolver = LocalDiskModuleResolver::new(None);
+    let resolvers = vec![Box::new(local_disk_resolver) as Box<ModuleResolver>];
+    let compiler = Compiler::new(resolvers);
 
     for &test in cases.iter() {
       let specifier = String::from(test.0).replace("<cwd>", current_dir.to_str().unwrap());
       let containing_file = String::from(test.1).replace("<cwd>", current_dir.to_str().unwrap());
       ;
-      let (module_id, filename) = compiler
-        .resolve_module(&specifier, &containing_file)
+      let module_info = compiler
+        .fetch_module(&specifier, &containing_file)
         .unwrap();
       assert_eq!(
         String::from(test.2).replace("<cwd>", current_dir.to_str().unwrap()),
-        module_id,
+        module_info.module_id,
       );
       assert_eq!(
         String::from(test.3).replace("<cwd>", current_dir.to_str().unwrap()),
-        filename,
+        module_info.file_name,
       );
     }
   }

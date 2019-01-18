@@ -29,6 +29,7 @@ pub struct js_runtime_options {
     pub data: *mut c_void,
     pub recv_cb: RecvCb,
     pub print_cb: PrintCb,
+    pub resolve_cb: ResolveCb,
     pub soft_memory_limit: size_t,
     pub hard_memory_limit: size_t,
 }
@@ -36,6 +37,27 @@ pub struct js_runtime_options {
 #[repr(C)]
 pub struct js_runtime {
     _unused: [u8; 0],
+}
+
+#[repr(C)]
+pub struct js_module_data {
+    pub origin_url: *const c_char,
+    pub source_map_url: *const c_char,
+    pub is_wasm: bool,
+    pub source_code: fly_simple_buf,
+}
+
+#[repr(C)]
+pub struct js_compiled_module {
+    pub hash: c_int,
+    pub data: js_module_data,
+    pub ptr: *mut c_void,
+}
+
+#[repr(C)]
+pub struct js_compile_module_result {
+    pub compiled_module: js_compiled_module,
+    pub success: bool,
 }
 
 #[repr(C)]
@@ -71,6 +93,7 @@ pub fn version() -> String {
 
 type RecvCb = unsafe extern "C" fn(rt: *const js_runtime, buf: fly_buf, data_buf: fly_buf);
 type PrintCb = unsafe extern "C" fn(rt: *const js_runtime, lvl: i8, msg: *const c_char);
+type ResolveCb = unsafe extern "C" fn(rt: *const js_runtime, specifier: *const c_char, referer_identity_hash: i32) -> js_compiled_module;
 
 extern "C" {
     pub fn js_init();
@@ -86,6 +109,8 @@ extern "C" {
     pub fn js_dump_heap_snapshot(rt: *const js_runtime, filename: *const c_char) -> bool;
 
     pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char) -> bool;
+    pub fn js_run_module(rt: *const js_runtime, module_data: js_compiled_module) -> bool;
+    pub fn js_compile_module(rt: *const js_runtime, module_data: js_module_data) -> js_compile_module_result;
 }
 
 #[no_mangle]

@@ -54,7 +54,7 @@
         "rollup-plugin-typescript2": "^0.18.0",
         "rollup-plugin-virtual": "^1.0.1",
         "rollup-pluginutils": "^2.3.3",
-        "typescript": "3.0.1"
+        "typescript": "3.2.2"
     },
     "publishConfig": {
         "access": "public"

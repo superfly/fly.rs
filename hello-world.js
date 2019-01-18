@@ -1,3 +1,7 @@
+import someSecret from "secrets:///secretObject/subSecret";
+
+console.log(someSecret);
+
 console.log("hello world")
 const helloWorldStr = "Hello World";
 const helloWorld = new TextEncoder().encode(helloWorldStr);
