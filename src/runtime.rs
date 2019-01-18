@@ -578,10 +578,11 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
     msg::Any::CryptoDigest => op_crypto_digest,
     msg::Any::CryptoRandomValues => op_crypto_random_values,
     msg::Any::SourceMap => op_source_map,
-    msg::Any::DataPut => op_data_put,
-    msg::Any::DataGet => op_data_get,
-    msg::Any::DataDel => op_data_del,
-    msg::Any::DataDropCollection => op_data_drop_coll,
+    msg::Any::DataPut => ops::data::op_data_put,
+    msg::Any::DataGet => ops::data::op_data_get,
+    msg::Any::DataDel => ops::data::op_data_del,
+    msg::Any::DataIncr => ops::data::op_data_incr,
+    msg::Any::DataDropCollection => ops::data::op_data_drop_coll,
     msg::Any::DnsQuery => ops::dns::op_dns_query,
     msg::Any::DnsResponse => ops::dns::op_dns_response,
     msg::Any::AddEventListener => op_add_event_ln,
@@ -1138,89 +1139,6 @@ where
     .map_err(|_| ());
 
   (delay_task, cancel_tx)
-}
-
-fn op_data_put(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let msg = base.msg_as_data_put().unwrap();
-  let coll = msg.collection().unwrap().to_string();
-  let key = msg.key().unwrap().to_string();
-  let value = msg.json().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
-
-  Box::new(
-    rt.data_store
-      .put(coll, key, value)
-      .map_err(|e| format!("{:?}", e).into())
-      .and_then(move |_| Ok(None)),
-  )
-}
-
-fn op_data_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let cmd_id = base.cmd_id();
-  let msg = base.msg_as_data_get().unwrap();
-  let coll = msg.collection().unwrap().to_string();
-  let key = msg.key().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
-
-  Box::new(
-    rt.data_store
-      .get(coll, key)
-      .map_err(|e| format!("error in data store get: {:?}", e).into())
-      .and_then(move |s| match s {
-        None => Ok(None),
-        Some(s) => {
-          let builder = &mut FlatBufferBuilder::new();
-          let json = builder.create_string(&s);
-          let msg = msg::DataGetReady::create(
-            builder,
-            &msg::DataGetReadyArgs {
-              json: Some(json),
-              ..Default::default()
-            },
-          );
-          Ok(serialize_response(
-            cmd_id,
-            builder,
-            msg::BaseArgs {
-              msg: Some(msg.as_union_value()),
-              msg_type: msg::Any::DataGetReady,
-              ..Default::default()
-            },
-          ))
-        }
-      }),
-  )
-}
-
-fn op_data_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let msg = base.msg_as_data_del().unwrap();
-  let coll = msg.collection().unwrap().to_string();
-  let key = msg.key().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
-
-  Box::new(
-    rt.data_store
-      .del(coll, key)
-      .map_err(|e| format!("{:?}", e).into())
-      .and_then(move |_| Ok(None)),
-  )
-}
-
-fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-  let msg = base.msg_as_data_drop_collection().unwrap();
-  let coll = msg.collection().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
-
-  Box::new(
-    rt.data_store
-      .drop_coll(coll)
-      .map_err(|e| format!("{:?}", e).into())
-      .and_then(move |_| Ok(None)),
-  )
 }
 
 fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {

@@ -653,22 +653,23 @@ pub enum Any {
   DataGet = 27,
   DataGetReady = 28,
   DataDel = 29,
-  DataDropCollection = 30,
-  DnsQuery = 31,
-  DnsRequest = 32,
-  DnsResponse = 33,
-  AddEventListener = 34,
-  LoadModule = 35,
-  LoadModuleResp = 36,
-  ImageApplyTransforms = 37,
-  ImageReady = 38,
-  AcmeGetChallenge = 39,
-  AcmeGetChallengeReady = 40,
+  DataIncr = 30,
+  DataDropCollection = 31,
+  DnsQuery = 32,
+  DnsRequest = 33,
+  DnsResponse = 34,
+  AddEventListener = 35,
+  LoadModule = 36,
+  LoadModuleResp = 37,
+  ImageApplyTransforms = 38,
+  ImageReady = 39,
+  AcmeGetChallenge = 40,
+  AcmeGetChallengeReady = 41,
 
 }
 
 const ENUM_MIN_ANY: u8 = 0;
-const ENUM_MAX_ANY: u8 = 40;
+const ENUM_MAX_ANY: u8 = 41;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
   type Inner = Self;
@@ -702,7 +703,7 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 41] = [
+const ENUM_VALUES_ANY:[Any; 42] = [
   Any::NONE,
   Any::TimerStart,
   Any::TimerReady,
@@ -733,6 +734,7 @@ const ENUM_VALUES_ANY:[Any; 41] = [
   Any::DataGet,
   Any::DataGetReady,
   Any::DataDel,
+  Any::DataIncr,
   Any::DataDropCollection,
   Any::DnsQuery,
   Any::DnsRequest,
@@ -747,7 +749,7 @@ const ENUM_VALUES_ANY:[Any; 41] = [
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 41] = [
+const ENUM_NAMES_ANY:[&'static str; 42] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -778,6 +780,7 @@ const ENUM_NAMES_ANY:[&'static str; 41] = [
     "DataGet",
     "DataGetReady",
     "DataDel",
+    "DataIncr",
     "DataDropCollection",
     "DnsQuery",
     "DnsRequest",
@@ -3595,6 +3598,546 @@ impl<'a: 'b, 'b> CachePurgeTagBuilder<'a, 'b> {
   }
 }
 
+pub enum DataPutOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct DataPut<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for DataPut<'a> {
+    type Inner = DataPut<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> DataPut<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        DataPut {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args DataPutArgs<'args>) -> flatbuffers::WIPOffset<DataPut<'bldr>> {
+      let mut builder = DataPutBuilder::new(_fbb);
+      if let Some(x) = args.json { builder.add_json(x); }
+      if let Some(x) = args.key { builder.add_key(x); }
+      if let Some(x) = args.collection { builder.add_collection(x); }
+      builder.finish()
+    }
+
+    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
+    pub const VT_KEY: flatbuffers::VOffsetT = 6;
+    pub const VT_JSON: flatbuffers::VOffsetT = 8;
+
+  #[inline]
+  pub fn collection(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_COLLECTION, None)
+  }
+  #[inline]
+  pub fn key(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_KEY, None)
+  }
+  #[inline]
+  pub fn json(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_JSON, None)
+  }
+}
+
+pub struct DataPutArgs<'a> {
+    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub json: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for DataPutArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        DataPutArgs {
+            collection: None,
+            key: None,
+            json: None,
+        }
+    }
+}
+pub struct DataPutBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> DataPutBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_COLLECTION, collection);
+  }
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_KEY, key);
+  }
+  #[inline]
+  pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_JSON, json);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataPutBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    DataPutBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<DataPut<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum DataGetOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct DataGet<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for DataGet<'a> {
+    type Inner = DataGet<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> DataGet<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        DataGet {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args DataGetArgs<'args>) -> flatbuffers::WIPOffset<DataGet<'bldr>> {
+      let mut builder = DataGetBuilder::new(_fbb);
+      if let Some(x) = args.key { builder.add_key(x); }
+      if let Some(x) = args.collection { builder.add_collection(x); }
+      builder.finish()
+    }
+
+    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
+    pub const VT_KEY: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub fn collection(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_COLLECTION, None)
+  }
+  #[inline]
+  pub fn key(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_KEY, None)
+  }
+}
+
+pub struct DataGetArgs<'a> {
+    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for DataGetArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        DataGetArgs {
+            collection: None,
+            key: None,
+        }
+    }
+}
+pub struct DataGetBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> DataGetBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_COLLECTION, collection);
+  }
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_KEY, key);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    DataGetBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<DataGet<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum DataGetReadyOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct DataGetReady<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for DataGetReady<'a> {
+    type Inner = DataGetReady<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> DataGetReady<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        DataGetReady {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args DataGetReadyArgs<'args>) -> flatbuffers::WIPOffset<DataGetReady<'bldr>> {
+      let mut builder = DataGetReadyBuilder::new(_fbb);
+      if let Some(x) = args.json { builder.add_json(x); }
+      builder.finish()
+    }
+
+    pub const VT_JSON: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn json(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGetReady::VT_JSON, None)
+  }
+}
+
+pub struct DataGetReadyArgs<'a> {
+    pub json: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for DataGetReadyArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        DataGetReadyArgs {
+            json: None,
+        }
+    }
+}
+pub struct DataGetReadyBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> DataGetReadyBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGetReady::VT_JSON, json);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetReadyBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    DataGetReadyBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<DataGetReady<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum DataDelOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct DataDel<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for DataDel<'a> {
+    type Inner = DataDel<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> DataDel<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        DataDel {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args DataDelArgs<'args>) -> flatbuffers::WIPOffset<DataDel<'bldr>> {
+      let mut builder = DataDelBuilder::new(_fbb);
+      if let Some(x) = args.key { builder.add_key(x); }
+      if let Some(x) = args.collection { builder.add_collection(x); }
+      builder.finish()
+    }
+
+    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
+    pub const VT_KEY: flatbuffers::VOffsetT = 6;
+
+  #[inline]
+  pub fn collection(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_COLLECTION, None)
+  }
+  #[inline]
+  pub fn key(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_KEY, None)
+  }
+}
+
+pub struct DataDelArgs<'a> {
+    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for DataDelArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        DataDelArgs {
+            collection: None,
+            key: None,
+        }
+    }
+}
+pub struct DataDelBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> DataDelBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_COLLECTION, collection);
+  }
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_KEY, key);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDelBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    DataDelBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<DataDel<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum DataDropCollectionOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct DataDropCollection<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for DataDropCollection<'a> {
+    type Inner = DataDropCollection<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> DataDropCollection<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        DataDropCollection {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args DataDropCollectionArgs<'args>) -> flatbuffers::WIPOffset<DataDropCollection<'bldr>> {
+      let mut builder = DataDropCollectionBuilder::new(_fbb);
+      if let Some(x) = args.collection { builder.add_collection(x); }
+      builder.finish()
+    }
+
+    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn collection(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDropCollection::VT_COLLECTION, None)
+  }
+}
+
+pub struct DataDropCollectionArgs<'a> {
+    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
+}
+impl<'a> Default for DataDropCollectionArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        DataDropCollectionArgs {
+            collection: None,
+        }
+    }
+}
+pub struct DataDropCollectionBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> DataDropCollectionBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDropCollection::VT_COLLECTION, collection);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDropCollectionBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    DataDropCollectionBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<DataDropCollection<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
+pub enum DataIncrOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct DataIncr<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for DataIncr<'a> {
+    type Inner = DataIncr<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> DataIncr<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        DataIncr {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args DataIncrArgs<'args>) -> flatbuffers::WIPOffset<DataIncr<'bldr>> {
+      let mut builder = DataIncrBuilder::new(_fbb);
+      builder.add_amount(args.amount);
+      if let Some(x) = args.field { builder.add_field(x); }
+      if let Some(x) = args.key { builder.add_key(x); }
+      if let Some(x) = args.collection { builder.add_collection(x); }
+      builder.finish()
+    }
+
+    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
+    pub const VT_KEY: flatbuffers::VOffsetT = 6;
+    pub const VT_FIELD: flatbuffers::VOffsetT = 8;
+    pub const VT_AMOUNT: flatbuffers::VOffsetT = 10;
+
+  #[inline]
+  pub fn collection(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_COLLECTION, None)
+  }
+  #[inline]
+  pub fn key(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_KEY, None)
+  }
+  #[inline]
+  pub fn field(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_FIELD, None)
+  }
+  #[inline]
+  pub fn amount(&self) -> i32 {
+    self._tab.get::<i32>(DataIncr::VT_AMOUNT, Some(0)).unwrap()
+  }
+}
+
+pub struct DataIncrArgs<'a> {
+    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub field: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub amount: i32,
+}
+impl<'a> Default for DataIncrArgs<'a> {
+    #[inline]
+    fn default() -> Self {
+        DataIncrArgs {
+            collection: None,
+            key: None,
+            field: None,
+            amount: 0,
+        }
+    }
+}
+pub struct DataIncrBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> DataIncrBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_COLLECTION, collection);
+  }
+  #[inline]
+  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_KEY, key);
+  }
+  #[inline]
+  pub fn add_field(&mut self, field: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_FIELD, field);
+  }
+  #[inline]
+  pub fn add_amount(&mut self, amount: i32) {
+    self.fbb_.push_slot::<i32>(DataIncr::VT_AMOUNT, amount, 0);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataIncrBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    DataIncrBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<DataIncr<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum ImageWebPEncodeOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -4511,6 +5054,16 @@ impl<'a> Base<'a> {
   pub fn msg_as_data_del(&'a self) -> Option<DataDel> {
     if self.msg_type() == Any::DataDel {
       self.msg().map(|u| DataDel::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_data_incr(&'a self) -> Option<DataIncr> {
+    if self.msg_type() == Any::DataIncr {
+      self.msg().map(|u| DataIncr::init_from_table(u))
     } else {
       None
     }
@@ -6108,434 +6661,6 @@ impl<'a: 'b, 'b> SourceMapReadyBuilder<'a, 'b> {
   }
   #[inline]
   pub fn finish(self) -> flatbuffers::WIPOffset<SourceMapReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-pub enum DataPutOffset {}
-#[derive(Copy, Clone, Debug, PartialEq)]
-
-pub struct DataPut<'a> {
-  pub _tab: flatbuffers::Table<'a>,
-}
-
-impl<'a> flatbuffers::Follow<'a> for DataPut<'a> {
-    type Inner = DataPut<'a>;
-    #[inline]
-    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-        Self {
-            _tab: flatbuffers::Table { buf: buf, loc: loc },
-        }
-    }
-}
-
-impl<'a> DataPut<'a> {
-    #[inline]
-    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataPut {
-            _tab: table,
-        }
-    }
-    #[allow(unused_mut)]
-    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataPutArgs<'args>) -> flatbuffers::WIPOffset<DataPut<'bldr>> {
-      let mut builder = DataPutBuilder::new(_fbb);
-      if let Some(x) = args.json { builder.add_json(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
-    }
-
-    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
-    pub const VT_KEY: flatbuffers::VOffsetT = 6;
-    pub const VT_JSON: flatbuffers::VOffsetT = 8;
-
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_KEY, None)
-  }
-  #[inline]
-  pub fn json(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_JSON, None)
-  }
-}
-
-pub struct DataPutArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub json: Option<flatbuffers::WIPOffset<&'a  str>>,
-}
-impl<'a> Default for DataPutArgs<'a> {
-    #[inline]
-    fn default() -> Self {
-        DataPutArgs {
-            collection: None,
-            key: None,
-            json: None,
-        }
-    }
-}
-pub struct DataPutBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b> DataPutBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_JSON, json);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataPutBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataPutBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataPut<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-pub enum DataGetOffset {}
-#[derive(Copy, Clone, Debug, PartialEq)]
-
-pub struct DataGet<'a> {
-  pub _tab: flatbuffers::Table<'a>,
-}
-
-impl<'a> flatbuffers::Follow<'a> for DataGet<'a> {
-    type Inner = DataGet<'a>;
-    #[inline]
-    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-        Self {
-            _tab: flatbuffers::Table { buf: buf, loc: loc },
-        }
-    }
-}
-
-impl<'a> DataGet<'a> {
-    #[inline]
-    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataGet {
-            _tab: table,
-        }
-    }
-    #[allow(unused_mut)]
-    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataGetArgs<'args>) -> flatbuffers::WIPOffset<DataGet<'bldr>> {
-      let mut builder = DataGetBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
-    }
-
-    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
-    pub const VT_KEY: flatbuffers::VOffsetT = 6;
-
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_KEY, None)
-  }
-}
-
-pub struct DataGetArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-}
-impl<'a> Default for DataGetArgs<'a> {
-    #[inline]
-    fn default() -> Self {
-        DataGetArgs {
-            collection: None,
-            key: None,
-        }
-    }
-}
-pub struct DataGetBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b> DataGetBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataGetBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataGet<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-pub enum DataGetReadyOffset {}
-#[derive(Copy, Clone, Debug, PartialEq)]
-
-pub struct DataGetReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
-}
-
-impl<'a> flatbuffers::Follow<'a> for DataGetReady<'a> {
-    type Inner = DataGetReady<'a>;
-    #[inline]
-    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-        Self {
-            _tab: flatbuffers::Table { buf: buf, loc: loc },
-        }
-    }
-}
-
-impl<'a> DataGetReady<'a> {
-    #[inline]
-    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataGetReady {
-            _tab: table,
-        }
-    }
-    #[allow(unused_mut)]
-    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataGetReadyArgs<'args>) -> flatbuffers::WIPOffset<DataGetReady<'bldr>> {
-      let mut builder = DataGetReadyBuilder::new(_fbb);
-      if let Some(x) = args.json { builder.add_json(x); }
-      builder.finish()
-    }
-
-    pub const VT_JSON: flatbuffers::VOffsetT = 4;
-
-  #[inline]
-  pub fn json(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGetReady::VT_JSON, None)
-  }
-}
-
-pub struct DataGetReadyArgs<'a> {
-    pub json: Option<flatbuffers::WIPOffset<&'a  str>>,
-}
-impl<'a> Default for DataGetReadyArgs<'a> {
-    #[inline]
-    fn default() -> Self {
-        DataGetReadyArgs {
-            json: None,
-        }
-    }
-}
-pub struct DataGetReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b> DataGetReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGetReady::VT_JSON, json);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataGetReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataGetReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-pub enum DataDelOffset {}
-#[derive(Copy, Clone, Debug, PartialEq)]
-
-pub struct DataDel<'a> {
-  pub _tab: flatbuffers::Table<'a>,
-}
-
-impl<'a> flatbuffers::Follow<'a> for DataDel<'a> {
-    type Inner = DataDel<'a>;
-    #[inline]
-    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-        Self {
-            _tab: flatbuffers::Table { buf: buf, loc: loc },
-        }
-    }
-}
-
-impl<'a> DataDel<'a> {
-    #[inline]
-    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataDel {
-            _tab: table,
-        }
-    }
-    #[allow(unused_mut)]
-    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataDelArgs<'args>) -> flatbuffers::WIPOffset<DataDel<'bldr>> {
-      let mut builder = DataDelBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
-    }
-
-    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
-    pub const VT_KEY: flatbuffers::VOffsetT = 6;
-
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_KEY, None)
-  }
-}
-
-pub struct DataDelArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-}
-impl<'a> Default for DataDelArgs<'a> {
-    #[inline]
-    fn default() -> Self {
-        DataDelArgs {
-            collection: None,
-            key: None,
-        }
-    }
-}
-pub struct DataDelBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b> DataDelBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDelBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataDelBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataDel<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
-}
-
-pub enum DataDropCollectionOffset {}
-#[derive(Copy, Clone, Debug, PartialEq)]
-
-pub struct DataDropCollection<'a> {
-  pub _tab: flatbuffers::Table<'a>,
-}
-
-impl<'a> flatbuffers::Follow<'a> for DataDropCollection<'a> {
-    type Inner = DataDropCollection<'a>;
-    #[inline]
-    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-        Self {
-            _tab: flatbuffers::Table { buf: buf, loc: loc },
-        }
-    }
-}
-
-impl<'a> DataDropCollection<'a> {
-    #[inline]
-    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataDropCollection {
-            _tab: table,
-        }
-    }
-    #[allow(unused_mut)]
-    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
-        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataDropCollectionArgs<'args>) -> flatbuffers::WIPOffset<DataDropCollection<'bldr>> {
-      let mut builder = DataDropCollectionBuilder::new(_fbb);
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
-    }
-
-    pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
-
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDropCollection::VT_COLLECTION, None)
-  }
-}
-
-pub struct DataDropCollectionArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-}
-impl<'a> Default for DataDropCollectionArgs<'a> {
-    #[inline]
-    fn default() -> Self {
-        DataDropCollectionArgs {
-            collection: None,
-        }
-    }
-}
-pub struct DataDropCollectionBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
-}
-impl<'a: 'b, 'b> DataDropCollectionBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDropCollection::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDropCollectionBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataDropCollectionBuilder {
-      fbb_: _fbb,
-      start_: start,
-    }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataDropCollection<'a>> {
     let o = self.fbb_.end_table(self.start_);
     flatbuffers::WIPOffset::new(o.value())
   }
