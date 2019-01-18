@@ -14,7 +14,7 @@ use serde_json;
 
 use std::collections::HashMap;
 
-use std::sync::{Mutex};
+use std::sync::Mutex;
 
 use futures::{future, Future};
 
@@ -222,6 +222,37 @@ impl DataStore for PostgresDataStore {
     }))
   }
 
+  fn incr(
+    &self,
+    coll: String,
+    key: String,
+    field: String,
+    amount: i32,
+  ) -> Box<Future<Item = (), Error = DataError> + Send> {
+    debug!(
+      "postgres data store incr coll: {}, key: {}, field: {}, amount: {}",
+      coll, key, field, amount
+    );
+    let pool = self.get_pool();
+    Box::new(future::lazy(move || -> DataResult<()> {
+      let con = pool.get().unwrap(); // TODO: no unwrap
+
+      ensure_coll(&*con, &coll).unwrap();
+
+      match con.execute(
+        format!(
+          "UPDATE {} SET obj = jsonb_set(obj, '{{{}}}', (COALESCE(obj->>'{}', '0')::int + $1)::text::jsonb) WHERE key = $2",
+          coll, field, field
+        )
+        .as_str(),
+        &[&amount, &key],
+      ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.into()),
+      }
+    }))
+  }
+
   fn drop_coll(&self, coll: String) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("postgres data store drop coll: {}", coll);
     let pool = self.get_pool();
@@ -339,6 +370,43 @@ mod tests {
       serde_json::from_str::<serde_json::Value>(&got).unwrap(),
       serde_json::from_str::<serde_json::Value>(value).unwrap()
     );
+  }
+
+  #[test]
+  fn test_pg_incr() {
+    let dbname = "testflyincr";
+    let coll = "coll1";
+    let key = "test:key";
+    let value = r#"{"counter":0,"foo":"bar"}"#;
+
+    let store = setup(Some(dbname.to_string()));
+    set_value(&store, coll, key, value);
+
+    store
+      .incr(coll.to_string(), key.to_string(), "counter".to_string(), 1)
+      .wait()
+      .unwrap();
+    let got = store
+      .get(coll.to_string(), key.to_string())
+      .wait()
+      .unwrap()
+      .unwrap();
+
+    assert_eq!(got, "{\"foo\": \"bar\", \"counter\": 1}");
+
+    store
+      .incr(coll.to_string(), key.to_string(), "counter".to_string(), 15)
+      .wait()
+      .unwrap();
+    let got = store
+      .get(coll.to_string(), key.to_string())
+      .wait()
+      .unwrap()
+      .unwrap();
+
+    assert_eq!(got, "{\"foo\": \"bar\", \"counter\": 16}");
+
+    teardown(&dbname);
   }
 
 }

@@ -1,0 +1,25 @@
+table DataPut {
+  collection: string;
+  key: string;
+  json: string;
+}
+table DataGet {
+  collection: string;
+  key: string;
+}
+table DataGetReady {
+  json: string;
+}
+table DataDel {
+  collection: string;
+  key: string;
+}
+table DataDropCollection {
+  collection: string;
+}
+table DataIncr {
+    collection: string;
+    key: string;
+    field: string;
+    amount: int;
+}

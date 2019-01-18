@@ -30,11 +30,11 @@ export class Collection {
    * @param key key for data
    * @param obj value to store
    */
-  put(key: string, obj: string): Promise<boolean> {
+  put(key: string, obj: any): Promise<boolean> {
     const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     const fbbKey = fbb.createString(key);
-    const fbbObj = fbb.createString(JSON.stringify(obj));
+    const fbbObj = fbb.createString(typeof obj === 'string' ? obj : JSON.stringify(obj));
     fbs.DataPut.startDataPut(fbb);
     fbs.DataPut.addCollection(fbb, fbbColl);
     fbs.DataPut.addKey(fbb, fbbKey);
@@ -76,6 +76,21 @@ export class Collection {
     fbs.DataDel.addCollection(fbb, fbbColl);
     fbs.DataDel.addKey(fbb, fbbKey);
     return sendAsync(fbb, fbs.Any.DataDel, fbs.DataDel.endDataDel(fbb)).then(_baseRes => {
+      return true
+    })
+  }
+
+  increment(key: string, field: string, amount?: number): Promise<boolean> {
+    const fbb = flatbuffers.createBuilder();
+    const fbbColl = fbb.createString(this.name);
+    const fbbKey = fbb.createString(key);
+    const fbbField = fbb.createString(field);
+    fbs.DataIncr.startDataIncr(fbb);
+    fbs.DataIncr.addCollection(fbb, fbbColl);
+    fbs.DataIncr.addKey(fbb, fbbKey);
+    fbs.DataIncr.addField(fbb, fbbField);
+    fbs.DataIncr.addAmount(fbb, amount || 1);
+    return sendAsync(fbb, fbs.Any.DataIncr, fbs.DataIncr.endDataIncr(fbb)).then(_baseRes => {
       return true
     })
   }

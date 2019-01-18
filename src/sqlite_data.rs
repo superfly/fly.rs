@@ -97,6 +97,39 @@ impl DataStore for SqliteDataStore {
     }))
   }
 
+  fn incr(
+    &self,
+    coll: String,
+    key: String,
+    field: String,
+    amount: i32,
+  ) -> Box<Future<Item = (), Error = DataError> + Send> {
+    debug!(
+      "sqlite data store incr coll: {}, key: {}, amount: {}",
+      coll, key, amount
+    );
+    let pool = self.pool.clone();
+    Box::new(future::lazy(move || -> DataResult<()> {
+      let con = pool.get().unwrap(); // TODO: no unwrap
+
+      ensure_coll(&*con, &coll).unwrap();
+
+      let selector = format!("$.{}", field);
+
+      match con.execute(
+        format!(
+          "UPDATE {} SET obj = json_set(obj, '{}', COALESCE(json_extract(obj, '{}'), '0') + ?) WHERE key == ?",
+          coll, selector, selector
+        )
+        .as_str(),
+        &[&amount.to_string(), &key],
+      ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.into()),
+      }
+    }))
+  }
+
   fn drop_coll(&self, coll: String) -> Box<Future<Item = (), Error = DataError> + Send> {
     debug!("sqlite data store drop coll: {}", coll);
     let pool = self.pool.clone();
@@ -118,7 +151,8 @@ fn ensure_coll(conn: &rusqlite::Connection, name: &str) -> rusqlite::Result<usiz
     format!(
       "CREATE TABLE IF NOT EXISTS {} (key TEXT PRIMARY KEY NOT NULL, obj JSON NOT NULL)",
       name
-    ).as_str(),
+    )
+    .as_str(),
     NO_PARAMS,
   )
 }
@@ -131,35 +165,24 @@ mod tests {
     SqliteDataStore::new("testdata.db".to_string())
   }
 
-  fn set_value(
-    store: &SqliteDataStore,
-    coll: &str,
-    key: &str,
-    value: &str,
-    maybe_el: Option<&mut tokio::runtime::Runtime>,
-  ) {
-    let setfut = store.put(coll.to_string(), key.to_string(), value.to_string());
-
-    match maybe_el {
-      Some(el) => el.block_on(setfut).unwrap(),
-      None => tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(setfut)
-        .unwrap(),
-    };
+  fn set_value(store: &SqliteDataStore, coll: &str, key: &str, value: &str) {
+    store
+      .put(coll.to_string(), key.to_string(), value.to_string())
+      .wait()
+      .unwrap();
   }
 
   #[test]
-  fn test_put_get() {
+  fn test_sqlite_data_put_get() {
     let store = setup();
-    let mut el = tokio::runtime::Runtime::new().unwrap();
     let coll = "coll1";
     let key = "test:key";
     let value = r#"{"foo": "bar"}"#;
-    set_value(&store, coll, key, value, Some(&mut el));
+    set_value(&store, coll, key, value);
 
-    let got = el
-      .block_on(store.get(coll.to_string(), key.to_string()))
+    let got = store
+      .get(coll.to_string(), key.to_string())
+      .wait()
       .unwrap()
       .unwrap();
 
@@ -167,13 +190,46 @@ mod tests {
   }
 
   #[test]
-  fn test_del() {
+  fn test_sqlite_data_incr() {
+    let store = setup();
+    let coll = "collincr";
+    let key = "test:key";
+    let value = r#"{"counter": 0, "foo": "bar"}"#;
+    set_value(&store, coll, key, value);
+
+    store
+      .incr(coll.to_string(), key.to_string(), "counter".to_string(), 1)
+      .wait()
+      .unwrap();
+    let got = store
+      .get(coll.to_string(), key.to_string())
+      .wait()
+      .unwrap()
+      .unwrap();
+
+    assert_eq!(got, r#"{"counter":1,"foo":"bar"}"#);
+
+    store
+      .incr(coll.to_string(), key.to_string(), "counter".to_string(), 15)
+      .wait()
+      .unwrap();
+    let got = store
+      .get(coll.to_string(), key.to_string())
+      .wait()
+      .unwrap()
+      .unwrap();
+
+    assert_eq!(got, r#"{"counter":16,"foo":"bar"}"#);
+  }
+
+  #[test]
+  fn test_sqlite_data_del() {
     let store = setup();
     let mut el = tokio::runtime::Runtime::new().unwrap();
     let coll = "coll1";
     let key = "test:key";
     let value = "{}";
-    set_value(&store, coll, key, value, Some(&mut el));
+    set_value(&store, coll, key, value);
 
     let got_res = el
       .block_on(store.get(coll.to_string(), key.to_string()))
