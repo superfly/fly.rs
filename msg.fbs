@@ -1,5 +1,6 @@
 include "src/ops/dns.fbs";
 include "src/ops/cache.fbs";
+include "src/ops/data.fbs";
 include "src/ops/image.fbs";
 include "src/ops/acme.fbs";
 
@@ -33,6 +34,7 @@ union Any {
   DataGet,
   DataGetReady,
   DataDel,
+  DataIncr,
   DataDropCollection,
   DnsQuery,
   DnsRequest,
@@ -191,26 +193,6 @@ table SourceMap {
 
 table SourceMapReady {
   frames: [Frame];
-}
-
-table DataPut {
-  collection: string;
-  key: string;
-  json: string;
-}
-table DataGet {
-  collection: string;
-  key: string;
-}
-table DataGetReady {
-  json: string;
-}
-table DataDel {
-  collection: string;
-  key: string;
-}
-table DataDropCollection {
-  collection: string;
 }
 
 enum EventType: byte {
