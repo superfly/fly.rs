@@ -13,16 +13,14 @@ extern crate flatbuffers;
 
 #[macro_use]
 extern crate log;
-extern crate env_logger;
 extern crate fly;
 extern crate libfly;
 
+use fly::logging;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
 use fly::{dns_server::DnsServer, fixed_runtime_selector::FixedRuntimeSelector};
 use fly::module_resolver::{ ModuleResolver, JsonSecretsResolver, LocalDiskModuleResolver };
-
-use env_logger::Env;
 
 extern crate clap;
 
@@ -31,8 +29,8 @@ use std::path::{ PathBuf };
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
 fn main() {
-  let env = Env::default().filter_or("LOG_LEVEL", "info");
-  env_logger::init_from_env(env);
+  let (_guard, app_logger) = logging::configure();
+
   debug!("V8 version: {}", libfly::version());
 
   let matches = clap::App::new("fly-dns")
@@ -97,7 +95,13 @@ fn main() {
   info!("Module resolvers length {}", module_resolvers.len().to_string());
 
   let entry_file = matches.value_of("input").unwrap();
-  let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap(), Some(module_resolvers));
+  let mut runtime = Runtime::new(
+    None,
+    None,
+    &SETTINGS.read().unwrap(),
+    Some(module_resolvers),
+    &app_logger,
+  );
 
   debug!("Loading dev tools");
   runtime.eval_file("v8env/dist/dev-tools.js");

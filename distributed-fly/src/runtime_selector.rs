@@ -5,6 +5,7 @@ use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use super::APP_LOGGER;
 use crate::libs::fetch_libs;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
@@ -94,11 +95,13 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                         })),
                     }
                 };
+
                 let mut rt = Runtime::new(
                     Some(rel.app_id.to_string()),
                     Some(rel.version.to_string()),
                     &settings,
                     Some(vec![]),
+                    &APP_LOGGER,
                 );
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(

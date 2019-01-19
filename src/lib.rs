@@ -27,6 +27,10 @@ pub fn get_next_stream_id() -> u32 {
     NEXT_EVENT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as u32
 }
 
+pub fn build_number() -> &'static str {
+  env!("GIT_HASH")
+}
+
 pub mod errors;
 pub mod msg;
 pub mod ops;
@@ -64,3 +68,5 @@ mod sqlite_cache;
 mod sqlite_data;
 
 mod redis_pool;
+
+pub mod logging;

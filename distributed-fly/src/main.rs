@@ -26,8 +26,6 @@ use hyper::Server;
 
 use tokio::net::{TcpListener, TcpStream};
 
-use env_logger::Env;
-
 // use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 mod release;
@@ -49,13 +47,17 @@ use tokio_openssl::SslAcceptorExt;
 extern crate prometheus;
 
 mod cert;
+mod libs;
 mod metrics;
 mod proxy;
-mod libs;
 use crate::metrics::*;
 use fly::metrics::*;
 
 use r2d2_redis::RedisConnectionManager;
+use slog::{o, Drain};
+use slog_json;
+use slog_scope;
+use slog_stream;
 
 lazy_static! {
     static ref SELECTOR: DistributedRuntimeSelector = DistributedRuntimeSelector::new();
@@ -67,11 +69,18 @@ lazy_static! {
                 .unwrap()
         )
         .unwrap();
+    pub static ref APP_LOGGER: slog::Logger = slog::Logger::root(
+        std::sync::Mutex::new(slog_json::Json::new(std::io::stdout()).build()).map(slog::Fuse),
+        o!("source" => "app"),
+    );
 }
 
 fn main() {
-    let env = Env::default().filter_or("LOG_LEVEL", "info");
-    env_logger::init_from_env(env);
+    let _log_guard = slog_scope::set_global_logger(slog::Logger::root(
+        std::sync::Mutex::new(slog_json::Json::new(std::io::stdout()).build()).map(slog::Fuse),
+        o!("source" => "app"),
+    ));
+    slog_stdlog::init().unwrap();
 
     let _guard = {
         if let Some(ref sentry_dsn) = GLOBAL_SETTINGS.read().unwrap().sentry_dsn {

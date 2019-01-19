@@ -55,6 +55,7 @@ use flatbuffers::FlatBufferBuilder;
 use crate::errors::FlyError;
 
 extern crate log;
+use slog::{slog_debug, slog_error, slog_info, slog_o, slog_trace, slog_warn, Logger};
 
 extern crate rand;
 use self::rand::{thread_rng, Rng};
@@ -150,6 +151,7 @@ pub struct Runtime {
   pub ptr: JsRuntime,
   pub name: String,
   pub version: String,
+  pub app_logger: Logger,
   pub event_loop: Mutex<current_thread::Handle>,
   timers: Mutex<HashMap<u32, oneshot::Sender<()>>>,
   pub responses: Mutex<HashMap<u32, oneshot::Sender<JsHttpResponse>>>,
@@ -218,11 +220,14 @@ impl Runtime {
     version: Option<String>,
     settings: &Settings,
     module_resolvers: Option<Vec<Box<ModuleResolver>>>,
+    app_logger: &Logger,
   ) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
     let rt_name = name.unwrap_or("v8".to_string());
     let rt_version = version.unwrap_or("0".to_string());
+    let app_logger = app_logger
+      .new(slog_o!("app_name" => rt_name.to_owned(), "app_version" => rt_version.to_owned()));
     let (rthandle, txready, rxquit) = init_event_loop(format!("{}-{}", rt_name, rt_version));
     let rt_module_resolvers =
       module_resolvers.unwrap_or(vec![
@@ -233,6 +238,7 @@ impl Runtime {
       ptr: JsRuntime(ptr::null() as *const js_runtime),
       name: rt_name,
       version: rt_version,
+      app_logger: app_logger,
       event_loop: Mutex::new(rthandle.clone()),
       ready_ch: Some(txready),
       quit_ch: Some(rxquit),
@@ -643,16 +649,26 @@ pub unsafe extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *co
   let rt = Runtime::from_raw(raw);
   let msg = CStr::from_ptr(msg).to_string_lossy().into_owned();
 
-  let lvl = match lvl {
-    0 => log::Level::Error,
-    1 => log::Level::Warn,
-    2 => log::Level::Info,
-    3 => log::Level::Debug,
-    4 => log::Level::Trace,
-    _ => log::Level::Info,
-  };
+  match lvl {
+    // print to STDOUT, no logging
+    0 => println!("{}", msg),
 
-  log!(lvl, "console/{}: {}", &rt.name, &msg);
+    // runtime messages from logger
+    1 => error!("{}", msg),
+    2 => warn!("{}", msg),
+    3 => info!("{}", msg),
+    4 => debug!("{}", msg),
+    5 => trace!("{}", msg),
+
+    // app messages from console
+    11 => slog_error!(rt.app_logger, "{}", msg),
+    12 => slog_warn!(rt.app_logger, "{}", msg),
+    13 => slog_info!(rt.app_logger, "{}", msg),
+    14 => slog_debug!(rt.app_logger, "{}", msg),
+    15 => slog_trace!(rt.app_logger, "{}", msg),
+
+    _ => info!("{}", msg),
+  };
 }
 
 pub unsafe extern "C" fn resolve_callback(

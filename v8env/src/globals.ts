@@ -24,6 +24,7 @@ import { installDevTools } from "./dev-tools";
 import * as streams from "./streams";
 import { AppRelease } from "./app";
 import { runtime, Runtime } from "./runtime";
+import { Logger } from "./logging";
 
 declare global {
   interface Window {
@@ -96,7 +97,8 @@ window.Request = FlyRequest;
 
 window.addEventListener = bridge.addEventListener;
 
-window.console = new Console(libfly.print);
+const logger = new Logger(libfly.print);
+window.console = new Console(logger);
 window.TextEncoder = textEncoding.TextEncoder;
 window.TextDecoder = textEncoding.TextDecoder;
 window.URL = url.URL;
