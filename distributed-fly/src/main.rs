@@ -70,7 +70,13 @@ lazy_static! {
         )
         .unwrap();
     pub static ref APP_LOGGER: slog::Logger = slog::Logger::root(
-        std::sync::Mutex::new(slog_json::Json::new(std::io::stdout()).build()).map(slog::Fuse),
+        std::sync::Mutex::new(
+            slog_json::Json::new(std::io::BufWriter::new(
+                std::net::TcpStream::connect("localhost:9514").unwrap()
+            ))
+            .build()
+        )
+        .map(slog::Fuse),
         o!("source" => "app"),
     );
 }
