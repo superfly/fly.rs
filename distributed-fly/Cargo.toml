@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 fly = { path="../" }
-env_logger = "*"
 log = "*"
 lazy_static = "1.1"
 tokio = "0.1"
