@@ -2,6 +2,7 @@
 import * as domTypes from "./dom_types";
 import * as blob from "./blob";
 import { DomIterableMixin } from "./mixins/dom_iterable";
+import { stringify } from "querystringify"
 
 const dataSymbol = Symbol("data");
 
@@ -96,6 +97,14 @@ class FormDataBase {
     this[dataSymbol].push([name, String(value)]);
     // }
   }
+
+  public toString(): string {
+    const output: string[] = []
+    this[dataSymbol].forEach(([name, value]) => {
+      output.push(stringify({ [`${name}`]: value }))
+    })
+    return output.join("&")
+  }
 }
 
 // tslint:disable-next-line:variable-name
@@ -103,4 +112,4 @@ export class FlyFormData extends DomIterableMixin<
   string,
   domTypes.FormDataEntryValue,
   typeof FormDataBase
-  >(FormDataBase, dataSymbol) { };
+>(FormDataBase, dataSymbol) { };

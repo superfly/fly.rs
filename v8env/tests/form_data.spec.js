@@ -56,7 +56,7 @@ describe('FormData', () => {
     expect(typeof fd.keys()[Symbol.iterator]).to.equal('function')
 
     let keys = []
-    for(let key of fd.keys()) {
+    for (let key of fd.keys()) {
       keys.push(key)
     }
     expect(keys).to.eql(['param1', 'param2'])
@@ -73,7 +73,7 @@ describe('FormData', () => {
     expect(typeof fd.values()[Symbol.iterator]).to.equal('function')
 
     let values = []
-    for(let val of fd.values()) {
+    for (let val of fd.values()) {
       values.push(val)
     }
     expect(values).to.eql(['value1234', 'anothervalue', 'val431'])
@@ -90,12 +90,14 @@ describe('FormData', () => {
     expect(typeof fd.entries()[Symbol.iterator]).to.equal('function')
 
     let entries = []
-    for(let entry of fd.entries()) {
+    for (let entry of fd.entries()) {
       entries.push(entry)
     }
+    console.log("ENTRIES", entries)
     expect(entries).to.eql([
-      ['param1', ['value1234', 'anothervalue']],
-      ['param2', ['val431']]
+      ['param1', 'value1234'],
+      ['param1', 'anothervalue'],
+      ['param2', 'val431'],
     ])
   })
 

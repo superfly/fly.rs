@@ -25,6 +25,10 @@ import * as streams from "./streams";
 import { AppRelease } from "./app";
 import { runtime, Runtime } from "./runtime";
 
+import * as domTypes from './dom_types';
+import * as formData from "./form_data";
+import * as headers from './headers';
+
 declare global {
   interface Window {
     console: Console;
@@ -101,6 +105,12 @@ window.TextEncoder = textEncoding.TextEncoder;
 window.TextDecoder = textEncoding.TextDecoder;
 window.URL = url.URL;
 window.URLSearchParams = url.URLSearchParams;
+
+window.Headers = headers.FlyHeaders as domTypes.HeadersConstructor;
+export type Headers = domTypes.Headers;
+
+window.FormData = formData.FlyFormData as domTypes.FormDataConstructor;
+export type FormData = domTypes.FormData;
 
 window.fetch = fetch_.fetch;
 window.resolv = resolv_.resolv;
