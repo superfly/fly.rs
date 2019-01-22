@@ -3,7 +3,6 @@ extern crate log;
 
 extern crate clap;
 
-extern crate env_logger;
 extern crate fly;
 extern crate tokio;
 
@@ -21,17 +20,14 @@ use tokio::prelude::*;
 
 use fly::fixed_runtime_selector::FixedRuntimeSelector;
 use fly::http_server::serve_http;
+use fly::logging;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
-
-use env_logger::Env;
 
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
 fn main() {
-    let env = Env::default().filter_or("LOG_LEVEL", "info");
-
-    env_logger::init_from_env(env);
+    let (_guard, app_logger) = logging::configure();
 
     let matches = clap::App::new("fly-http")
         .version("0.0.1-alpha")
@@ -59,7 +55,7 @@ fn main() {
     info!("V8 version: {}", libfly::version());
 
     let entry_file = matches.value_of("input").unwrap();
-    let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap(), None);
+    let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap(), None, &app_logger);
 
     debug!("Loading dev tools");
     runtime.eval_file("v8env/dist/dev-tools.js");

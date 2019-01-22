@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 fly = { path="../" }
-env_logger = "*"
 log = "*"
 lazy_static = "1.1"
 tokio = "0.1"
@@ -30,3 +29,10 @@ sha2 = "0.8"
 bytes = "*"
 prometheus = "0.4"
 sentry = "0.12"
+slog = {version="2.4.1", features = ["max_level_debug", "release_max_level_info"] }
+slog-async = "2.3.0"
+slog-envlogger = "2.1.0"
+slog-json = "2.3.0"
+slog-scope = "4.1.1"
+slog-stdlog = "3.0.2"
+chrono = "0.4.6"

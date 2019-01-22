@@ -2,11 +2,10 @@ extern crate fly;
 
 #[macro_use]
 extern crate log;
-extern crate env_logger;
-use env_logger::Env;
 
 extern crate libfly;
 
+use fly::logging;
 use fly::runtime::Runtime;
 use fly::settings::SETTINGS;
 use std::env;
@@ -31,10 +30,9 @@ const RUN_SOURCE: &'static [u8] = include_bytes!("run.js");
 const FLY_TESTING_SOURCE: &'static [u8] = include_bytes!("../../../v8env/dist/testing.js");
 
 fn main() {
-  let env = Env::default().filter_or("LOG_LEVEL", "info");
-  env_logger::init_from_env(env);
+  let (_guard, app_logger) = logging::configure();
 
-  let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap(), None);
+  let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap(), None, &app_logger);
   rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap());
   rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap());
   rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap());
