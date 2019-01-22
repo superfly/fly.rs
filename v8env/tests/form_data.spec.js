@@ -93,7 +93,6 @@ describe('FormData', () => {
     for (let entry of fd.entries()) {
       entries.push(entry)
     }
-    console.log("ENTRIES", entries)
     expect(entries).to.eql([
       ['param1', 'value1234'],
       ['param1', 'anothervalue'],
@@ -119,7 +118,8 @@ describe('FormData', () => {
       const fd = new FormData()
       fd.append('param1', 'value1')
       fd.append('param2', 'value2')
-      expect(fd.toString()).to.equal('param1=value1&param2=value2')
+      fd.append('param2', 'value3')
+      expect(fd.toString()).to.equal('param1=value1&param2=value2&param2=value3')
     })
 
     it('escapes special symbols', () => {

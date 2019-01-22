@@ -2,7 +2,7 @@
 import * as domTypes from "./dom_types";
 import * as blob from "./blob";
 import { DomIterableMixin } from "./mixins/dom_iterable";
-import { stringify } from "querystringify"
+import { stringify } from "querystring"
 
 const dataSymbol = Symbol("data");
 
@@ -99,11 +99,16 @@ class FormDataBase {
   }
 
   public toString(): string {
-    const output: string[] = []
-    this[dataSymbol].forEach(([name, value]) => {
-      output.push(stringify({ [`${name}`]: value }))
-    })
-    return output.join("&")
+    return stringify(this[dataSymbol].reduce((acc, [name, value]) => {
+      let found = acc[name];
+      if (typeof found === 'undefined')
+        acc[name] = value
+      else if (Array.isArray(found))
+        acc[name].push(value)
+      else
+        acc[name] = [found, value]
+      return acc
+    }, {}))
   }
 }
 

@@ -126,7 +126,7 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
   else if (typeof options === 'object' && typeof options.ttl === 'number')
     fbs.CacheSet.addTtl(fbb, options.ttl)
 
-  if (typeof meta != 'undefined')
+  if (typeof meta !== 'undefined')
     fbs.CacheSet.addMeta(fbb, meta);
   fbs.CacheSet.addTags(fbb, tags);
 
@@ -266,6 +266,6 @@ const cache = {
   del,
   global,
   setTags,
-  purgeTag,
+  purgeTag
 }
 export default cache

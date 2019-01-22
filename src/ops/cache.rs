@@ -76,15 +76,14 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
     None => None,
   };
 
-  let fut = rt.cache_store.set(
-    key,
-    Box::new(recver),
-    CacheSetOptions {
-      ttl,
-      tags,
-      meta: None,
-    },
-  );
+  let meta = match msg.meta() {
+    Some(m) => Some(m.to_string()),
+    None => None,
+  };
+
+  let fut = rt
+    .cache_store
+    .set(key, Box::new(recver), CacheSetOptions { ttl, tags, meta });
 
   rt.spawn(
     fut
@@ -126,10 +125,19 @@ pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
       .map_err(|e| format!("cache error: {:?}", e).into())
       .and_then(move |maybe_entry| {
         let builder = &mut FlatBufferBuilder::new();
+        let meta = if let Some(ref entry) = maybe_entry {
+          match entry.meta {
+            Some(ref m) => Some(builder.create_string(m.as_str())),
+            None => None,
+          }
+        } else {
+          None
+        };
         let msg = msg::CacheGetReady::create(
           builder,
           &msg::CacheGetReadyArgs {
             id: stream_id,
+            meta,
             stream: maybe_entry.is_some(),
             ..Default::default()
           },

@@ -18,6 +18,7 @@ import * as url from './url';
 import { FlyRequest } from "./request";
 import flyData from './fly/data';
 import flyCache from './fly/cache';
+import flyResponseCache from './fly/cache/response';
 import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
@@ -63,6 +64,7 @@ declare global {
 
   interface Fly {
     cache: typeof flyCache
+    responseCache: typeof flyResponseCache
     data: typeof flyData
     http: typeof flyHttp
     Image: typeof Image
@@ -120,6 +122,7 @@ window.loadModule = loadModule;
 
 window.fly = {
   cache: flyCache,
+  responseCache: flyResponseCache,
   data: flyData,
   http: flyHttp,
   Image: Image,

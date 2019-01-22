@@ -95,6 +95,8 @@ export async function set(key: string, resp: Response, options?: ResponseCacheSe
   } else if (typeof options === "object") {
     tags = options.tags;
     skipHeaderOption = [...skipHeaderOption, ...(options.skipCacheHeaders || []).map((headerKey) => headerKey.toLowerCase())];
+  } else {
+    options = {}
   }
 
   const meta = {
