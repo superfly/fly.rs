@@ -57,7 +57,6 @@ use r2d2_redis::RedisConnectionManager;
 use slog::{o, Drain};
 use slog_json;
 use slog_scope;
-use slog_stream;
 
 lazy_static! {
     static ref SELECTOR: DistributedRuntimeSelector = DistributedRuntimeSelector::new();
@@ -70,18 +69,42 @@ lazy_static! {
         )
         .unwrap();
     pub static ref APP_LOGGER: slog::Logger = slog::Logger::root(
-    slog_async::Async::default(
-      slog_json::Json::default(std::net::TcpStream::connect("localhost:9514").unwrap()).fuse(),
-    )
-    .fuse(),
-    o!("source" => "app"),
-  );
+        slog_async::Async::default(
+            slog_json::Json::new(std::net::TcpStream::connect("localhost:9514").unwrap())
+                .build()
+                .fuse(),
+        )
+        .fuse(),
+        o!(
+            "source" => "app",
+            "message" => slog::PushFnValue(move |record : &slog::Record, ser| {
+                ser.emit(record.msg())
+            }),
+            "level" => slog::FnValue(move |rinfo : &slog::Record| {
+                numeric_level(rinfo.level())
+            }),
+            "ts" => slog::PushFnValue(move |_ : &slog::Record, ser| {
+                ser.emit(chrono::Local::now().to_rfc3339())
+            }),
+        )
+    );
 }
 
 fn main() {
     let _log_guard = slog_scope::set_global_logger(slog::Logger::root(
-        std::sync::Mutex::new(slog_json::Json::new(std::io::stdout()).build()).map(slog::Fuse),
-        o!("source" => "app"),
+        slog_async::Async::default(slog_json::Json::new(std::io::stdout()).build().fuse()).fuse(),
+        o!(
+            "source" => "rt",
+            "message" => slog::PushFnValue(move |record : &slog::Record, ser| {
+                ser.emit(record.msg())
+            }),
+            "level" => slog::FnValue(move |rinfo : &slog::Record| {
+                numeric_level(rinfo.level())
+            }),
+            "ts" => slog::PushFnValue(move |_ : &slog::Record, ser| {
+                ser.emit(chrono::Local::now().to_rfc3339())
+            }),
+        ),
     ));
     slog_stdlog::init().unwrap();
 
@@ -327,4 +350,15 @@ fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
             };
             Ok(())
         })
+}
+
+fn numeric_level(level: slog::Level) -> u8 {
+    match level {
+        slog::Level::Critical => 2,
+        slog::Level::Error => 3,
+        slog::Level::Warning => 4,
+        slog::Level::Info => 6,
+        slog::Level::Debug => 7,
+        slog::Level::Trace => 7,
+    }
 }
