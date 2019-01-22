@@ -1,6 +1,6 @@
 /** @module fly
  */
-import { parse as queryParse } from 'query-string'
+import { parse as queryParse } from 'querystring'
 import { Blob, FormData, Body, ReadableStream, ReadableStreamReader, BodyInit } from './dom_types';
 import { FlyBlob } from './blob';
 import { FlyFormData } from './form_data';
