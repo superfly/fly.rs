@@ -104,6 +104,7 @@ export default [
       typescriptPlugin({ useTsconfigDeclarationDir: true }),
       resolvePlugin({
         jsnext: true,
+        preferBuiltins: false,
       }),
       commonjsPlugin({
         include: './node_modules/**',
@@ -128,7 +129,8 @@ export default [
     plugins: [
       // builtins(),
       resolvePlugin({
-        browser: true
+        browser: true,
+        preferBuiltins: false,
         // jsnext: true,
         // module: true,
       }),
@@ -180,7 +182,8 @@ export default [
 
       resolvePlugin({
         jsnext: true,
-        main: true
+        main: true,
+        preferBuiltins: false,
         // browser: true
       }),
 

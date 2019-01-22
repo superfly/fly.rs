@@ -102,7 +102,7 @@ const data = {
   },
   dropCollection(name: string): Promise<boolean> {
     const fbb = flatbuffers.createBuilder();
-    const fbbColl = fbb.createString(this.name);
+    const fbbColl = fbb.createString(name);
     fbs.DataDropCollection.startDataDropCollection(fbb);
     fbs.DataDropCollection.addCollection(fbb, fbbColl);
     return sendAsync(fbb, fbs.Any.DataDropCollection, fbs.DataDropCollection.endDataDropCollection(fbb)).then(_baseRes => {
