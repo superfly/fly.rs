@@ -159,7 +159,7 @@ impl CacheStore for SqliteCacheStore {
             let mut stmt = conn
               .prepare(
                 "INSERT INTO cache(key, value, meta, expires_at)
-      VALUES (?, ?, datetime('now', ?))
+      VALUES (?, ?, ?, datetime('now', ?))
       ON CONFLICT (key) DO
         UPDATE SET value=excluded.value,meta=excluded.meta,expires_at=excluded.expires_at
     ",
