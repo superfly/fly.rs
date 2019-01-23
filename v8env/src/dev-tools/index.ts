@@ -1,6 +1,6 @@
 import { Compiler } from "./compiler";
-import { ConfigOptions, DevTools } from "../dev-tools";
-
+import { run, globals } from "./testing";
+import { DevTools, ConfigOptions } from "./api";
 
 class FlyDevTools implements DevTools {
   private compiler: Compiler;
@@ -13,14 +13,22 @@ class FlyDevTools implements DevTools {
   }
 
   run(path: string) {
-    console.log(`RUN!`, { path });
     this.compiler.run(path);
+  }
+
+  runTests() {
+    run();
   }
 }
 
 /**
  * Install the fly development tools into the current runtime.
  */
-export default function init(config: ConfigOptions): DevTools {
-  return new FlyDevTools(config);
+export default function init(target: object, config: ConfigOptions) {
+  const devTools = new FlyDevTools(config);
+
+  Object.assign(target, {
+    dev: devTools,
+    ...globals
+  });
 }
