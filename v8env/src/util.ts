@@ -101,3 +101,8 @@ export function containsOnlyASCII(str: string): boolean {
     }
     return /^[\x00-\x7F]*$/.test(str);
 }
+
+// @internal
+export function isError(err: any): err is Error {
+    return err instanceof Error || (err && typeof err.message === 'string');
+}
