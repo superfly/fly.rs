@@ -1,7 +1,7 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::Runtime;
 use libfly::*;
 
 use crate::js::*;
@@ -13,13 +13,13 @@ use futures::{sync::mpsc, Future, Stream};
 
 use trust_dns as dns;
 
-pub fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_add_event_ln(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let msg = base.msg_as_add_event_listener().unwrap();
+    let ptr = rt.ptr;
 
     match msg.event() {
         msg::EventType::Fetch => {
             let (tx, rx) = mpsc::unbounded::<JsHttpRequest>();
-            let rt = ptr.to_runtime();
             rt.spawn(
                 rx.map_err(|_| error!("error event receiving http request"))
                     .for_each(move |req| {
@@ -92,7 +92,6 @@ pub fn op_add_event_ln(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<O
         }
         msg::EventType::Resolv => {
             let (tx, rx) = mpsc::unbounded::<JsDnsRequest>();
-            let rt = ptr.to_runtime();
             rt.spawn(
                 rx.map_err(|_| error!("error event receiving http request"))
                     .for_each(move |req| {

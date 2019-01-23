@@ -1,7 +1,7 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::Runtime;
 use libfly::*;
 
 use crate::utils::*;
@@ -10,8 +10,7 @@ use crate::module_resolver::RefererInfo;
 
 use futures::future;
 
-pub fn op_load_module(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
-    let rt = _ptr.to_runtime();
+pub fn op_load_module(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_load_module().unwrap();
     let specifier_url = msg.specifier_url().unwrap().to_string();

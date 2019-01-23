@@ -1,5 +1,5 @@
 use crate::msg;
-use crate::runtime::JsRuntime;
+use crate::runtime::Runtime;
 use libfly::*;
 
 use crate::ops;
@@ -10,13 +10,13 @@ lazy_static! {
 }
 
 pub trait MessageHandler {
-    fn handle_msg(&self, ptr: JsRuntime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
+    fn handle_msg(&self, rt: &mut Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 }
 
 pub struct DefaultMessageHandler {}
 
 impl MessageHandler for DefaultMessageHandler {
-    fn handle_msg(&self, ptr: JsRuntime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op> {
+    fn handle_msg(&self, rt: &mut Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op> {
         let msg_type = base.msg_type();
         debug!("MSG TYPE: {:?}", msg_type);
         let handler: Handler = match msg_type {
@@ -50,6 +50,6 @@ impl MessageHandler for DefaultMessageHandler {
             _ => unimplemented!(),
         };
 
-        handler(ptr, &base, raw_buf)
+        handler(rt, base, raw_buf)
     }
 }

@@ -10,7 +10,7 @@ use self::dns_resolver::config::ResolverConfig;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::runtime::{JsRuntime, EVENT_LOOP};
+use crate::runtime::{Runtime, EVENT_LOOP};
 use crate::utils::*;
 use libfly::*;
 
@@ -274,7 +274,7 @@ fn dns_query(
   )
 }
 
-pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_dns_query(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   debug!("handle dns");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
@@ -338,7 +338,7 @@ pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
   }
 }
 
-pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_dns_response().unwrap();
   let req_id = msg.id();
 
@@ -490,8 +490,6 @@ pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<O
   } else {
     vec![]
   };
-
-  let rt = ptr.to_runtime();
 
   let mut responses = rt.dns_responses.lock().unwrap();
   match responses.remove(&req_id) {

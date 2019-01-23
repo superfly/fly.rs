@@ -4,7 +4,7 @@ use libfly::*;
 
 use crate::errors::FlyError;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::{JsRuntime, Runtime};
 
 use futures::{
   future,
@@ -24,7 +24,7 @@ pub type Buf = Option<Box<[u8]>>;
 // JS promises in Fly map onto a specific Future
 // which yields either a FlyError or a byte array.
 pub type Op = Future<Item = Buf, Error = FlyError> + Send;
-pub type Handler = fn(JsRuntime, &msg::Base, fly_buf) -> Box<Op>;
+pub type Handler = fn(&mut Runtime, &msg::Base, fly_buf) -> Box<Op>;
 
 pub fn take_last_n(str: &str, n: usize) -> Option<&str> {
   if str.len() >= n {

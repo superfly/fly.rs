@@ -1,7 +1,7 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::Runtime;
 use libfly::*;
 
 use crate::utils::*;
@@ -19,7 +19,7 @@ use sha2::Sha256;
 use futures::future;
 use std::slice;
 
-pub fn op_crypto_random_values(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_crypto_random_values(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_crypto_random_values().unwrap();
 
@@ -51,7 +51,7 @@ pub fn op_crypto_random_values(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf)
     ))
 }
 
-pub fn op_crypto_digest(_ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+pub fn op_crypto_digest(_rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_crypto_digest().unwrap();
 

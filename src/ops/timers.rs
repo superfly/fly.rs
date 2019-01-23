@@ -1,7 +1,7 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::{JsRuntime, Runtime};
 use libfly::*;
 
 use crate::utils::*;
@@ -11,22 +11,21 @@ use std::time::{Duration, Instant};
 
 use tokio::timer::Delay;
 
-pub fn op_timer_start(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_timer_start(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     debug!("op_timer_start");
     let msg = base.msg_as_timer_start().unwrap();
     let cmd_id = base.cmd_id();
     let timer_id = msg.id();
     let delay = msg.delay();
 
-    let rt = ptr.to_runtime();
-
     let timers = &rt.timers;
+
+    let ptr = rt.ptr;
 
     let fut = {
         let (delay_task, cancel_delay) = set_timeout(
             move || {
                 remove_timer(ptr, timer_id);
-                // send_timer_ready(ptr, timer_id, true);
             },
             delay,
         );
@@ -62,10 +61,10 @@ fn remove_timer(ptr: JsRuntime, timer_id: u32) {
     rt.timers.lock().unwrap().remove(&timer_id);
 }
 
-pub fn op_timer_clear(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_timer_clear(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let msg = base.msg_as_timer_clear().unwrap();
     debug!("op_timer_clear");
-    remove_timer(ptr, msg.id());
+    remove_timer(rt.ptr, msg.id());
     ok_future(None)
 }
 

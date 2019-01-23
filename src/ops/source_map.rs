@@ -1,7 +1,7 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::Runtime;
 use libfly::*;
 
 use crate::utils::*;
@@ -56,7 +56,7 @@ lazy_static! {
     };
 }
 
-pub fn op_source_map(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_source_map(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_source_map().unwrap();
 

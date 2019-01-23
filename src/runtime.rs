@@ -445,10 +445,13 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
   let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };
   let base = msg::get_root_as_base(bytes);
   let ptr = JsRuntime(raw);
+  let rt = ptr.to_runtime();
+
   let msg_type = base.msg_type();
   let cmd_id = base.cmd_id();
+
   let fut = DEFAULT_MESSAGE_HANDLER
-    .handle_msg(ptr, &base, raw_buf)
+    .handle_msg(rt, &base, raw_buf)
     .or_else(move |err| {
       error!("error in {:?}: {:?}", msg_type, err);
       Ok(build_error(cmd_id, err))

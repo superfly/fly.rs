@@ -1,18 +1,16 @@
 use crate::msg;
 
-use crate::runtime::JsRuntime;
+use crate::runtime::Runtime;
 use libfly::*;
 
 use crate::utils::*;
 
 use std::slice;
 
-pub fn op_stream_chunk(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+pub fn op_stream_chunk(rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     debug!("handle stream chunk {:?}", raw);
     let msg = base.msg_as_stream_chunk().unwrap();
     let stream_id = msg.id();
-
-    let rt = ptr.to_runtime();
 
     let mut streams = rt.streams.lock().unwrap();
     if raw.data_len > 0 {
