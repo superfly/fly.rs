@@ -1,7 +1,7 @@
 const cache = fly.cache
 
 describe("@fly/cache#tags", () => {
-    it("purges tags", async () => {
+    it.skip("purges tags", async () => {
         const k = `cache-test${Math.random()}`
         const v = `cache-value-woo! ${Math.random()}`
 
@@ -17,7 +17,7 @@ describe("@fly/cache#tags", () => {
         expect(r).to.eq(null)
     })
 
-    it("ignores stale tags", async () => {
+    it.skip("ignores stale tags", async () => {
         const k = `cache-test${Math.random()}`
         let v = `cache-value-woo! ${Math.random()}`
         const s = `cache-test${Math.random()}`
