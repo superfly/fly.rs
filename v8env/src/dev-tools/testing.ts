@@ -1,7 +1,7 @@
 import { stringifyTypeName } from "src/util/format";
 import { filterStackTrace } from "src/source_maps";
 import { isError } from "src/util";
-import * as otherGlobals from "./testing/globals";
+import { expect } from "chai/lib/chai.js";
 
 export type DoneFn = (err?: any) => void;
 export type TestFn = (done?: DoneFn) => void | Promise<void>;
@@ -15,7 +15,7 @@ interface TestDefinition {
   fn: TestFn;
   skip?: boolean;
   only?: boolean;
-  group: GroupDefinition;
+  parent: GroupDefinition;
 }
 
 interface GroupDefinition {
@@ -30,15 +30,15 @@ interface GroupDefinition {
 }
 
 export function test(name: string, fn: TestFn) {
-  currentGroup().tests.push({ name, fn, group: currentGroup() });
+  currentGroup().tests.push({ name, fn, parent: currentGroup() });
 }
 
 test.skip = (name: string, fn: TestFn) => {
-  currentGroup().tests.push({ name, fn, skip: true, group: currentGroup() });
+  currentGroup().tests.push({ name, fn, skip: true, parent: currentGroup() });
 }
 
 test.only = (name: string, fn: TestFn) => {
-  currentGroup().tests.push({ name, fn, only: true, group: currentGroup() });
+  currentGroup().tests.push({ name, fn, only: true, parent: currentGroup() });
 }
 
 function beforeAll(fn: HookFn) {
@@ -76,7 +76,7 @@ export const globals = {
   afterEach,
   before: beforeAll,
   after: afterAll,
-  ...otherGlobals
+  expect,
 };
 
 export async function run() {
@@ -84,7 +84,7 @@ export async function run() {
 
   await runner.run();
 
-  const { total, passed, failed, skipped } = runner.stats;
+  const { passed, failed, skipped } = runner.stats;
 
   printBlankLines(2);
 
@@ -118,7 +118,6 @@ export class Runner {
 
   public get stats() {
     return {
-      total: this.passed + this.failed + this.skipped,
       passed: this.passed,
       failed: this.failed,
       skipped: this.skipped,
@@ -126,10 +125,11 @@ export class Runner {
   }
 
   public async run() {
-    await this.runGroup(this.root, 0);
+    await this.runGroup(this.root);
   }
 
-  async runGroup(group: GroupDefinition, depth: number) {
+  async runGroup(group: GroupDefinition) {
+    const depth = path(group).length;
     print(depth, color(Style.groupName, group.name));
 
     for (const hook of group.beforeAll) {
@@ -140,7 +140,7 @@ export class Runner {
         await runFn(hook);
       }
 
-      await this.runTest(test, depth + 1);
+      await this.runTest(test);
 
       for (const hook of group.afterEach) {
         await runFn(hook);
@@ -151,7 +151,7 @@ export class Runner {
         await runFn(hook);
       }
 
-      await this.runGroup(test, depth + 1);
+      await this.runGroup(test);
 
       for (const hook of group.afterEach) {
         await runFn(hook);
@@ -162,7 +162,9 @@ export class Runner {
     }
   }
 
-  async runTest(test: TestDefinition, depth: number) {
+  async runTest(test: TestDefinition) {
+    const depth = path(test).length;
+
     if (test.skip) {
       this.skipped++;
       print(depth, `${color(Style.yellow, "○")} ${color(Style.dim, test.name)}`);
@@ -308,17 +310,9 @@ function printBlankLines(count = 1) {
   print(0, "\n".repeat(count - 1));
 }
 
-// function fullTestName(test: TestDefinition) {
-//   test.
-// }
-
-// function parents(testOrGroup: {group?: GroupDefinition}): GroupDefinition[] {
-//   function collect(current: { group?: GroupDefinition }, parents: GroupDefinition[]) {
-//     const path = [current];
-//     if (current.group) {
-//       return collect(current.group, [current.group, ])
-//     }
-//   }
-
-//   return collect(testOrGroup);
-// }
+function path(testOrGroup: TestDefinition | GroupDefinition): Array<TestDefinition | GroupDefinition> {
+  if (testOrGroup.parent) {
+    return [...path(testOrGroup.parent), testOrGroup];
+  }
+  return [testOrGroup];
+}
