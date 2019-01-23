@@ -90,6 +90,11 @@ function runtimeInfo(path) {
   }
 }
 
+const chaiPath = path.resolve(
+  __dirname,
+  "node_modules/chai/lib/chai.js"
+);
+
 export default [
   {
     input: 'src/index.ts',
@@ -171,7 +176,10 @@ export default [
             "ScriptSnapshot",
             "ScriptTarget",
             "version"
-          ]
+          ],
+          [chaiPath]: [
+            "expect",
+          ],
         }
       }),
 

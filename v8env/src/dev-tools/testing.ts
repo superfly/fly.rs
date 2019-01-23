@@ -1,11 +1,10 @@
 import { stringifyTypeName } from "src/util/format";
 import { filterStackTrace } from "src/source_maps";
 import { isError } from "src/util";
+import * as otherGlobals from "./testing/globals";
 
 export type DoneFn = (err?: any) => void;
 export type TestFn = (done?: DoneFn) => void | Promise<void>;
-
-declare var chai: any;
 
 export type ScopeFn = () => void;
 
@@ -77,7 +76,7 @@ export const globals = {
   afterEach,
   before: beforeAll,
   after: afterAll,
-  expect: chai.expect,
+  ...otherGlobals
 };
 
 export async function run() {

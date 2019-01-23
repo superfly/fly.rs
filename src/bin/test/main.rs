@@ -15,24 +15,18 @@ use futures::Future;
 
 extern crate tokio;
 
-use std::str;
-
 extern crate glob;
 use glob::glob;
-
-const CHAI_SOURCE: &'static [u8] = include_bytes!("chai.js");
 
 fn main() {
   let (_guard, app_logger) = logging::configure();
 
   let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap(), None, &app_logger);
 
-  rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap());
-
-  debug!("Loading dev tools");
+  trace!("Loading dev tools");
   rt.eval_file("v8env/dist/dev-tools.js");
   rt.eval("<installDevTools>", "installDevTools();");
-  debug!("Loading dev tools done");
+  trace!("Loading dev tools done");
 
   let args: Vec<String> = env::args().collect();
 
