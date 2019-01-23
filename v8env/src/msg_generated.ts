@@ -153,7 +153,8 @@ export enum Any{
   ImageApplyTransforms= 38,
   ImageReady= 39,
   AcmeGetChallenge= 40,
-  AcmeGetChallengeReady= 41
+  AcmeGetChallengeReady= 41,
+  OsExit= 42
 };
 
 /**
@@ -4295,6 +4296,81 @@ static addContents(builder:flatbuffers.Builder, contentsOffset:flatbuffers.Offse
  * @returns flatbuffers.Offset
  */
 static endAcmeGetChallengeReady(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class OsExit {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns OsExit
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):OsExit {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param OsExit= obj
+ * @returns OsExit
+ */
+static getRootAsOsExit(bb:flatbuffers.ByteBuffer, obj?:OsExit):OsExit {
+  return (obj || new OsExit).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @returns number
+ */
+code():number {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_code(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startOsExit(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number code
+ */
+static addCode(builder:flatbuffers.Builder, code:number) {
+  builder.addFieldInt32(0, code, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endOsExit(builder:flatbuffers.Builder):flatbuffers.Offset {
   var offset = builder.endObject();
   return offset;
 };

@@ -10,3 +10,4 @@ pub mod modules;
 pub mod source_map;
 pub mod streams;
 pub mod timers;
+pub mod os;

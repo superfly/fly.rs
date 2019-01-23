@@ -3,6 +3,7 @@ include "src/ops/cache.fbs";
 include "src/ops/data.fbs";
 include "src/ops/image.fbs";
 include "src/ops/acme.fbs";
+include "src/ops/os.fbs";
 
 union Any {
   TimerStart,
@@ -46,6 +47,7 @@ union Any {
   ImageReady,
   AcmeGetChallenge,
   AcmeGetChallengeReady,
+  OsExit,
 }
 
 enum ErrorKind: byte {
