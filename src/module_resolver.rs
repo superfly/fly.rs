@@ -70,14 +70,14 @@ pub trait ModuleResolverManager: Send + Sync {
  * Parse url or join it to the working url if it's relative. working_url_str << MUST BE AN ABSOLUTE PATH.
  */
 fn parse_url(url_str: &str, working_url_str: &str) -> Result<url::Url, url::ParseError> {
-    info!("parse_url {} from {}", &url_str, &working_url_str);
+    debug!("parse_url {} from {}", &url_str, &working_url_str);
     // TODO: Add some additional logic to this thing to account for file paths without the "file://" protocol denotation.
     let mut url_parsed = match url::Url::parse(url_str) {
         Ok(v) => v,
         Err(e) => {
             if e == url::ParseError::RelativeUrlWithoutBase {
                 // If the url is relative join it to the working path.
-                println!("Url relative: {}", url_str);
+                trace!("Url relative: {}", url_str);
                 let working_url_parsed = url::Url::parse(working_url_str)?;
                 let final_url = working_url_parsed.join(url_str)?;
                 final_url
@@ -160,9 +160,10 @@ impl ModuleResolver for LocalDiskModuleResolver {
             Some(v) => v.origin_url,
             None => self.default_working_url.clone(),
         };
-        println!(
+        trace!(
             "resolve_module {} from {}",
-            module_specifier, referer_origin_url
+            module_specifier,
+            referer_origin_url
         );
 
         let module_specifier_url = parse_url(module_specifier, referer_origin_url.as_str())?;
@@ -179,7 +180,7 @@ impl ModuleResolver for LocalDiskModuleResolver {
             });
         }
         let did_set = module_file_path.set_extension("ts");
-        info!("trying module {} ({})", module_file_path.display(), did_set);
+        trace!("trying module {} ({})", module_file_path.display(), did_set);
         if module_file_path.is_file() {
             return Ok(ModuleSourceData {
                 origin_url: url::Url::from_file_path(module_file_path.clone())
@@ -190,7 +191,7 @@ impl ModuleResolver for LocalDiskModuleResolver {
             });
         }
         let did_set = module_file_path.set_extension("js");
-        info!("trying module {} ({})", module_file_path.display(), did_set);
+        trace!("trying module {} ({})", module_file_path.display(), did_set);
         if module_file_path.is_file() {
             return Ok(ModuleSourceData {
                 origin_url: url::Url::from_file_path(module_file_path.clone())
@@ -235,9 +236,10 @@ impl ModuleResolver for FunctionModuleResolver {
             Some(v) => v.origin_url,
             None => "".to_string(),
         };
-        println!(
+        trace!(
             "resolve_module {} from {}",
-            module_specifier, referer_origin_url
+            module_specifier,
+            referer_origin_url
         );
         (self.resolve_fn)(module_specifier, referer_info)
     }
@@ -265,7 +267,7 @@ impl SourceLoader for JsonSecretsLoader {
             self.json_value.to_string().replace("`", "")
         );
 
-        info!("Loaded json secrets {}", source_code);
+        trace!("Loaded json secrets {}", source_code);
 
         return Ok(LoadedSourceCode {
             is_wasm: false,
