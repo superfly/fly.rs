@@ -147,16 +147,16 @@ fn init_event_loop(
       el.spawn(
         rxready
           .map_err(|_| error!("error recving ready signal for runtime"))
-          .and_then(|_| Ok(warn!("ready ch received!"))),
+          .and_then(|_| Ok(trace!("ready ch received!"))),
       );
 
       match el.run() {
-        Ok(_) => warn!("runtime event loop ran fine"),
+        Ok(_) => trace!("runtime event loop ran fine"),
         Err(e) => error!("error running runtime event loop: {}", e),
       };
-      warn!("Event loop has run its course.");
+      trace!("Event loop has run its course.");
       match txquit.send(()) {
-        Ok(_) => warn!("Sent quit () in channel successfully."),
+        Ok(_) => trace!("Sent quit () in channel successfully."),
         Err(_) => error!("error sending quit signal for runtime"),
       };
     })

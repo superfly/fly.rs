@@ -5,7 +5,6 @@ import { URL } from "src/url";
 
 export function fetchModule(specifierUrl: string, refererOriginUrl?: string): LoadedModule {  
   console.trace("[resolver] fetchModule()", { specifierUrl, refererOriginUrl });
-  console.log(`Fetching module ${specifierUrl} from ${refererOriginUrl}`);
   // If module is a "asset" I.E. lib.dom.d.ts
   if (isAsset(specifierUrl, refererOriginUrl)) {
     const parsedUrl = new URL(specifierUrl, refererOriginUrl);
@@ -19,7 +18,7 @@ export function fetchModule(specifierUrl: string, refererOriginUrl?: string): Lo
     // Check for asset in assetSourceCode object if not error
     assert(assetName in assetSourceCode, `No such asset "${assetName}"`);
 
-    console.log(`Finished asset module fetch ${parsedUrl.toString()}`);
+    console.trace(`Finished asset module fetch ${parsedUrl.toString()}`);
 
     // Return LoadModuleResult with asset source code
     return {
@@ -31,7 +30,7 @@ export function fetchModule(specifierUrl: string, refererOriginUrl?: string): Lo
     };
   }
 
-  console.log(`Finished module fetch ${specifierUrl} from ${refererOriginUrl}`);
+  console.trace(`Finished module fetch ${specifierUrl} from ${refererOriginUrl}`);
   // Use std loadModule function to load module
   return loadModule(specifierUrl, refererOriginUrl);
 }

@@ -106,13 +106,13 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     }
 
     let has_body = msg.has_body();
-    println!("HAS BODY? {}", has_body);
+    trace!("HAS BODY? {}", has_body);
     let req_body = if has_body {
         if raw.data_len > 0 {
-            println!("STATIC BODY!");
+            trace!("STATIC BODY!");
             Body::from(unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec())
         } else {
-            println!("STREAMING BODY");
+            trace!("STREAMING BODY");
             let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
             {
                 rt.streams.lock().unwrap().insert(req_id, sender);
