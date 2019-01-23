@@ -389,7 +389,7 @@ export class Compiler {
       callback: AmdCallback,
       errback: AmdErrback
     ): void => {
-      console.log("compiler.makeLocalRequire()", { moduleInfo, deps });
+      console.trace("compiler.makeLocalRequire()", { moduleInfo, deps });
       assert(
         deps.length === 1,
         "Local require requires exactly one dependency."
@@ -491,7 +491,7 @@ function createLanguageService(compiler: Compiler): ts.LanguageService {
       return true;
     },
     fileExists(path: string): boolean {
-      console.log("Typescript ls doing file exists check.");
+      console.trace("Typescript ls doing file exists check.");
       const info = compiler.getModuleInfoByFileName(path);
       const exists = info != null;
       trace("fileExists()", { path, exists });
