@@ -6,7 +6,7 @@ extern crate log;
 extern crate libfly;
 
 use fly::logging;
-use fly::runtime::Runtime;
+use fly::runtime::{Runtime, RuntimeConfig};
 use fly::settings::SETTINGS;
 use std::env;
 
@@ -32,7 +32,14 @@ const FLY_TESTING_SOURCE: &'static [u8] = include_bytes!("../../../v8env/dist/te
 fn main() {
   let (_guard, app_logger) = logging::configure();
 
-  let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap(), None, &app_logger);
+  let mut rt = Runtime::new(RuntimeConfig {
+    name: None,
+    version: None,
+    settings: &SETTINGS.read().unwrap(),
+    module_resolvers: None,
+    app_logger: &app_logger,
+    msg_handler: None,
+  });
   rt.eval("mocha.js", str::from_utf8(MOCHA_SOURCE).unwrap());
   rt.eval("chai.js", str::from_utf8(CHAI_SOURCE).unwrap());
   rt.eval("testing.js", str::from_utf8(FLY_TESTING_SOURCE).unwrap());

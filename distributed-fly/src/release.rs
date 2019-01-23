@@ -2,16 +2,14 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use crate::rmps::Deserializer;
-use r2d2;
 use serde::Deserialize;
 
-use self::redis::Commands;
 use r2d2_redis::redis;
+use redis::Commands;
 
 extern crate serde_json;
 
-extern crate rmpv;
-use self::rmpv::Value;
+use rmpv::Value;
 
 use crate::kms::decrypt;
 

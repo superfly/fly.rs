@@ -5,11 +5,7 @@ use libfly::*;
 use crate::ops;
 use crate::utils::*;
 
-lazy_static! {
-    pub static ref DEFAULT_MESSAGE_HANDLER: DefaultMessageHandler = DefaultMessageHandler {};
-}
-
-pub trait MessageHandler {
+pub trait MessageHandler: Send + Sync {
     fn handle_msg(&self, rt: &mut Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op>;
 }
 

@@ -66,7 +66,7 @@ use std::str;
 
 use std::time;
 
-use crate::msg_handler::{MessageHandler, DEFAULT_MESSAGE_HANDLER};
+use crate::msg_handler::{DefaultMessageHandler, MessageHandler};
 
 #[derive(Debug, Copy, Clone)]
 pub struct JsRuntime(pub *const js_runtime);
@@ -115,6 +115,7 @@ pub struct Runtime {
   pub resolv_events: Option<mpsc::UnboundedSender<JsDnsRequest>>,
   pub last_event_at: AtomicUsize,
   pub module_resolver_manager: Box<ModuleResolverManager>,
+  pub msg_handler: Box<MessageHandler>,
   metadata_cache: RwLock<HashMap<i32, Box<LoadedModule>>>,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
@@ -164,23 +165,27 @@ fn init_event_loop(
   p.wait().unwrap()
 }
 
+pub struct RuntimeConfig<'a> {
+  pub name: Option<String>,
+  pub version: Option<String>,
+  pub settings: &'a Settings,
+  pub module_resolvers: Option<Vec<Box<ModuleResolver>>>,
+  pub app_logger: &'a Logger,
+  pub msg_handler: Option<Box<MessageHandler>>,
+}
+
 impl Runtime {
-  pub fn new(
-    name: Option<String>,
-    version: Option<String>,
-    settings: &Settings,
-    module_resolvers: Option<Vec<Box<ModuleResolver>>>,
-    app_logger: &Logger,
-  ) -> Box<Runtime> {
+  pub fn new(config: RuntimeConfig) -> Box<Runtime> {
     JSINIT.call_once(|| unsafe { js_init() });
 
-    let rt_name = name.unwrap_or("v8".to_string());
-    let rt_version = version.unwrap_or("0".to_string());
-    let app_logger = app_logger
+    let rt_name = config.name.unwrap_or("v8".to_string());
+    let rt_version = config.version.unwrap_or("0".to_string());
+    let app_logger = config
+      .app_logger
       .new(slog_o!("app_name" => rt_name.to_owned(), "app_version" => rt_version.to_owned()));
     let (rthandle, txready, rxquit) = init_event_loop(format!("{}-{}", rt_name, rt_version));
     let rt_module_resolvers =
-      module_resolvers.unwrap_or(vec![
+      config.module_resolvers.unwrap_or(vec![
         Box::new(LocalDiskModuleResolver::new(None)) as Box<ModuleResolver>
       ]);
 
@@ -199,14 +204,14 @@ impl Runtime {
       // stream_recv: Mutex::new(HashMap::new()),
       fetch_events: None,
       resolv_events: None,
-      cache_store: match settings.cache_store {
+      cache_store: match config.settings.cache_store {
         Some(ref store) => match store {
           CacheStore::Sqlite(conf) => {
             Box::new(sqlite_cache::SqliteCacheStore::new(conf.filename.clone()))
           }
           CacheStore::Redis(conf) => Box::new(redis_cache::RedisCacheStore::new(
             &conf,
-            match settings.cache_store_notifier {
+            match config.settings.cache_store_notifier {
               None => None,
               Some(CacheStoreNotifier::Redis(ref csnconf)) => Some(csnconf.clone()),
             },
@@ -214,7 +219,7 @@ impl Runtime {
         },
         None => Box::new(sqlite_cache::SqliteCacheStore::new("cache.db".to_string())),
       },
-      data_store: match settings.data_store {
+      data_store: match config.settings.data_store {
         Some(ref store) => match store {
           DataStore::Sqlite(conf) => {
             Box::new(sqlite_data::SqliteDataStore::new(conf.filename.clone()))
@@ -223,14 +228,14 @@ impl Runtime {
         },
         None => Box::new(sqlite_data::SqliteDataStore::new("data.db".to_string())),
       },
-      fs_store: match settings.fs_store {
+      fs_store: match config.settings.fs_store {
         Some(ref store) => match store {
           FsStore::Redis(conf) => Box::new(redis_fs::RedisFsStore::new(&conf)),
           FsStore::Disk => Box::new(disk_fs::DiskFsStore::new()),
         },
         None => Box::new(disk_fs::DiskFsStore::new()),
       },
-      acme_store: match settings.acme_store {
+      acme_store: match config.settings.acme_store {
         Some(ref config) => match config {
           AcmeStoreConfig::Redis(config) => {
             Some(Box::new(redis_acme::RedisAcmeStore::new(&config)))
@@ -244,6 +249,9 @@ impl Runtime {
         None,
       )),
       metadata_cache: RwLock::new(HashMap::new()),
+      msg_handler: config
+        .msg_handler
+        .unwrap_or(Box::new(DefaultMessageHandler {})),
     });
 
     (*rt).ptr.0 = unsafe {
@@ -450,8 +458,9 @@ pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly
   let msg_type = base.msg_type();
   let cmd_id = base.cmd_id();
 
-  let fut = DEFAULT_MESSAGE_HANDLER
-    .handle_msg(rt, &base, raw_buf)
+  let fut = rt
+    .msg_handler
+    .handle_msg(ptr.to_runtime(), &base, raw_buf)
     .or_else(move |err| {
       error!("error in {:?}: {:?}", msg_type, err);
       Ok(build_error(cmd_id, err))
