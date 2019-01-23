@@ -2,7 +2,7 @@ import { stringifyTypeName } from "src/util/format";
 import { filterStackTrace } from "src/source_maps";
 import { isError } from "src/util";
 
-export type DoneFn = () => void;
+export type DoneFn = (err?: any) => void;
 export type TestFn = (done?: DoneFn) => void | Promise<void>;
 
 declare var chai: any;
@@ -100,8 +100,6 @@ export async function run() {
   printBlankLines(2);
 
   printFailures(runner.failures);
-
-  // print(2, `Tests: ${total} Passed: ${passed} Failed: ${failed} Skipped: ${failed}`);
 }
 
 interface TestFailure {
@@ -250,8 +248,17 @@ function runFn(fn: TestFn): Promise<void> {
           resolve();
         }
       } else if (fn.length === 1) {
+
+        const done = (err?: unknown) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve();
+          }
+        }
+
         // test expects a done callback
-        fn(reject);
+        fn(done);
       } else {
         reject(new Error("Test functions only accept an optonal done callback"));
       };
