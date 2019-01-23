@@ -1,7 +1,7 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsRuntime, Op};
+use crate::runtime::JsRuntime;
 use crate::utils::*;
 use libfly::*;
 

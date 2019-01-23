@@ -3,7 +3,8 @@ use futures::sync::mpsc;
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsBody, JsRuntime, Op};
+use crate::js::*;
+use crate::runtime::JsRuntime;
 use crate::utils::*;
 use libfly::*;
 

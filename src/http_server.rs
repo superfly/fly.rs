@@ -1,8 +1,9 @@
 use futures::{future, Future, Stream};
 use std::net::SocketAddr;
 
+use crate::js::*;
 use crate::metrics::*;
-use crate::runtime::{EventResponseChannel, JsBody, JsEvent, JsHttpRequest, JsHttpResponse};
+use crate::utils::*;
 use crate::{get_next_stream_id, RuntimeSelector};
 
 use hyper::body::Payload;

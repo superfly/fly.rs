@@ -1,5 +1,5 @@
 use crate::msg;
-use crate::runtime::{JsRuntime, Op};
+use crate::runtime::JsRuntime;
 use crate::utils::*;
 use flatbuffers::FlatBufferBuilder;
 use futures::Future;
