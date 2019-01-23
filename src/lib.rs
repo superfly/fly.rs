@@ -28,8 +28,13 @@ pub fn get_next_stream_id() -> u32 {
 }
 
 pub fn build_number() -> &'static str {
-  env!("GIT_HASH")
+  match build_info::GIT_VERSION {
+    Some(v) => v,
+    None => "unknown"
+  }
 }
+
+pub mod build_info;
 
 pub mod errors;
 pub mod msg;

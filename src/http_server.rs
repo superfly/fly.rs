@@ -17,7 +17,7 @@ type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Ca
 lazy_static! {
     // static ref SERVER_HEADER: &'static str =
     static ref SERVER_HEADER_VALUE: header::HeaderValue = {
-        let s = format!("Fly ({})", env!("GIT_HASH"));
+        let s = format!("Fly ({})", super::build_number());
         header::HeaderValue::from_str(s.as_str()).unwrap()
     };
 }
@@ -40,7 +40,7 @@ pub fn serve_http(
                     simple_response(req_id, StatusCode::NOT_FOUND, None),
                     timer,
                     None,
-                )
+                );
             }
         }
     } else {
@@ -65,7 +65,7 @@ pub fn serve_http(
                     simple_response(req_id, StatusCode::NOT_FOUND, None),
                     timer,
                     None,
-                )
+                );
             }
         }
     };

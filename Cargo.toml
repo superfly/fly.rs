@@ -57,6 +57,9 @@ trust-dns-resolver = "0.10"
 trust-dns-server = "0.15"
 url = "1.7"
 
+[build-dependencies]
+built = "0.3"
+
 [workspace]
 members = [
     "libfly",
