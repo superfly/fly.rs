@@ -90,6 +90,11 @@ function runtimeInfo(path) {
   }
 }
 
+const chaiPath = path.resolve(
+  __dirname,
+  "node_modules/chai/lib/chai.js"
+);
+
 export default [
   {
     input: 'src/index.ts',
@@ -116,32 +121,6 @@ export default [
     }
   },
   {
-    input: "src/test_main.ts",
-    output: {
-      file: 'dist/testing.js',
-      format: 'iife',
-      name: 'flyTest',
-      sourcemap: true,
-      globals: {
-        mocha: 'mocha'
-      }
-    },
-    plugins: [
-      // builtins(),
-      resolvePlugin({
-        browser: true,
-        preferBuiltins: false,
-        // jsnext: true,
-        // module: true,
-      }),
-      commonjsPlugin({
-        include: './node_modules/**',
-      }),
-      typescriptPlugin({ useTsconfigDeclarationDir: true }),
-      sourceMaps(),
-    ]
-  },
-  {
     input: "src/dev-tools/index.ts",
     output: {
       file: 'dist/dev-tools.js',
@@ -163,13 +142,8 @@ export default [
         os: mock,
         crypto: mock,
         buffer: mock,
-        module: mock
+        module: mock,
       }),
-
-      // alias({
-      //   path: path.resolve(__dirname, "node_modules/path-browserify/index.js"),
-      //   // rollup: rollupPath
-      // }),
 
       // Provides inlining of file contents for `js/assets.ts`
       strings({
@@ -202,7 +176,10 @@ export default [
             "ScriptSnapshot",
             "ScriptTarget",
             "version"
-          ]
+          ],
+          [chaiPath]: [
+            "expect",
+          ],
         }
       }),
 

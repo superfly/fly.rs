@@ -1,16 +1,6 @@
-import { globalEval, GlobalEval } from "./global-eval"; 
+import { globalEval } from "./global-eval"; 
 import { window } from "./globals";
-
-export interface ConfigOptions {
-  globalEval: GlobalEval;
-  global: any;
-}
-
-export interface DevTools {
-  run(path: string);
-}
-
-export type initFn = (config: ConfigOptions) => DevTools;
+import { initFn } from "./dev-tools/api";
 
 declare var devTools: initFn | undefined;
 
@@ -26,7 +16,7 @@ export function installDevTools() {
   if (typeof devTools === "undefined") {
     throw Error("Dev tools are not available in this environment");
   }
-  window.dev = devTools({
+  devTools(window, {
     global: window,
     globalEval
   });
