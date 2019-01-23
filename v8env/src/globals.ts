@@ -104,6 +104,7 @@ window.Request = FlyRequest;
 window.addEventListener = bridge.addEventListener;
 
 const logger = new Logger(libfly.print);
+window.logger = logger;
 window.console = new Console(logger);
 window.TextEncoder = textEncoding.TextEncoder;
 window.TextDecoder = textEncoding.TextDecoder;
