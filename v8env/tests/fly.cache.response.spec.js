@@ -1,7 +1,3 @@
-// import { expect } from 'chai'
-
-// import cache, { responseCache } from "@fly/cache"
-
 const cache = fly.cache;
 const responseCache = fly.responseCache;
 
