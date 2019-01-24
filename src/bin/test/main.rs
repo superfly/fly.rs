@@ -7,6 +7,7 @@ extern crate libfly;
 
 use fly::logging;
 use fly::runtime::{Runtime, RuntimeConfig};
+use fly::runtime_permissions::RuntimePermissions;
 use fly::settings::SETTINGS;
 use std::env;
 
@@ -28,6 +29,7 @@ fn main() {
     module_resolvers: None,
     app_logger: &app_logger,
     msg_handler: None,
+    permissions: Some(RuntimePermissions::new(true)),
   });
 
   trace!("Loading dev tools");

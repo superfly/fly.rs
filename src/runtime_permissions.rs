@@ -1,0 +1,20 @@
+use crate::errors::{permission_denied, FlyResult};
+
+#[derive(Debug, Default)]
+pub struct RuntimePermissions {
+  pub allow_os: bool,
+}
+
+impl RuntimePermissions {
+  pub fn new(allow_os: bool) -> Self {
+    Self { allow_os }
+  }
+
+  pub fn check_os(&self) -> FlyResult<()> {
+    if self.allow_os {
+      Ok(())
+    } else {
+      Err(permission_denied())
+    }
+  }
+}
