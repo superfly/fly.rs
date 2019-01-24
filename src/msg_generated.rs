@@ -665,11 +665,12 @@ pub enum Any {
   ImageReady = 39,
   AcmeGetChallenge = 40,
   AcmeGetChallengeReady = 41,
+  OsExit = 42,
 
 }
 
 const ENUM_MIN_ANY: u8 = 0;
-const ENUM_MAX_ANY: u8 = 41;
+const ENUM_MAX_ANY: u8 = 42;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
   type Inner = Self;
@@ -703,7 +704,7 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 42] = [
+const ENUM_VALUES_ANY:[Any; 43] = [
   Any::NONE,
   Any::TimerStart,
   Any::TimerReady,
@@ -745,11 +746,12 @@ const ENUM_VALUES_ANY:[Any; 42] = [
   Any::ImageApplyTransforms,
   Any::ImageReady,
   Any::AcmeGetChallenge,
-  Any::AcmeGetChallengeReady
+  Any::AcmeGetChallengeReady,
+  Any::OsExit
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 42] = [
+const ENUM_NAMES_ANY:[&'static str; 43] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -791,7 +793,8 @@ const ENUM_NAMES_ANY:[&'static str; 42] = [
     "ImageApplyTransforms",
     "ImageReady",
     "AcmeGetChallenge",
-    "AcmeGetChallengeReady"
+    "AcmeGetChallengeReady",
+    "OsExit"
 ];
 
 pub fn enum_name_any(e: Any) -> &'static str {
@@ -4700,6 +4703,82 @@ impl<'a: 'b, 'b> AcmeGetChallengeReadyBuilder<'a, 'b> {
   }
 }
 
+pub enum OsExitOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct OsExit<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for OsExit<'a> {
+    type Inner = OsExit<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> OsExit<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        OsExit {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args OsExitArgs) -> flatbuffers::WIPOffset<OsExit<'bldr>> {
+      let mut builder = OsExitBuilder::new(_fbb);
+      builder.add_code(args.code);
+      builder.finish()
+    }
+
+    pub const VT_CODE: flatbuffers::VOffsetT = 4;
+
+  #[inline]
+  pub fn code(&self) -> i32 {
+    self._tab.get::<i32>(OsExit::VT_CODE, Some(0)).unwrap()
+  }
+}
+
+pub struct OsExitArgs {
+    pub code: i32,
+}
+impl<'a> Default for OsExitArgs {
+    #[inline]
+    fn default() -> Self {
+        OsExitArgs {
+            code: 0,
+        }
+    }
+}
+pub struct OsExitBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> OsExitBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_code(&mut self, code: i32) {
+    self.fbb_.push_slot::<i32>(OsExit::VT_CODE, code, 0);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> OsExitBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    OsExitBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<OsExit<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum BaseOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -5174,6 +5253,16 @@ impl<'a> Base<'a> {
   pub fn msg_as_acme_get_challenge_ready(&'a self) -> Option<AcmeGetChallengeReady> {
     if self.msg_type() == Any::AcmeGetChallengeReady {
       self.msg().map(|u| AcmeGetChallengeReady::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn msg_as_os_exit(&'a self) -> Option<OsExit> {
+    if self.msg_type() == Any::OsExit {
+      self.msg().map(|u| OsExit::init_from_table(u))
     } else {
       None
     }

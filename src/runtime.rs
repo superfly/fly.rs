@@ -52,6 +52,7 @@ use crate::sqlite_data;
 
 use crate::{disk_fs, redis_fs};
 
+use crate::runtime_permissions::RuntimePermissions;
 use crate::settings::{
   AcmeStoreConfig, CacheStore, CacheStoreNotifier, DataStore, FsStore, Settings,
 };
@@ -116,6 +117,7 @@ pub struct Runtime {
   pub last_event_at: AtomicUsize,
   pub module_resolver_manager: Box<ModuleResolverManager>,
   pub msg_handler: Box<MessageHandler>,
+  pub permissions: RuntimePermissions,
   metadata_cache: RwLock<HashMap<i32, Box<LoadedModule>>>,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
@@ -172,6 +174,7 @@ pub struct RuntimeConfig<'a> {
   pub module_resolvers: Option<Vec<Box<ModuleResolver>>>,
   pub app_logger: &'a Logger,
   pub msg_handler: Option<Box<MessageHandler>>,
+  pub permissions: Option<RuntimePermissions>,
 }
 
 impl Runtime {
@@ -252,6 +255,7 @@ impl Runtime {
       msg_handler: config
         .msg_handler
         .unwrap_or(Box::new(DefaultMessageHandler {})),
+      permissions: config.permissions.unwrap_or_default(),
     });
 
     (*rt).ptr.0 = unsafe {

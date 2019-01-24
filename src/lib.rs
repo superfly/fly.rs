@@ -42,7 +42,7 @@ pub mod errors;
 pub mod msg;
 pub mod ops;
 pub mod runtime;
-
+pub mod runtime_permissions;
 pub mod utils;
 
 pub mod acme_store;

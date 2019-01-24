@@ -2,6 +2,7 @@ import { stringifyTypeName } from "src/util/format";
 import { filterStackTrace } from "src/source_maps";
 import { isError } from "src/util";
 import { expect } from "chai/lib/chai.js";
+import { exit } from "src/os";
 
 export type DoneFn = (err?: any) => void;
 export type TestFn = (done?: DoneFn) => void | Promise<void>;
@@ -99,6 +100,10 @@ export async function run() {
   printBlankLines(2);
 
   printFailures(runner.failures);
+
+  if (failed > 0) {
+    exit(1);
+  } 
 }
 
 interface TestFailure {

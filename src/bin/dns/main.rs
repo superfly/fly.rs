@@ -108,6 +108,7 @@ fn main() {
     module_resolvers: Some(module_resolvers),
     app_logger: &app_logger,
     msg_handler: None,
+    permissions: None,
   });
 
   debug!("Loading dev tools");

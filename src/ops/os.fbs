@@ -1,0 +1,3 @@
+table OsExit {
+  code: int;
+}

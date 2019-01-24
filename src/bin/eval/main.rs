@@ -35,6 +35,7 @@ fn main() {
     module_resolvers: None,
     app_logger: &app_logger,
     msg_handler: None,
+    permissions: None,
   });
   debug!("Loading dev tools");
   runtime.eval_file("v8env/dist/dev-tools.js");

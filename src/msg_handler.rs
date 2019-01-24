@@ -14,7 +14,7 @@ pub struct DefaultMessageHandler {}
 impl MessageHandler for DefaultMessageHandler {
     fn handle_msg(&self, rt: &mut Runtime, base: &msg::Base, raw_buf: fly_buf) -> Box<Op> {
         let msg_type = base.msg_type();
-        debug!("MSG TYPE: {:?}", msg_type);
+        trace!("MSG TYPE: {:?}", msg_type);
         let handler: Handler = match msg_type {
             msg::Any::TimerStart => ops::timers::op_timer_start,
             msg::Any::TimerClear => ops::timers::op_timer_clear,
@@ -43,6 +43,7 @@ impl MessageHandler for DefaultMessageHandler {
             msg::Any::LoadModule => ops::modules::op_load_module,
             msg::Any::ImageApplyTransforms => ops::image::op_image_transform,
             msg::Any::AcmeGetChallenge => ops::acme::op_get_challenge,
+            msg::Any::OsExit => ops::os::op_exit,
             _ => unimplemented!(),
         };
 
