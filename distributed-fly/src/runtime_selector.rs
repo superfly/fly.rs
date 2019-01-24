@@ -106,6 +106,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     module_resolvers: Some(vec![]),
                     app_logger: &APP_LOGGER,
                     msg_handler: None,
+                    permissions: None,
                 });
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
