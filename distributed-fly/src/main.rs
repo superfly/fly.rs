@@ -14,7 +14,7 @@ extern crate log;
 extern crate futures;
 
 // use fly::dns_server::DnsServer;
-
+use std::env;
 use std::time::Duration;
 use tokio::timer::Interval;
 
@@ -86,6 +86,8 @@ lazy_static! {
             "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
                 ser.emit(chrono::Utc::now().to_rfc3339())
             }),
+            "region" => env::var("REGION").unwrap_or_default(),
+            "host" => env::var("HOST").unwrap_or_default(),
         )
     );
 }
@@ -104,6 +106,8 @@ fn main() {
             "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
                 ser.emit(chrono::Utc::now().to_rfc3339())
             }),
+            "region" => env::var("REGION").unwrap_or_default(),
+            "host" => env::var("HOST").unwrap_or_default(),
         ),
     ));
     slog_stdlog::init().unwrap();
