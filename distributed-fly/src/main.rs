@@ -84,7 +84,7 @@ lazy_static! {
                 numeric_level(rinfo.level())
             }),
             "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
-                ser.emit(chrono::Local::now().to_rfc3339())
+                ser.emit(chrono::Utc::now().to_rfc3339())
             }),
         )
     );
@@ -102,7 +102,7 @@ fn main() {
                 numeric_level(rinfo.level())
             }),
             "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
-                ser.emit(chrono::Local::now().to_rfc3339())
+                ser.emit(chrono::Utc::now().to_rfc3339())
             }),
         ),
     ));
