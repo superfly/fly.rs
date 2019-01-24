@@ -1,21 +1,13 @@
-extern crate fly;
-
 #[macro_use]
 extern crate log;
-
-extern crate libfly;
 
 use fly::logging;
 use fly::runtime::{Runtime, RuntimeConfig};
 use fly::settings::SETTINGS;
 use std::env;
 
-extern crate futures;
 use futures::Future;
 
-extern crate tokio;
-
-extern crate glob;
 use glob::glob;
 
 fn main() {
@@ -34,7 +26,7 @@ fn main() {
   rt.eval_file("v8env/dist/dev-tools.js");
   rt.eval("<installDevTools>", "installDevTools();");
   trace!("Loading dev tools done");
-  
+
   let args: Vec<String> = env::args().collect();
 
   let mut patterns: Vec<String> = args[1..].to_vec();
