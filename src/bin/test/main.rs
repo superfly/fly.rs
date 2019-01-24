@@ -6,7 +6,7 @@ extern crate log;
 extern crate libfly;
 
 use fly::logging;
-use fly::runtime::Runtime;
+use fly::runtime::{Runtime, RuntimeConfig};
 use fly::settings::SETTINGS;
 use std::env;
 
@@ -21,13 +21,20 @@ use glob::glob;
 fn main() {
   let (_guard, app_logger) = logging::configure();
 
-  let mut rt = Runtime::new(None, None, &SETTINGS.read().unwrap(), None, &app_logger);
+  let mut rt = Runtime::new(RuntimeConfig {
+    name: None,
+    version: None,
+    settings: &SETTINGS.read().unwrap(),
+    module_resolvers: None,
+    app_logger: &app_logger,
+    msg_handler: None,
+  });
 
   trace!("Loading dev tools");
   rt.eval_file("v8env/dist/dev-tools.js");
   rt.eval("<installDevTools>", "installDevTools();");
   trace!("Loading dev tools done");
-
+  
   let args: Vec<String> = env::args().collect();
 
   let mut patterns: Vec<String> = args[1..].to_vec();

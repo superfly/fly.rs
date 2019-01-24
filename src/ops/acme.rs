@@ -1,23 +1,23 @@
 use crate::msg;
-use crate::runtime::{JsRuntime, Op};
+use crate::runtime::Runtime;
 use crate::utils::*;
 use flatbuffers::FlatBufferBuilder;
 use futures::Future;
 use libfly::*;
 
-pub fn op_get_challenge(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_get_challenge(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_acme_get_challenge().unwrap();
     let hostname = msg.hostname().unwrap().to_string();
     let token = msg.token().unwrap().to_string();
 
-    let acme_store = &ptr.to_runtime().acme_store;
+    let acme_store = rt.acme_store.as_ref();
 
     if acme_store.is_none() {
         return Box::new(odd_future("No acme store configured".to_string().into()));
     }
 
-    let acme_store = acme_store.as_ref().unwrap();
+    let acme_store = acme_store.unwrap();
 
     Box::new(
         acme_store

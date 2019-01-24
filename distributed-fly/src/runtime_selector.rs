@@ -1,6 +1,9 @@
 use futures::Future;
 
-use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
+use fly::{
+    runtime::{Runtime, RuntimeConfig},
+    RuntimeSelector, SelectorError,
+};
 
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -96,13 +99,14 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     }
                 };
 
-                let mut rt = Runtime::new(
-                    Some(rel.app_id.to_string()),
-                    Some(rel.version.to_string()),
-                    &settings,
-                    Some(vec![]),
-                    &APP_LOGGER,
-                );
+                let mut rt = Runtime::new(RuntimeConfig {
+                    name: Some(rel.app_id.to_string()),
+                    version: Some(rel.version.to_string()),
+                    settings: &settings,
+                    module_resolvers: Some(vec![]),
+                    app_logger: &APP_LOGGER,
+                    msg_handler: None,
+                });
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
                     "<app config>",

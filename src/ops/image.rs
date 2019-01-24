@@ -6,7 +6,8 @@ use libc::{c_float, c_int, c_void};
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsBody, JsRuntime, Op};
+use crate::js::*;
+use crate::runtime::Runtime;
 use crate::utils::*;
 use libfly::*;
 
@@ -26,7 +27,7 @@ enum ImageTransform {
     WebPEncode(WebPEncodeOptions),
 }
 
-pub fn op_image_transform(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_image_transform(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_image_apply_transforms().unwrap();
     let transforms: Vec<ImageTransform> = match msg.transforms() {
@@ -60,12 +61,12 @@ pub fn op_image_transform(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Bo
     let in_id = get_next_stream_id();
     let out_id = get_next_stream_id();
 
-    let rt = ptr.to_runtime();
-
     let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
     {
         rt.streams.lock().unwrap().insert(in_id, sender);
     }
+
+    let ptr = rt.ptr;
 
     rt.spawn(
         recver

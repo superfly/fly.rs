@@ -7,7 +7,7 @@ extern crate log;
 
 extern crate fly;
 use fly::logging;
-use fly::runtime::Runtime;
+use fly::runtime::{Runtime, RuntimeConfig};
 use fly::settings::SETTINGS;
 
 use futures::Future;
@@ -28,7 +28,14 @@ fn main() {
     )
     .get_matches();
 
-  let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap(), None, &app_logger);
+  let mut runtime = Runtime::new(RuntimeConfig {
+    name: None,
+    version: None,
+    settings: &SETTINGS.read().unwrap(),
+    module_resolvers: None,
+    app_logger: &app_logger,
+    msg_handler: None,
+  });
   debug!("Loading dev tools");
   runtime.eval_file("v8env/dist/dev-tools.js");
   runtime.eval("<installDevTools>", "installDevTools();");

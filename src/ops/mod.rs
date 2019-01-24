@@ -1,6 +1,12 @@
 pub mod acme;
 pub mod cache;
+pub mod crypto;
 pub mod data;
 pub mod dns;
+pub mod events;
 pub mod fetch;
 pub mod image;
+pub mod modules;
+pub mod source_map;
+pub mod streams;
+pub mod timers;

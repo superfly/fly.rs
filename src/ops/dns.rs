@@ -10,13 +10,15 @@ use self::dns_resolver::config::ResolverConfig;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::runtime::{JsRuntime, Op, EVENT_LOOP};
+use crate::runtime::{Runtime, EVENT_LOOP};
 use crate::utils::*;
 use libfly::*;
 
 use futures::Future;
 
 use std::net::{SocketAddr, ToSocketAddrs};
+
+use crate::js::*;
 
 lazy_static! {
   static ref DEFAULT_RESOLVER_CONFIG: ResolverConfig = {
@@ -41,39 +43,6 @@ lazy_static! {
       dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
     >,
   > = Mutex::new(HashMap::new());
-}
-
-#[derive(Debug)]
-pub struct JsDnsResponse {
-  pub op_code: dns::op::OpCode,
-  pub message_type: dns::op::MessageType,
-  pub response_code: dns::op::ResponseCode,
-  pub answers: Vec<JsDnsRecord>,
-  pub queries: Vec<JsDnsQuery>,
-  pub authoritative: bool,
-  pub truncated: bool,
-}
-
-#[derive(Debug)]
-pub struct JsDnsRequest {
-  pub id: u32,
-  pub message_type: dns::op::MessageType,
-  pub queries: Vec<dns::op::LowerQuery>,
-}
-
-#[derive(Debug)]
-pub struct JsDnsRecord {
-  pub name: dns::rr::Name,
-  pub rdata: dns::rr::RData,
-  pub dns_class: dns::rr::DNSClass,
-  pub ttl: u32,
-}
-
-#[derive(Debug)]
-pub struct JsDnsQuery {
-  pub name: dns::rr::Name,
-  pub rr_type: dns::rr::RecordType,
-  pub dns_class: dns::rr::DNSClass,
 }
 
 fn dns_query(
@@ -305,7 +274,7 @@ fn dns_query(
   )
 }
 
-pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_dns_query(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   debug!("handle dns");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
@@ -369,7 +338,7 @@ pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
   }
 }
 
-pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_dns_response().unwrap();
   let req_id = msg.id();
 
@@ -521,8 +490,6 @@ pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<O
   } else {
     vec![]
   };
-
-  let rt = ptr.to_runtime();
 
   let mut responses = rt.dns_responses.lock().unwrap();
   match responses.remove(&req_id) {

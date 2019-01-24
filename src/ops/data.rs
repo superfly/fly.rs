@@ -1,19 +1,17 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsRuntime, Op};
+use crate::runtime::Runtime;
 use crate::utils::*;
 use libfly::*;
 
 use futures::Future;
 
-pub fn op_data_put(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_data_put(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let msg = base.msg_as_data_put().unwrap();
     let coll = msg.collection().unwrap().to_string();
     let key = msg.key().unwrap().to_string();
     let value = msg.json().unwrap().to_string();
-
-    let rt = ptr.to_runtime();
 
     Box::new(
         rt.data_store
@@ -23,13 +21,11 @@ pub fn op_data_put(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     )
 }
 
-pub fn op_data_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_data_get(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_data_get().unwrap();
     let coll = msg.collection().unwrap().to_string();
     let key = msg.key().unwrap().to_string();
-
-    let rt = ptr.to_runtime();
 
     Box::new(
         rt.data_store
@@ -61,12 +57,10 @@ pub fn op_data_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     )
 }
 
-pub fn op_data_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_data_del(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let msg = base.msg_as_data_del().unwrap();
     let coll = msg.collection().unwrap().to_string();
     let key = msg.key().unwrap().to_string();
-
-    let rt = ptr.to_runtime();
 
     Box::new(
         rt.data_store
@@ -76,11 +70,9 @@ pub fn op_data_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     )
 }
 
-pub fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_data_drop_coll(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let msg = base.msg_as_data_drop_collection().unwrap();
     let coll = msg.collection().unwrap().to_string();
-
-    let rt = ptr.to_runtime();
 
     Box::new(
         rt.data_store
@@ -90,14 +82,12 @@ pub fn op_data_drop_coll(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box
     )
 }
 
-pub fn op_data_incr(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_data_incr(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
     let msg = base.msg_as_data_incr().unwrap();
     let coll = msg.collection().unwrap().to_string();
     let key = msg.key().unwrap().to_string();
     let field = msg.field().unwrap().to_string();
     let amount = msg.amount();
-
-    let rt = ptr.to_runtime();
 
     Box::new(
         rt.data_store

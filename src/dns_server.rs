@@ -22,9 +22,10 @@ extern crate flatbuffers;
 
 use tokio::prelude::*;
 
-use crate::ops::dns::*;
-use crate::runtime::{EventResponseChannel, JsEvent};
 use crate::{get_next_stream_id, RuntimeSelector};
+
+use crate::js::*;
+use crate::utils::*;
 
 pub struct DnsServer {
     addr: SocketAddr,
@@ -75,7 +76,7 @@ impl RequestHandler for DnsServer {
                             req.message.op_code(),
                             ResponseCode::ServFail,
                         ),
-                    )
+                    );
                 }
             },
             Err(e) => {
@@ -105,7 +106,7 @@ impl RequestHandler for DnsServer {
                         req.message.op_code(),
                         ResponseCode::ServFail,
                     ),
-                )
+                );
             }
             Some(Err(e)) => {
                 error!("error sending js dns request: {:?}", e);

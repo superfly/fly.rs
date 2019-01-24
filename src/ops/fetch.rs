@@ -6,7 +6,8 @@ use futures::{
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsBody, JsHttpResponse, JsRuntime, Op, EVENT_LOOP};
+use crate::js::*;
+use crate::runtime::{Runtime, EVENT_LOOP};
 use crate::utils::*;
 use libfly::*;
 
@@ -43,14 +44,16 @@ lazy_static! {
     };
 }
 
-pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+pub fn op_fetch(rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_http_request().unwrap();
 
     let url = msg.url().unwrap();
     if url.starts_with("file://") {
-        return file_request(ptr, cmd_id, url);
+        return file_request(rt, cmd_id, url);
     }
+
+    let ptr = rt.ptr;
 
     let req_id = msg.id();
 
@@ -76,7 +79,6 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
         format!("{}:{}", host_str, port)
     };
 
-    let rt = ptr.to_runtime();
     FETCH_HTTP_REQUESTS_TOTAL
         .with_label_values(&[rt.name.as_str(), rt.version.as_str(), host.as_str()])
         .inc();
@@ -251,7 +253,7 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     Box::new(fut)
 }
 
-pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+pub fn op_http_response(rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     debug!("handling http response");
     let msg = base.msg_as_http_response().unwrap();
     let req_id = msg.id();
@@ -272,8 +274,6 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
             );
         }
     }
-
-    let rt = ptr.to_runtime();
 
     let mut body: Option<JsBody> = None;
     let has_body = msg.has_body();
@@ -313,11 +313,11 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
     ok_future(None)
 }
 
-fn file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
+fn file_request(rt: &mut Runtime, cmd_id: u32, url: &str) -> Box<Op> {
     let req_id = get_next_stream_id();
     let path: String = url.chars().skip(7).collect();
 
-    let rt = ptr.to_runtime();
+    let ptr = rt.ptr;
 
     Box::new(
         rt.fs_store
