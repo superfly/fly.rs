@@ -93,8 +93,14 @@ There's an issue: [#5](https://github.com/superfly/fly.rs/issues/5)
   - `cd ..`
 - `cargo run --bin dns hello-world.js`
 
-### Running v8env tests (currently not working)
+### Running tests
 
+1. Runtime tests:
+```bash
+cargo test
+```
+
+2. Javascript tests
 ```
 cargo run --bin test "v8env/tests/**/*.spec.js"
 ```
