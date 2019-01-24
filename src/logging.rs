@@ -34,12 +34,11 @@ pub fn configure() -> (GlobalLoggerGuard, Logger) {
 }
 
 pub fn log_level_from_env(name: &str, default: Level) -> Level {
-    match env::var(name).unwrap_or_default().as_ref() {
+    match env::var(name).unwrap_or_default().to_uppercase().as_str() {
         "TRACE" => Level::Trace,
         "DEBUG" => Level::Debug,
         "INFO" => Level::Info,
-        "WARN" => Level::Warning,
-        "WARNING" => Level::Warning,
+        "WARN" | "WARNING" => Level::Warning,
         "ERROR" => Level::Error,
         _ => default,
     }
