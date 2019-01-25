@@ -112,6 +112,7 @@ export function containsOnlyASCII(str: string): boolean {
 // @internal
 export function isError(err: any): err is Error {
     return err instanceof Error || (err && typeof err.message === 'string');
+}
 
 export function isIterable<T>(obj: Array<T> | IterableIterator<T> | any): obj is IterableIterator<T> {
     if (obj == null) {
@@ -121,5 +122,4 @@ export function isIterable<T>(obj: Array<T> | IterableIterator<T> | any): obj is
         return false;
     }
     return typeof obj[Symbol.iterator] === 'function';
-}
 }
