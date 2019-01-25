@@ -16,7 +16,7 @@ import { Image } from "./fly/image";
 
 import * as url from './url';
 import { FlyRequest } from "./request";
-import flyData from './fly/data';
+import * as flyData from './fly/data';
 import * as flyCache from './fly/cache';
 import * as flyResponseCache from './fly/response';
 import flyHttp from './fly/http'
