@@ -17,10 +17,16 @@
  * @module fly/cache
  */
 
-/** */
 import { sendAsync, streams, sendStreamChunks, sendStreamChunk } from '../../bridge'
 import * as fbs from "../../msg_generated";
 import * as flatbuffers from "../../flatbuffers";
+import { ReadableStream as WhatWGReadableStream } from '@stardazed/streams';
+import { bufferFromStream } from '../../body_mixin';
+import { ReadableStream } from '../../dom_types';
+import { isIterable } from 'src/util';
+import * as global from "./global";
+
+export { global };
 
 export interface CacheSetOptions {
   ttl?: number;
@@ -251,38 +257,3 @@ export function del(key: string) {
     return true
   })
 }
-
-/**
- * A library for caching/retrieving Response objects
- * 
- * See {@link fly/cache/response}
- */
-// export { default as responseCache } from "./response"
-
-/**
- * API for sending global cache notifications
- * 
- * See {@link fly/cache/global} 
- */
-import { default as global } from "./global"
-import { ReadableStream as WhatWGReadableStream } from '@stardazed/streams';
-import { bufferFromStream } from '../../body_mixin';
-import { ReadableStream } from '../../dom_types';
-import { isIterable, isObject } from 'src/util';
-
-const cache = {
-  get,
-  getString,
-  getStream,
-  getEntry, // w/ meta
-  getMulti,
-  getMultiString,
-  set,
-  setMeta,
-  expire,
-  del,
-  global,
-  setTags,
-  purgeTag
-}
-export default cache

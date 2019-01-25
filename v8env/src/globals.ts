@@ -17,8 +17,8 @@ import { Image } from "./fly/image";
 import * as url from './url';
 import { FlyRequest } from "./request";
 import flyData from './fly/data';
-import flyCache from './fly/cache';
-import flyResponseCache from './fly/cache/response';
+import * as flyCache from './fly/cache';
+import * as flyResponseCache from './fly/response';
 import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
