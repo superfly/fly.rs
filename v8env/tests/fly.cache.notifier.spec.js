@@ -6,7 +6,7 @@ function sleep(timeout) {
   })
 }
 describe("@fly/cache/global", () => {
-  it("sends del notification", async () => {
+  it.skip("sends del notification", async () => {
     const key = "notifier_test_key_" + Math.random()
     await cache.set(key, "asdf")
     await cache.global.del(key)
@@ -18,7 +18,7 @@ describe("@fly/cache/global", () => {
 
   })
 
-  it("sends purgeTag notifications", async () => {
+  it.skip("sends purgeTag notifications", async () => {
     const key = "purge_test_key_" + Math.random()
     await cache.set(key, "jklm", { tags: ["purge_test"] })
 
