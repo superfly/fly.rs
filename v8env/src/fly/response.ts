@@ -24,6 +24,12 @@ import * as cache from "./cache"
 import { Response } from '../dom_types'
 import { FlyResponse } from "../response"
 
+export const {
+  del,
+  expire,
+  setTags
+} = cache;
+
 /**
  * Response metadata suitable for caching
  */
