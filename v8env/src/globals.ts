@@ -30,6 +30,8 @@ import { Logger } from "./logging";
 import * as domTypes from './dom_types';
 import * as formData from "./form_data";
 import * as headers from './headers';
+import { arrayBufferToString, stringToArrayBuffer } from "./util";
+import { bufferFromStream } from "./body_mixin";
 
 declare global {
   interface Window {
@@ -140,6 +142,15 @@ window.DNSMessageType = dns.DNSMessageType;
 window.DNSOpCode = dns.DNSOpCode;
 window.DNSResponseCode = dns.DNSResponseCode;
 
+const conversionUtils = {
+  arrayBufferToStr: arrayBufferToString,
+  stringToArrayBuffer,
+  ab2str: arrayBufferToString,
+  str2ab: stringToArrayBuffer,
+  streamToBuffer: bufferFromStream,
+};
+
 Object.assign(window, {
   ...streams,
+  ...conversionUtils
 });

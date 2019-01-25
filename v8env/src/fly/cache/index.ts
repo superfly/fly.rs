@@ -55,8 +55,6 @@ export function getStream(key: string): Promise<ReadableStream | null> {
   return _get(key).then(raw => raw[0])
 }
 
-
-
 function _get(key: string): Promise<[ReadableStream | null, string | null]> {
   const fbb = flatbuffers.createBuilder()
   const keyFbs = fbb.createString(key);
@@ -96,13 +94,33 @@ export function getString(key: string): Promise<string | null> {
 }
 
 /**
+ * Get multiple values from the cache.
+ * @param keys list of keys to retrieve
+ * @returns List of results in the same order as the provided keys
+ */
+export function getMulti(keys: string[] | IterableIterator<string>): Promise<Array<ArrayBuffer | null>> {
+  if (isIterable(keys)) {
+    keys = Array.from(keys);
+  }
+  return Promise.all(keys.map(get));
+}
+
+/**
+ * Get multiple string values from the cache
+ * @param keys list of keys to retrieve
+ * @returns list of results in the same order as the provided keys
+ */
+export async function getMultiString(keys: string[]): Promise<Array<string | null>> {
+  return Promise.all(keys.map(getString));
+}
+
+/**
  * Sets a value at the specified key, with an optional ttl
  * @param key The key to add or overwrite
  * @param value Data to store at the specified key, up to 2MB
- * @param ttl Time to live (in seconds)
  * @returns true if the set was successful
  */
-export function set(key: string, value: string | ArrayBuffer | ArrayBufferView | WhatWGReadableStream, options?: CacheSetOptions | number): Promise<boolean> {
+export function set(key: string, value: string | ArrayBuffer | ArrayBufferView | WhatWGReadableStream, options?: CacheSetOptions): Promise<boolean> {
   // TODO: validate value input
 
   const fbb = flatbuffers.createBuilder()
@@ -111,7 +129,7 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
   let tags: number;
   let meta: number;
 
-  if (typeof options === 'object') {
+  if (options != null && typeof options === 'object') {
     if (Array.isArray(options.tags))
       tags = fbs.CacheSet.createTagsVector(fbb, options.tags.map(t => fbb.createString(t)));
     if (typeof options.meta === 'string')
@@ -120,14 +138,12 @@ export function set(key: string, value: string | ArrayBuffer | ArrayBufferView |
 
   fbs.CacheSet.startCacheSet(fbb);
   fbs.CacheSet.addKey(fbb, keyFbb);
-
-  if (typeof options === 'number') // TODO: maybe we don't need multiple ways of doing this
-    fbs.CacheSet.addTtl(fbb, options)
-  else if (typeof options === 'object' && typeof options.ttl === 'number')
+  if (typeof options === 'object' && typeof options.ttl === 'number') {
     fbs.CacheSet.addTtl(fbb, options.ttl)
-
-  if (typeof meta !== 'undefined')
+  }
+  if (typeof meta !== 'undefined') {
     fbs.CacheSet.addMeta(fbb, meta);
+  }
   fbs.CacheSet.addTags(fbb, tags);
 
   return sendAsync(fbb, fbs.Any.CacheSet, fbs.CacheSet.endCacheSet(fbb)).then(async baseMsg => {
@@ -252,14 +268,15 @@ import { default as global } from "./global"
 import { ReadableStream as WhatWGReadableStream } from '@stardazed/streams';
 import { bufferFromStream } from '../../body_mixin';
 import { ReadableStream } from '../../dom_types';
+import { isIterable, isObject } from 'src/util';
 
 const cache = {
   get,
   getString,
   getStream,
   getEntry, // w/ meta
-  // getMulti,
-  // getMultiString,
+  getMulti,
+  getMultiString,
   set,
   setMeta,
   expire,
