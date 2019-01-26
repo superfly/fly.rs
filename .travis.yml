@@ -18,7 +18,7 @@ services:
 env:
   global:
   - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
-  - SCCACHE_VERSION=0.2.7
+  - SCCACHE_VERSION=0.2.8
   - SCCACHE_BUCKET=fly-proxy-sccache
   - RUSTUP_HOME=$HOME/.rustup/
 
