@@ -1,3 +1,8 @@
+/**
+ * @module fetch
+ * @ignore
+ */
+
 /*
  inspired from
  https://raw.githubusercontent.com/github/url-polyfill/master/url.js
@@ -126,7 +131,7 @@ export class URL {
         password: baseParts.password,
         hostname: baseParts.hostname,
         port: baseParts.port,
-        path: urlParts.path || baseParts.path,
+        path: resolvePathFromBase(urlParts.path, baseParts.path),
         query: urlParts.query || baseParts.query,
         hash: urlParts.hash
       }
@@ -205,6 +210,7 @@ export class URL {
       .toString()
       .split("/")
       .map(encodePathSegment)
+      .map(segment => segment.replace(/%25/g, "%"))
     if (chunks[0]) {
       // ensure joined string starts with slash.
       chunks.unshift("")
@@ -273,6 +279,17 @@ export class URL {
   toString(): string {
     return this.href
   }
+}
+
+/* one off logic to fix buggy url implementation */
+function resolvePathFromBase(path: string, basePath: string) {
+  if (path.startsWith("/")) {
+    return path
+  }
+  if (basePath.endsWith("/")) {
+    return basePath + path
+  }
+  return basePath + "/" + path
 }
 
 URL.init()

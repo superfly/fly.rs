@@ -13,11 +13,11 @@
  * 
  * @module fly/cache/global
  */
-/**  */
-// declare var bridge: any
+
 import { sendAsync } from '../../bridge'
 import * as fbs from "../../msg_generated";
 import * as flatbuffers from "../../flatbuffers";
+
 /**
  * Notifies all caches to delete data at the specified key.
  * @param key the key to delete
@@ -48,9 +48,4 @@ export async function purgeTag(tag: string): Promise<boolean> {
   return sendAsync(fbb, fbs.Any.CacheNotifyPurgeTag, fbs.CacheNotifyPurgeTag.endCacheNotifyPurgeTag(fbb)).then(_baseMsg => {
     return true
   })
-}
-
-export default {
-  del,
-  purgeTag
 }
