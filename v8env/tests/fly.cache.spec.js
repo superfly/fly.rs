@@ -150,7 +150,7 @@ describe("fly.cache", () => {
   })
 
   describe("TTL", () => {
-    test("set with ttl", async () => {
+    test.skip("set with ttl", async () => {
       const [key, value] = kv();
 
       const setResult = await fly.cache.set(key, value, { ttl: 1 })
@@ -167,7 +167,7 @@ describe("fly.cache", () => {
       ).to.be.null
     })
 
-    test("expire", async () => {
+    test.skip("expire", async () => {
       const [key, value] = kv();
 
       expect(
