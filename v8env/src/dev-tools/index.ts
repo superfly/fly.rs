@@ -1,6 +1,7 @@
 import { Compiler } from "./compiler";
-import { run, globals } from "./testing";
+import { run, globals, loadSuite, printSuiteError } from "./testing";
 import { DevTools, ConfigOptions } from "./api";
+import { exit } from "../os";
 
 class FlyDevTools implements DevTools {
   private compiler: Compiler;
@@ -16,8 +17,18 @@ class FlyDevTools implements DevTools {
     this.compiler.run(path);
   }
 
-  runTests() {
-    run();
+  runTests(paths: string[]) {
+    console.warn("runTests()", { paths });
+    for (const suitePath of paths) {
+      loadSuite(suitePath);
+      try {
+        this.compiler.run(suitePath);
+      } catch (err) {
+        printSuiteError(suitePath, err);
+        exit(1);
+      }
+    }
+    run()
   }
 }
 

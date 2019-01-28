@@ -1,53 +1,207 @@
+import { testStream } from "./fixtures/test-stream";
+
 describe("fly.cache", () => {
-    it("gets a string", async () => {
-        const v = `cache-value-woo! ${Math.random()}`
+  describe("set+get", () => {
+    test("String->ArrayBuffer", async () => {
+      const [key, value] = kv();
 
-        const setResult = await fly.cache.set("cache-test-key", v)
-        expect(setResult).to.eq(true, "couldn't set test value")
-        const result = await fly.cache.getString("cache-test-key")
-
-        expect(result).to.eq(v)
+      const setResult = await fly.cache.set(key, value)
+      expect(setResult).to.eq(true, "couldn't set test value")
+      const result = await fly.cache.get(key)
+      expect(result).to.be.a("ArrayBuffer")
+      expect(ab2str(result)).to.eq(value)
     })
 
-    it("deletes from cache", async () => {
-        const v = `cache-value-woo! ${Math.random()}`
-
-        const setResult = await fly.cache.set("cache-delete-key", v)
-        expect(setResult).to.eq(true)
-
-        const result = await fly.cache.del("cache-delete-key")
-
-        expect(result).to.eq(true, "del should return true")
-
-        let newVal = await fly.cache.get("cache-delete-key")
-        expect(newVal).to.eq(null, "previously deleted key should be null")
+    test("ArrayBuffer->ArrayBuffer", async () => {
+      const [key, value] = kv();
+      
+      const setResult = await fly.cache.set(key, value)
+      expect(setResult).to.eq(true, "couldn't set test value")
+      const result = await fly.cache.get(key)
+      expect(result).to.be.a("ArrayBuffer")
+      expect(ab2str(result)).to.eq(value)
     })
 
-    it("accepts empty arrayBuffer", async () => {
-        const k = `cache-test${Math.random()}`
+    test("Stream->ArrayBuffer", async () => {
+      const [key, value] = kv("this-is-a-value-that-will-be-streamed");
+      const stream = testStream(value);
 
-        await fly.cache.set(k, new ArrayBuffer(0))
-
-        const result = await fly.cache.get(k)
-        expect(result).to.be.a('ArrayBuffer')
-        expect(result.byteLength).to.eq(0)
+      const setResult = await fly.cache.set(key, stream)
+      expect(setResult).to.eq(true, "couldn't set test value")
+      const result = await fly.cache.get(key)
+      expect(result).to.be.a("ArrayBuffer")
+      expect(ab2str(result)).to.eq(value)
     })
 
-    it("handles blank strings", async () => {
-        const k = `cache-test${Math.random()}`
-        await fly.cache.set(k, '')
-        const result = await fly.cache.getString(k)
-        expect(result).to.eq('')
+    test("Missing key", async () => {
+      const [k, _] = kv();
+      expect(await fly.cache.get(k)).to.be.null
     })
 
-    // it("handles set.onlyIfEmpty", async () => {
-    //     const k = `cache-test${Math.random()}`
-    //     await fly.cache.set(k, 'asdf')
+    test("Empty ArrayBuffer", async () => {
+      const k = `cache-test${Math.random()}`
 
-    //     const setResult = await fly.cache.set(k, 'jklm', { onlyIfEmpty: true })
-    //     const v = await fly.cache.getString(k)
+      await fly.cache.set(k, new ArrayBuffer(0))
 
-    //     expect(setResult).to.eq(false)
-    //     expect(v).to.eq("asdf")
-    // })
+      const result = await fly.cache.get(k)
+      expect(result).to.be.a('ArrayBuffer')
+      expect(result.byteLength).to.eq(0)
+    })
+
+    test("Empty string", async () => {
+      const k = `cache-test${Math.random()}`
+      await fly.cache.set(k, '')
+      const result = await fly.cache.getString(k)
+      expect(result).to.eq('')
+    })
+  })
+
+  describe("getMulti()", () => {
+    test("returns results in order", async () => {
+      const entries = new Map([kv(), kv(), kv()]);
+
+      for (const [k, v] of entries) {
+        const result = await fly.cache.set(k, v)
+        expect(result).to.eq(true, `couldn't set key`)
+      }
+
+      const results = await fly.cache.getMulti(Array.from(entries.keys()));
+      expect(results).to.be.an.instanceOf(Array)
+      expect(results.map(ab2str)).to.have.ordered.members(Array.from(entries.values()));
+    })
+
+    test("handles missing keys", async () => {
+      const entries = new Map([kv(), kv(), kv()]);
+
+      for (const [k, v] of entries) {
+        const result = await fly.cache.set(k, v)
+        expect(result).to.eq(true, `couldn't set key`)
+      }
+
+      entries.set("missing", null)
+
+      const results = await fly.cache.getMulti(Array.from(entries.keys()));
+      expect(results).to.be.an.instanceOf(Array)
+      expect(results.map(r => r && ab2str(r))).to.have.ordered.members(Array.from(entries.values()));
+    })
+  })
+
+  describe("getMultiString()", () => {
+    test("returns results in order", async () => {
+      const entries = new Map([kv(), kv(), kv()]);
+
+      for (const [k, v] of entries) {
+        const result = await fly.cache.set(k, v)
+        expect(result).to.eq(true, `couldn't set key`)
+      }
+
+      const results = await fly.cache.getMultiString(Array.from(entries.keys()));
+      expect(results).to.be.an.instanceOf(Array)
+      expect(results).to.have.ordered.members(Array.from(entries.values()));
+    })
+
+    test("handles missing keys", async () => {
+      const entries = new Map([kv(), kv(), kv()]);
+
+      for (const [k, v] of entries) {
+        const result = await fly.cache.set(k, v)
+        expect(result).to.eq(true, `couldn't set key`)
+      }
+
+      entries.set("missing", null)
+
+      const results = await fly.cache.getMultiString(Array.from(entries.keys()));
+      expect(results).to.be.an.instanceOf(Array)
+      expect(results).to.have.ordered.members(Array.from(entries.values()));
+    })
+  })
+
+  test("getString()", async () => {
+    const [key, value] = kv();
+
+    const setResult = await fly.cache.set(key, value)
+    expect(setResult).to.eq(true, "couldn't set test value")
+    const result = await fly.cache.getString(key)
+    expect(result).to.eq(value)
+  })
+
+  test("getStream()", async () => {
+    const [key, value] = kv();
+
+    const setResult = await fly.cache.set(key, value)
+    expect(setResult).to.eq(true, "couldn't set test value")
+    const result = await fly.cache.getStream(key)
+    expect(result).to.be.an.instanceOf(ReadableStream)
+    const buffer = await streamToBuffer(result.getReader())
+    expect(ab2str(buffer)).to.eq(value)
+  })
+  
+  test("del()", async () => {
+    const [key, value] = kv();
+    const setResult = await fly.cache.set(key, value)
+    expect(setResult).to.eq(true)
+
+    expect(
+      await fly.cache.del(key)
+    ).to.eq(true, "del should return true")
+
+    let newVal = await fly.cache.get(key)
+    expect(newVal).to.eq(null, "previously deleted key should be null")
+  })
+
+  describe("TTL", () => {
+    test.skip("set with ttl", async () => {
+      const [key, value] = kv();
+
+      const setResult = await fly.cache.set(key, value, { ttl: 1 })
+      expect(setResult).to.eq(true)
+
+      expect(
+        await fly.cache.getString(key)
+      ).to.eq(value)
+
+      await new Promise(r => setTimeout(r, 1500))
+
+      expect(
+        await fly.cache.getString(key)
+      ).to.be.null
+    })
+
+    test.skip("expire", async () => {
+      const [key, value] = kv();
+
+      expect(
+        await fly.cache.set(key, value)
+      ).to.eq(true)
+
+      expect(
+        await fly.cache.expire(key, 1)
+      ).to.eq(true)
+      
+      expect(
+        await fly.cache.getString(key)
+      ).to.eq(value)
+
+      await new Promise(r => setTimeout(r, 1500))
+
+      expect(
+        await fly.cache.getString(key)
+      ).to.be.null
+    })
+  })
+
+  test.skip("handles set.onlyIfEmpty", async () => {
+    const k = `cache-test${Math.random()}`
+    await fly.cache.set(k, 'asdf')
+
+    const setResult = await fly.cache.set(k, 'jklm', { onlyIfEmpty: true })
+    const v = await fly.cache.getString(k)
+
+    expect(setResult).to.eq(false)
+    expect(v).to.eq("asdf")
+  })
 })
+
+function kv(value = "value") {
+  return [`k:${Math.random()}`, `v:${Math.random()}:${value}`];
+}

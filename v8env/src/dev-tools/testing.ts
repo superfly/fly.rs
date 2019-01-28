@@ -1,8 +1,9 @@
-import { stringifyTypeName } from "src/util/format";
-import { filterStackTrace } from "src/source_maps";
-import { isError } from "src/util";
+import { stringifyTypeName } from "../util/format";
+import { filterStackTrace } from "../source_maps";
+import { isError } from "../util";
 import { expect } from "chai/lib/chai.js";
-import { exit } from "src/os";
+import { exit } from "../os";
+import { Compiler } from "./compiler";
 
 export type DoneFn = (err?: any) => void;
 export type TestFn = (done?: DoneFn) => void | Promise<void>;
@@ -80,8 +81,12 @@ export const globals = {
   expect,
 };
 
+export function loadSuite(suitePath: string) {
+  beginSuite(suitePath);
+}
+
 export async function run() {
-  const runner = new Runner(root);
+  const runner = new Runner(suites);
 
   await runner.run();
 
@@ -119,7 +124,7 @@ export class Runner {
 
   public readonly failures: TestFailure[] = [];
 
-  constructor(public root: GroupDefinition) { }
+  constructor(public suites: GroupDefinition[]) { }
 
   public get stats() {
     return {
@@ -130,7 +135,9 @@ export class Runner {
   }
 
   public async run() {
-    await this.runGroup(this.root);
+    for (const suite of this.suites) {
+      await this.runGroup(suite);
+    }
   }
 
   async runGroup(group: GroupDefinition) {
@@ -177,7 +184,16 @@ export class Runner {
     }
 
     try {
-      await runFn(test.fn);
+      const timeout = new Promise((resolve, reject) => {
+        setTimeout(() => {
+          reject(new TestTimeoutError(test));
+        }, 5000)
+      });
+
+      await Promise.race([
+        runFn(test.fn),
+        timeout
+      ]);
 
       this.passed++;
       print(depth, `${color(Style.green, "✓")} ${color(Style.dim, test.name)}`);
@@ -211,8 +227,20 @@ function print(depth: number, msg: string) {
   (window as any).logger.print("  ".repeat(depth) + msg);
 }
 
+let suites: GroupDefinition[] = [];
+
 let root = makeGroup("")
 let groupStack = [root];
+
+function beginSuite(name: string) {
+  const suiteRoot = makeGroup(name);
+  suites.push(suiteRoot);
+  groupStack = [suiteRoot];
+}
+
+// function endSuite() {
+//   groupStack = [];
+// }
 
 function pushGroup(group: GroupDefinition) {
   groupStack.push(group);
@@ -294,14 +322,28 @@ function printFailures(failures: TestFailure[]) {
   for (const failure of failures) {
     print(2, color(Style.red, `${failure.index}) ${failure.test.name}`));
 
-    if (failure.error.stack) {
-      const filteredStackTrace = filterStackTrace(failure.error.stack);
-      if (filteredStackTrace) {
-        print(3, color(Style.dim, filteredStackTrace));
-      }
-    }
+    printError(failure.error, 2)
 
     print(0, "");
+  }
+}
+
+export function printSuiteError(suitePath: string, error: Error) {
+  print(2, color(Style.red, `Error loading suite ${suitePath}`));
+
+  printError(error, 3);
+}
+
+export function printError(error: Error, depth: number = 0) {
+  if (error.stack) {
+    const filteredStackTrace = filterStackTrace(error.stack);
+    if (filteredStackTrace) {
+      print(depth, color(Style.dim, filteredStackTrace));
+    }
+  } else if (error.message) {
+    print(depth, color(Style.dim, error.message));
+  } else {
+    print(depth, color(Style.dim, error.toString()));
   }
 }
 
@@ -320,4 +362,14 @@ function path(testOrGroup: TestDefinition | GroupDefinition): Array<TestDefiniti
     return [...path(testOrGroup.parent), testOrGroup];
   }
   return [testOrGroup];
+}
+
+export class TestTimeoutError extends Error {
+  constructor(test: TestDefinition) {
+    if (test.fn.length === 1) {
+      super("Test timed out. Did you forget to call the `done` callback?");
+    } else {
+      super("Test timed out.");
+    }
+  }
 }

@@ -5,11 +5,9 @@
  * @module fly/data
  */
 
-import { assert } from "../util";
-import * as util from "../util";
 import * as fbs from "../msg_generated";
 import * as flatbuffers from "../flatbuffers";
-import { sendSync, sendAsync } from "../bridge";
+import { sendAsync } from "../bridge";
 
 /**
  * A collection of keys and values.
@@ -30,18 +28,23 @@ export class Collection {
    * @param key key for data
    * @param obj value to store
    */
-  put(key: string, obj: any): Promise<boolean> {
+  async put(key: string, obj: any): Promise<boolean> {
+    if (typeof obj === "number" || obj === undefined || obj === null) {
+      throw new TypeError("value must be a string, object, or array");
+    }
+
     const fbb = flatbuffers.createBuilder();
     const fbbColl = fbb.createString(this.name);
     const fbbKey = fbb.createString(key);
-    const fbbObj = fbb.createString(typeof obj === 'string' ? obj : JSON.stringify(obj));
+    const fbbObj = fbb.createString(JSON.stringify(obj));
     fbs.DataPut.startDataPut(fbb);
     fbs.DataPut.addCollection(fbb, fbbColl);
     fbs.DataPut.addKey(fbb, fbbKey);
     fbs.DataPut.addJson(fbb, fbbObj);
-    return sendAsync(fbb, fbs.Any.DataPut, fbs.DataPut.endDataPut(fbb)).then(_baseRes => {
-      return true
-    })
+
+    await sendAsync(fbb, fbs.Any.DataPut, fbs.DataPut.endDataPut(fbb));
+
+    return true;
   }
 
   /**
@@ -96,19 +99,20 @@ export class Collection {
   }
 }
 
-const data = {
-  collection(name: string) {
-    return new Collection(name)
-  },
-  dropCollection(name: string): Promise<boolean> {
-    const fbb = flatbuffers.createBuilder();
-    const fbbColl = fbb.createString(name);
-    fbs.DataDropCollection.startDataDropCollection(fbb);
-    fbs.DataDropCollection.addCollection(fbb, fbbColl);
-    return sendAsync(fbb, fbs.Any.DataDropCollection, fbs.DataDropCollection.endDataDropCollection(fbb)).then(_baseRes => {
-      return true
-    })
-  }
+export function collection(name: string) {
+  return new Collection(name)
 }
 
-export default data;
+export function dropCollection(name: string): Promise<boolean> {
+  const fbb = flatbuffers.createBuilder();
+  const fbbColl = fbb.createString(name);
+  fbs.DataDropCollection.startDataDropCollection(fbb);
+  fbs.DataDropCollection.addCollection(fbb, fbbColl);
+  return sendAsync(fbb, fbs.Any.DataDropCollection, fbs.DataDropCollection.endDataDropCollection(fbb)).then(_baseRes => {
+    return true
+  })
+}
+
+function assertValueType(val: any) {
+  // if (val === )
+}

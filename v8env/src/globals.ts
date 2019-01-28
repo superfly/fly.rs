@@ -16,9 +16,9 @@ import { Image } from "./fly/image";
 
 import * as url from './url';
 import { FlyRequest } from "./request";
-import flyData from './fly/data';
-import flyCache from './fly/cache';
-import flyResponseCache from './fly/cache/response';
+import * as flyData from './fly/data';
+import * as flyCache from './fly/cache';
+import * as flyResponseCache from './fly/response';
 import flyHttp from './fly/http'
 import { loadModule } from "./module_loader";
 import { installDevTools } from "./dev-tools";
@@ -30,6 +30,8 @@ import { Logger } from "./logging";
 import * as domTypes from './dom_types';
 import * as formData from "./form_data";
 import * as headers from './headers';
+import { arrayBufferToString, stringToArrayBuffer } from "./util";
+import { bufferFromStream } from "./body_mixin";
 
 declare global {
   interface Window {
@@ -140,6 +142,15 @@ window.DNSMessageType = dns.DNSMessageType;
 window.DNSOpCode = dns.DNSOpCode;
 window.DNSResponseCode = dns.DNSResponseCode;
 
+const conversionUtils = {
+  arrayBufferToStr: arrayBufferToString,
+  stringToArrayBuffer,
+  ab2str: arrayBufferToString,
+  str2ab: stringToArrayBuffer,
+  streamToBuffer: bufferFromStream,
+};
+
 Object.assign(window, {
   ...streams,
+  ...conversionUtils
 });

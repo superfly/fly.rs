@@ -7,7 +7,7 @@ export interface ConfigOptions {
 
 export interface DevTools {
   run(path: string): void;
-  runTests(): void;
+  runTests(paths: string[]): void;
 }
 
 export type initFn = (target: object, config: ConfigOptions) => DevTools;

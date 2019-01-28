@@ -1,7 +1,7 @@
 import { assetSourceCode, ContainerName, AssetsProtocol } from "./assets";
 import { assert } from "./util";
 import { loadModule, LoadedModule } from "../module_loader";
-import { URL } from "src/url";
+import { URL } from "../url";
 
 export function fetchModule(specifierUrl: string, refererOriginUrl?: string): LoadedModule {  
   console.trace("[resolver] fetchModule()", { specifierUrl, refererOriginUrl });

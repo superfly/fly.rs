@@ -76,6 +76,7 @@ before_script:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start redis; fi
 script:
 - RUST_BACKTRACE=1 cargo test
+- RUST_BACKTRACE=1 cargo run --bin test "v8env/tests/**/*.spec.*"
 - "./scripts/build-release.sh"
 - sccache --stop-server
 before_cache:

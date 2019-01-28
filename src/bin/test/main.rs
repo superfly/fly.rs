@@ -41,17 +41,24 @@ fn main() {
     patterns.push(String::from("./**/*[._]test.js"));
   }
 
+  let mut test_files: Vec<String> = vec![];
+
   for pattern in patterns {
     for path in glob(&pattern).unwrap().filter_map(Result::ok) {
-      debug!("Loading test file: {}", path.display());
       let filename = path
         .to_str()
         .expect(&format!("Invalid filename {}", path.display()));
-      rt.eval(filename, &format!("dev.run('{}')", filename));
+      test_files.push(filename.to_owned());
     }
   }
 
-  rt.eval("<runTests>", "dev.runTests();");
+  rt.eval(
+    "<runTests>",
+    &format!(
+      "dev.runTests({});",
+      serde_json::to_string(&test_files).expect("error loading test files")
+    ),
+  );
 
   tokio::run(
     rt.run()
