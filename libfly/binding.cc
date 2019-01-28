@@ -523,7 +523,6 @@ extern "C"
 
   void promise_rejected_cb(v8::PromiseRejectMessage message)
   {
-    printf("Unhandled promise rejection:\n");
     auto iso = v8::Isolate::GetCurrent();
     auto rt = FromIsolate(iso);
     v8::HandleScope handle_scope(rt->isolate);
@@ -535,18 +534,19 @@ extern "C"
     switch (message.GetEvent())
     {
     case v8::kPromiseRejectWithNoHandler:
-      printf("no handler!\n");
+      printf("Unhandled promise rejection:\n");
       printf("is native error? %s\n", error->IsNativeError() ? "true" : "false");
       printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), error));
       break;
-    case v8::kPromiseRejectAfterResolved:
-      printf("promise reject after resolved\n");
-      break;
     case v8::kPromiseHandlerAddedAfterReject:
       printf("promise handler added after reject\n");
+      printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), error));
+      break;
+    case v8::kPromiseRejectAfterResolved:
+      // ignore
       break;
     case v8::kPromiseResolveAfterResolved:
-      printf("promise resolved after resolved\n");
+      // ignore
       break;
     }
   }
