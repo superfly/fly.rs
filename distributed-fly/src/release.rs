@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use crate::rmps::Deserializer;
+use rmp_serde::Deserializer;
 use serde::Deserialize;
 
 use r2d2_redis::redis;

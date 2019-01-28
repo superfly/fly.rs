@@ -86,7 +86,7 @@ pub fn op_add_event_ln(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
 
                         Ok(())
                     })
-                    .and_then(|_| Ok(info!("done listening to http events."))),
+                    .and_then(|_| Ok(debug!("done listening to http events."))),
             );
             rt.fetch_events = Some(tx);
         }

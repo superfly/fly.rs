@@ -12,6 +12,8 @@ use futures::{
   Future, Stream,
 };
 
+use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
+
 use crate::js::*;
 use std::ptr;
 
@@ -226,4 +228,44 @@ pub enum EventDispatchError {
   PoisonedLock,
   Http(mpsc::SendError<JsHttpRequest>),
   Dns(mpsc::SendError<JsDnsRequest>),
+}
+
+pub fn signal_monitor() -> (
+  Box<Future<Item = (), Error = ()> + Send + 'static>,
+  oneshot::Receiver<()>,
+) {
+  let (sigtx, sigrx) = oneshot::channel();
+  (
+    Box::new(
+      Signal::new(SIGTERM)
+        .join(Signal::new(SIGINT))
+        .map_err(|error| {
+          error!("Failed to set up process signal monitoring: {:?}", error);
+        })
+        .and_then(|(sigterms, sigints)| {
+          // Stream of all signals we care about
+          let signals = sigterms.select(sigints);
+          // Take only the first signal in the stream and log that it was triggered
+          signals
+            .take(1)
+            .map_err(|error| {
+              error!("Error while listening on process signals: {:?}", error);
+            })
+            .for_each(|signal| {
+              let signal_name = match signal {
+                SIGTERM => "SIGTERM",
+                SIGINT => "SIGINT",
+                _ => unreachable!(),
+              };
+              info!("Received {}, gracefully shutting down", signal_name);
+              Ok(())
+            })
+        })
+        .and_then(move |_| {
+          sigtx.send(()).unwrap();
+          Ok(())
+        }),
+    ),
+    sigrx,
+  )
 }

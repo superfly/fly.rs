@@ -16,3 +16,10 @@ impl RuntimeSelector for FixedRuntimeSelector {
         Ok(Some(self.runtime.ptr.to_runtime()))
     }
 }
+
+impl Drop for FixedRuntimeSelector {
+    fn drop(&mut self) {
+        debug!("Dropping FixedRuntime, will dispose of runtime.");
+        self.runtime.dispose();
+    }
+}

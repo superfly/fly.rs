@@ -25,6 +25,19 @@ impl DistributedRuntimeSelector {
     }
 }
 
+impl Drop for DistributedRuntimeSelector {
+    fn drop(&mut self) {
+        self.runtimes
+            .write()
+            .unwrap()
+            .iter_mut()
+            .for_each(|(k, rt)| {
+                debug!("Disposing of runtime: {}", k);
+                rt.dispose();
+            });
+    }
+}
+
 impl RuntimeSelector for DistributedRuntimeSelector {
     fn get_by_hostname(&self, hostname: &str) -> Result<Option<&mut Runtime>, SelectorError> {
         let rel = match Release::get(hostname) {
