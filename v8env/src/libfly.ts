@@ -1,4 +1,3 @@
-import { RawSourceMap } from './types'
 import { globalEval } from './global-eval'
 
 type MessageCallback = (msg: Uint8Array, raw: Uint8Array) => void;

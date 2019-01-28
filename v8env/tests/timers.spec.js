@@ -11,6 +11,7 @@ describe("timers", () => {
         done()
       }, 20)
     })
+
     it("is cleared", function (done) {
       const t = setTimeout(function () {
         done(new Error("should not be called"))
@@ -21,6 +22,7 @@ describe("timers", () => {
       }, 50)
     })
   })
+  
   describe("setImmediate", () => {
     it("calls the callback", function (done) {
       setImmediate(done)
