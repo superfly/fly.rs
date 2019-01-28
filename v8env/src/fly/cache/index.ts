@@ -23,7 +23,7 @@ import * as flatbuffers from "../../flatbuffers";
 import { ReadableStream as WhatWGReadableStream } from '@stardazed/streams';
 import { bufferFromStream } from '../../body_mixin';
 import { ReadableStream } from '../../dom_types';
-import { isIterable } from 'src/util';
+import { isIterable } from '../../util';
 import * as global from "./global";
 
 export { global };

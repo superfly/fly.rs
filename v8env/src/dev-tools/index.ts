@@ -1,7 +1,7 @@
 import { Compiler } from "./compiler";
 import { run, globals, loadSuite, printSuiteError } from "./testing";
 import { DevTools, ConfigOptions } from "./api";
-import { exit } from "src/os";
+import { exit } from "../os";
 
 class FlyDevTools implements DevTools {
   private compiler: Compiler;

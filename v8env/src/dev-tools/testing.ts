@@ -1,8 +1,8 @@
-import { stringifyTypeName } from "src/util/format";
-import { filterStackTrace } from "src/source_maps";
-import { isError } from "src/util";
+import { stringifyTypeName } from "../util/format";
+import { filterStackTrace } from "../source_maps";
+import { isError } from "../util";
 import { expect } from "chai/lib/chai.js";
-import { exit } from "src/os";
+import { exit } from "../os";
 import { Compiler } from "./compiler";
 
 export type DoneFn = (err?: any) => void;
