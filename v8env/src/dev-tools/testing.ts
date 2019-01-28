@@ -6,18 +6,20 @@ import { exit } from "../os";
 import { Compiler } from "./compiler";
 
 export type DoneFn = (err?: any) => void;
-export type TestFn = (done?: DoneFn) => void | Promise<void>;
+export type RunnableFn = (done?: DoneFn) => Promise<void> | void;
 
 export type ScopeFn = () => void;
 
-type HookFn = TestFn;
+
+const DefaultTimeout = 5000;
 
 interface TestDefinition {
   name: string;
-  fn: TestFn;
+  fn: RunnableFn;
   skip?: boolean;
   only?: boolean;
   parent: GroupDefinition;
+  timeout: number;
 }
 
 interface GroupDefinition {
@@ -25,37 +27,37 @@ interface GroupDefinition {
   parent?: GroupDefinition;
   groups: GroupDefinition[];
   tests: TestDefinition[];
-  beforeAll: HookFn[];
-  afterAll: HookFn[];
-  beforeEach: HookFn[];
-  afterEach: HookFn[];
+  beforeAll: RunnableFn[];
+  afterAll: RunnableFn[];
+  beforeEach: RunnableFn[];
+  afterEach: RunnableFn[];
 }
 
-export function test(name: string, fn: TestFn) {
-  currentGroup().tests.push({ name, fn, parent: currentGroup() });
+export function test(name: string, fn: RunnableFn, timeout: number = DefaultTimeout) {
+  currentGroup().tests.push({ name, fn, parent: currentGroup(), timeout });
 }
 
-test.skip = (name: string, fn: TestFn) => {
-  currentGroup().tests.push({ name, fn, skip: true, parent: currentGroup() });
+test.skip = (name: string, fn: RunnableFn, timeout: number = DefaultTimeout) => {
+  currentGroup().tests.push({ name, fn, skip: true, parent: currentGroup(), timeout });
 }
 
-test.only = (name: string, fn: TestFn) => {
-  currentGroup().tests.push({ name, fn, only: true, parent: currentGroup() });
+test.only = (name: string, fn: RunnableFn, timeout: number = DefaultTimeout) => {
+  currentGroup().tests.push({ name, fn, only: true, parent: currentGroup(), timeout });
 }
 
-function beforeAll(fn: HookFn) {
+function beforeAll(fn: RunnableFn) {
   currentGroup().beforeAll.push(fn);
 }
 
-function beforeEach(fn: HookFn) {
+function beforeEach(fn: RunnableFn) {
   currentGroup().beforeEach.push(fn);
 }
 
-function afterEach(fn: HookFn) {
+function afterEach(fn: RunnableFn) {
   currentGroup().afterEach.push(fn);
 }
 
-function afterAll(fn: HookFn) {
+function afterAll(fn: RunnableFn) {
   currentGroup().afterAll.push(fn);
 }
 
@@ -145,68 +147,59 @@ export class Runner {
     print(depth, color(Style.groupName, group.name));
 
     for (const hook of group.beforeAll) {
-      await runFn(hook);
+      await this.runHook(hook);
     }
     for (const test of group.tests) {
       for (const hook of group.beforeEach) {
-        await runFn(hook);
+        await this.runHook(hook);
       }
 
       await this.runTest(test);
 
       for (const hook of group.afterEach) {
-        await runFn(hook);
+        await this.runHook(hook);
       }
     }
     for (const test of group.groups) {
       for (const hook of group.beforeEach) {
-        await runFn(hook);
+        await this.runHook(hook);
       }
 
       await this.runGroup(test);
 
       for (const hook of group.afterEach) {
-        await runFn(hook);
+        await this.runHook(hook);
       }
     }
     for (const hook of group.afterAll) {
-      await runFn(hook);
+      await this.runHook(hook);
     }
   }
 
-  async runTest(test: TestDefinition) {
+  runHook(fn: RunnableFn): Promise<void> {
+    return callFn(fn, DefaultTimeout);
+  }
+
+  async runTest(test: TestDefinition): Promise<void> {
     const depth = path(test).length;
 
     if (test.skip) {
       this.skipped++;
       print(depth, `${color(Style.yellow, "○")} ${color(Style.dim, test.name)}`);
-      return;
+      return Promise.resolve();
     }
 
-    try {
-      const timeout = new Promise((resolve, reject) => {
-        setTimeout(() => {
-          reject(new TestTimeoutError(test));
-        }, 5000)
+    return callFn(test.fn, test.timeout)
+      .then(() => {
+        this.passed++;
+        print(depth, `${color(Style.green, "✓")} ${color(Style.dim, test.name)}`);
+      })
+      .catch(error => {
+        this.failed++;
+        const failure = this.recordFailure(test, error);
+        const msg = `${failure.index}) ${test.name}`;
+        print(depth, color(Style.red, msg));
       });
-
-      await Promise.race([
-        runFn(test.fn),
-        timeout
-      ]);
-
-      this.passed++;
-      print(depth, `${color(Style.green, "✓")} ${color(Style.dim, test.name)}`);
-    } catch (e) {
-      this.failed++;
-      const failure = this.recordFailure(test, e);
-      const msg = `${failure.index}) ${test.name}`;
-      print(depth, color(Style.red, msg));
-    }
-  }
-
-  async runHook(fn: HookFn) {
-    await runFn(fn);
   }
 
   recordFailure(test: TestDefinition, error: unknown) {
@@ -269,36 +262,42 @@ function makeGroup(name: string): GroupDefinition {
   };
 }
 
-function runFn(fn: TestFn): Promise<void> {
+function callFn(fn: RunnableFn, timeout: number ): Promise<void> {
+  let timeoutId: number; 
   return new Promise((resolve, reject) => {
-    try {
-      if (fn.length === 0) {
-        let result = fn();
-        // test returned a promise, resolve or reject from that
-        if (result && typeof result.then === "function") {
-          result.then(resolve, reject);
-        } else {
-          // test did not return a promise, mark done
-          resolve();
-        }
-      } else if (fn.length === 1) {
+    timeoutId = setTimeout(
+      () => reject(new TestTimeoutError(fn)),
+      timeout
+    );
 
-        const done = (err?: unknown) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        }
+    // fn expects a done callback
+    if (fn.length) {
+      const done = (reason?: Error | string) => {
+        return reason ? reject(reason) : resolve();
+      }
 
-        // test expects a done callback
-        fn(done);
-      } else {
-        reject(new Error("Test functions only accept an optonal done callback"));
-      };
-    } catch (err) {
-      reject(err);
+      return fn(done);
     }
+
+    let returnVal: any;
+    try {
+      returnVal = fn();
+    } catch (error) {
+      return reject(error);
+    }
+
+    // if fn returns a promise, return it
+    if (typeof returnVal === "object" && returnVal !== null && typeof returnVal.then === "function") {
+      return returnVal.then(resolve, reject);
+    }
+
+    // test is a synchronous function, and if we got here it passed
+    return resolve();
+  }).then(() => {
+    clearTimeout(timeoutId);
+  }).catch(error => {
+    clearTimeout(timeoutId);
+    throw error;
   });
 }
 
@@ -365,11 +364,11 @@ function path(testOrGroup: TestDefinition | GroupDefinition): Array<TestDefiniti
 }
 
 export class TestTimeoutError extends Error {
-  constructor(test: TestDefinition) {
-    if (test.fn.length === 1) {
-      super("Test timed out. Did you forget to call the `done` callback?");
+  constructor(fn: RunnableFn) {
+    if (fn.length) {
+      super("Timeout. Make sure this test is calling the `done` callback!");
     } else {
-      super("Test timed out.");
+      super("Timeout");
     }
   }
 }

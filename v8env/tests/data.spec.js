@@ -46,7 +46,7 @@ describe('@fly/data', () => {
 
             try {
               await coll.put("key", val)
-              throw new Error(`value type ${name} should be rejected`);
+              expect.fail(`value type ${name} should be rejected`)
             } catch (err) {
               expect(err).to.be.an.instanceOf(TypeError)
             }
