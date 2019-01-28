@@ -3,13 +3,11 @@ import { filterStackTrace } from "../source_maps";
 import { isError } from "../util";
 import { expect } from "chai/lib/chai.js";
 import { exit } from "../os";
-import { Compiler } from "./compiler";
 
 export type DoneFn = (err?: any) => void;
 export type RunnableFn = (done?: DoneFn) => Promise<void> | void;
 
 export type ScopeFn = () => void;
-
 
 const DefaultTimeout = 5000;
 
@@ -90,7 +88,14 @@ export function loadSuite(suitePath: string) {
 export async function run() {
   const runner = new Runner(suites);
 
-  await runner.run();
+  try {
+    await runner.run();
+  } catch (error) {
+    printBlankLines(2);
+    printError(error, 2);
+
+    exit(1);
+  }
 
   const { passed, failed, skipped } = runner.stats;
 
@@ -147,32 +152,58 @@ export class Runner {
     print(depth, color(Style.groupName, group.name));
 
     for (const hook of group.beforeAll) {
-      await this.runHook(hook);
+      await this.runHook(hook)
+        .catch(error => {
+          print(depth, color(Style.red, "Error running beforeAll hook"));
+          throw error;
+        });
     }
+  
     for (const test of group.tests) {
       for (const hook of group.beforeEach) {
-        await this.runHook(hook);
+        await this.runHook(hook)
+          .catch(error => {
+            print(depth, color(Style.red, "Error running beforeEach hook"));
+            throw error;
+          });
       }
 
       await this.runTest(test);
 
       for (const hook of group.afterEach) {
-        await this.runHook(hook);
+        await this.runHook(hook)
+          .catch(error => {
+            print(depth, color(Style.red, "Error running afterEach hook"));
+            throw error;
+          });
       }
     }
+  
     for (const test of group.groups) {
       for (const hook of group.beforeEach) {
-        await this.runHook(hook);
+        await this.runHook(hook)
+          .catch(error => {
+            print(depth, color(Style.red, "Error running beforeEach hook"));
+            throw error;
+          });
       }
 
       await this.runGroup(test);
 
       for (const hook of group.afterEach) {
-        await this.runHook(hook);
+        await this.runHook(hook)
+          .catch(error => {
+            print(depth, color(Style.red, "Error running afterEach hook"));
+            throw error;
+          });
       }
     }
     for (const hook of group.afterAll) {
-      await this.runHook(hook);
+      await this.runHook(hook)
+        .catch(error => {
+          print(depth, color(Style.red, "Error running afterAll hook"));
+          throw error;
+        });
     }
   }
 
@@ -208,7 +239,7 @@ export class Runner {
     const failure = {
       index,
       test,
-      error: isError(error) ? error : thrown2Error(error),
+      error: isError(error) ? error : normalizeReason(error),
     };
 
     this.failures.push(failure);
@@ -346,7 +377,7 @@ export function printError(error: Error, depth: number = 0) {
   }
 }
 
-function thrown2Error(err: any) {
+function normalizeReason(err: any) {
   return new Error(
     `the ${stringifyTypeName(err)} ${JSON.stringify(err)} was thronw, throw an Error :)`
   );
@@ -361,6 +392,12 @@ function path(testOrGroup: TestDefinition | GroupDefinition): Array<TestDefiniti
     return [...path(testOrGroup.parent), testOrGroup];
   }
   return [testOrGroup];
+}
+
+export class HookError extends Error {
+  constructor() {
+    super("Error running hook");
+  }
 }
 
 export class TestTimeoutError extends Error {
