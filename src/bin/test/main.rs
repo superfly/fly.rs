@@ -22,12 +22,8 @@ fn main() {
     app_logger: &app_logger,
     msg_handler: None,
     permissions: Some(RuntimePermissions::new(true)),
+    dev_tools: true,
   });
-
-  trace!("Loading dev tools");
-  rt.eval_file("v8env/dist/dev-tools.js");
-  rt.eval("<installDevTools>", "installDevTools();");
-  trace!("Loading dev tools done");
 
   let args: Vec<String> = env::args().collect();
 

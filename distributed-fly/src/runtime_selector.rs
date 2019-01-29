@@ -120,6 +120,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     app_logger: &APP_LOGGER,
                     msg_handler: None,
                     permissions: None,
+                    dev_tools: false,
                 });
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(

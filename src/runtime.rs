@@ -27,6 +27,7 @@ use std::sync::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 use std::ptr;
+use std::slice;
 
 use crate::js::*;
 
@@ -51,6 +52,8 @@ use crate::sqlite_cache;
 use crate::sqlite_data;
 
 use crate::{disk_fs, redis_fs};
+
+use crate::v8env::{DEV_TOOLS_SOURCE, FLY_SNAPSHOT};
 
 use crate::runtime_permissions::RuntimePermissions;
 use crate::settings::{
@@ -175,6 +178,7 @@ pub struct RuntimeConfig<'a> {
   pub app_logger: &'a Logger,
   pub msg_handler: Option<Box<MessageHandler>>,
   pub permissions: Option<RuntimePermissions>,
+  pub dev_tools: bool,
 }
 
 impl Runtime {
@@ -274,6 +278,13 @@ impl Runtime {
       ptr
     };
 
+    if config.dev_tools {
+      debug!("Loading dev tools");
+      rt.eval("dev-tools.js", *DEV_TOOLS_SOURCE);
+      rt.eval("<installDevTools>", "installDevTools();");
+      debug!("Loading dev tools done");
+    }
+
     rt
   }
 
@@ -296,6 +307,10 @@ impl Runtime {
     self.eval(filename, contents.as_str())
   }
 
+  pub fn eval_file_with_dev_tools(&self, filename: &str) {
+    self.eval(filename, &format!("dev.run('{}')", filename));
+  }
+
   pub fn heap_statistics(&self) -> js_heap_stats {
     unsafe { js_runtime_heap_statistics(self.ptr.0) }
   }
@@ -307,9 +322,9 @@ impl Runtime {
 
   pub fn dispose(&mut self) {
     {
-    // stop listening to events
-    self.fetch_events.take();
-    self.resolv_events.take();
+      // stop listening to events
+      self.fetch_events.take();
+      self.resolv_events.take();
     };
 
     match self.timers.lock() {
@@ -408,33 +423,7 @@ impl Runtime {
   }
 }
 
-#[cfg(debug_assertions)]
 lazy_static! {
-  static ref V8ENV_SNAPSHOT: Box<[u8]> = {
-    let filename = "v8env/dist/v8env.js";
-    let mut file = File::open(filename).unwrap();
-    let mut contents = String::new();
-    file.read_to_string(&mut contents).unwrap();
-    let snap = unsafe {
-      let cfilename = CString::new(filename).unwrap();
-      let ccontents = CString::new(contents).unwrap();
-      js_create_snapshot(cfilename.as_ptr(), ccontents.as_ptr())
-    };
-    let bytes: Vec<u8> =
-      unsafe { slice::from_raw_parts(snap.ptr as *const u8, snap.len as usize) }.to_vec();
-    bytes.into_boxed_slice()
-  };
-}
-
-lazy_static_include_bytes!(V8ENV_SOURCEMAP, "v8env/dist/v8env.js.map");
-#[cfg(not(debug_assertions))]
-const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
-
-lazy_static! {
-  static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
-    ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
-    len: V8ENV_SNAPSHOT.len() as i32
-  };
   static ref GENERIC_EVENT_LOOP: tokio::runtime::Runtime = {
     let el = tokio::runtime::Runtime::new().unwrap();
     el
@@ -452,8 +441,6 @@ lazy_static! {
     (exec, tx)
   };
 }
-
-use std::slice;
 
 pub extern "C" fn msg_from_js(raw: *const js_runtime, buf: fly_buf, raw_buf: fly_buf) {
   let bytes = unsafe { slice::from_raw_parts(buf.data_ptr, buf.data_len) };

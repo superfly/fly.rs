@@ -37,7 +37,7 @@ pub fn build_number() -> &'static str {
 pub mod build_info;
 
 pub mod js;
-
+pub mod v8env;
 pub mod errors;
 pub mod msg;
 pub mod ops;
