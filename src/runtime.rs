@@ -306,9 +306,11 @@ impl Runtime {
   }
 
   pub fn dispose(&mut self) {
+    {
     // stop listening to events
     self.fetch_events.take();
     self.resolv_events.take();
+    };
 
     match self.timers.lock() {
       Ok(mut timers) => timers.clear(),

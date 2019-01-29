@@ -9,12 +9,13 @@ use std::io::BufRead;
 
 #[derive(Debug)]
 pub struct ProxyTcpStream {
+    pub tls: bool,
     stream: TcpStream,
     remote_addr: SocketAddr,
 }
 
 impl ProxyTcpStream {
-    pub fn peek(stream: TcpStream) -> impl Future<Item = Self, Error = io::Error> {
+    pub fn peek(stream: TcpStream, tls: bool) -> impl Future<Item = Self, Error = io::Error> {
         let mut bytes = [0; 107];
         let mut stream = Some(stream);
         future::poll_fn(move || {
@@ -39,6 +40,7 @@ impl ProxyTcpStream {
                 Err(e) => error!("error reading PROXY line: {}", e),
             };
             Ok(Async::Ready(ProxyTcpStream {
+                tls,
                 stream,
                 remote_addr,
             }))
