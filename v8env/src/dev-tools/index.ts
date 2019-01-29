@@ -18,7 +18,6 @@ class FlyDevTools implements DevTools {
   }
 
   runTests(paths: string[]) {
-    console.warn("runTests()", { paths });
     for (const suitePath of paths) {
       loadSuite(suitePath);
       try {

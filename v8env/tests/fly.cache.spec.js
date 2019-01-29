@@ -150,24 +150,18 @@ describe("fly.cache", () => {
   })
 
   describe("TTL", () => {
-    test.skip("set with ttl", async () => {
+    test("set with ttl", async () => {
       const [key, value] = kv();
 
       const setResult = await fly.cache.set(key, value, { ttl: 1 })
       expect(setResult).to.eq(true)
 
-      expect(
-        await fly.cache.getString(key)
-      ).to.eq(value)
-
-      await new Promise(r => setTimeout(r, 1500))
-
-      expect(
-        await fly.cache.getString(key)
-      ).to.be.null
+      while (await fly.cache.getString(key)) {
+        await new Promise(r => setTimeout(r, 50))
+      }
     })
 
-    test.skip("expire", async () => {
+    test("expire", async () => {
       const [key, value] = kv();
 
       expect(
@@ -178,15 +172,9 @@ describe("fly.cache", () => {
         await fly.cache.expire(key, 1)
       ).to.eq(true)
       
-      expect(
-        await fly.cache.getString(key)
-      ).to.eq(value)
-
-      await new Promise(r => setTimeout(r, 1500))
-
-      expect(
-        await fly.cache.getString(key)
-      ).to.be.null
+      while (await fly.cache.getString(key)) {
+        await new Promise(r => setTimeout(r, 50))
+      }
     })
   })
 
