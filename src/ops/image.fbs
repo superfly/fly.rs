@@ -1,5 +1,6 @@
 enum ImageTransformType: byte {
-    ImageWebPEncode = 0,
+    WebPEncode = 0,
+    Resize,
 }
 
 table ImageWebPEncode {
@@ -9,8 +10,23 @@ table ImageWebPEncode {
     near_lossless: bool;
 }
 
+enum ImageSamplingFilter: byte {
+    Nearest = 0,
+    Triangle,
+    CatmullRom,
+    Gaussian,
+    Lanczos3,
+}
+
+table ImageResize {
+    width: uint;
+    height: uint;
+    filter: ImageSamplingFilter;
+}
+
 union ImageTransformOptions {
     ImageWebPEncode,
+    ImageResize,
 }
 
 table ImageTransform {

@@ -505,12 +505,13 @@ pub struct DnsRecordDataUnionTableOffset {}
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ImageTransformType {
-  ImageWebPEncode = 0,
+  WebPEncode = 0,
+  Resize = 1,
 
 }
 
 const ENUM_MIN_IMAGE_TRANSFORM_TYPE: i8 = 0;
-const ENUM_MAX_IMAGE_TRANSFORM_TYPE: i8 = 0;
+const ENUM_MAX_IMAGE_TRANSFORM_TYPE: i8 = 1;
 
 impl<'a> flatbuffers::Follow<'a> for ImageTransformType {
   type Inner = Self;
@@ -544,13 +545,15 @@ impl flatbuffers::Push for ImageTransformType {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_IMAGE_TRANSFORM_TYPE:[ImageTransformType; 1] = [
-  ImageTransformType::ImageWebPEncode
+const ENUM_VALUES_IMAGE_TRANSFORM_TYPE:[ImageTransformType; 2] = [
+  ImageTransformType::WebPEncode,
+  ImageTransformType::Resize
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_IMAGE_TRANSFORM_TYPE:[&'static str; 1] = [
-    "ImageWebPEncode"
+const ENUM_NAMES_IMAGE_TRANSFORM_TYPE:[&'static str; 2] = [
+    "WebPEncode",
+    "Resize"
 ];
 
 pub fn enum_name_image_transform_type(e: ImageTransformType) -> &'static str {
@@ -559,16 +562,86 @@ pub fn enum_name_image_transform_type(e: ImageTransformType) -> &'static str {
 }
 
 #[allow(non_camel_case_types)]
+#[repr(i8)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ImageSamplingFilter {
+  Nearest = 0,
+  Triangle = 1,
+  CatmullRom = 2,
+  Gaussian = 3,
+  Lanczos3 = 4,
+
+}
+
+const ENUM_MIN_IMAGE_SAMPLING_FILTER: i8 = 0;
+const ENUM_MAX_IMAGE_SAMPLING_FILTER: i8 = 4;
+
+impl<'a> flatbuffers::Follow<'a> for ImageSamplingFilter {
+  type Inner = Self;
+  #[inline]
+  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+    flatbuffers::read_scalar_at::<Self>(buf, loc)
+  }
+}
+
+impl flatbuffers::EndianScalar for ImageSamplingFilter {
+  #[inline]
+  fn to_little_endian(self) -> Self {
+    let n = i8::to_le(self as i8);
+    let p = &n as *const i8 as *const ImageSamplingFilter;
+    unsafe { *p }
+  }
+  #[inline]
+  fn from_little_endian(self) -> Self {
+    let n = i8::from_le(self as i8);
+    let p = &n as *const i8 as *const ImageSamplingFilter;
+    unsafe { *p }
+  }
+}
+
+impl flatbuffers::Push for ImageSamplingFilter {
+    type Output = ImageSamplingFilter;
+    #[inline]
+    fn push(&self, dst: &mut [u8], _rest: &[u8]) {
+        flatbuffers::emplace_scalar::<ImageSamplingFilter>(dst, *self);
+    }
+}
+
+#[allow(non_camel_case_types)]
+const ENUM_VALUES_IMAGE_SAMPLING_FILTER:[ImageSamplingFilter; 5] = [
+  ImageSamplingFilter::Nearest,
+  ImageSamplingFilter::Triangle,
+  ImageSamplingFilter::CatmullRom,
+  ImageSamplingFilter::Gaussian,
+  ImageSamplingFilter::Lanczos3
+];
+
+#[allow(non_camel_case_types)]
+const ENUM_NAMES_IMAGE_SAMPLING_FILTER:[&'static str; 5] = [
+    "Nearest",
+    "Triangle",
+    "CatmullRom",
+    "Gaussian",
+    "Lanczos3"
+];
+
+pub fn enum_name_image_sampling_filter(e: ImageSamplingFilter) -> &'static str {
+  let index: usize = e as usize;
+  ENUM_NAMES_IMAGE_SAMPLING_FILTER[index]
+}
+
+#[allow(non_camel_case_types)]
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ImageTransformOptions {
   NONE = 0,
   ImageWebPEncode = 1,
+  ImageResize = 2,
 
 }
 
 const ENUM_MIN_IMAGE_TRANSFORM_OPTIONS: u8 = 0;
-const ENUM_MAX_IMAGE_TRANSFORM_OPTIONS: u8 = 1;
+const ENUM_MAX_IMAGE_TRANSFORM_OPTIONS: u8 = 2;
 
 impl<'a> flatbuffers::Follow<'a> for ImageTransformOptions {
   type Inner = Self;
@@ -602,15 +675,17 @@ impl flatbuffers::Push for ImageTransformOptions {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_IMAGE_TRANSFORM_OPTIONS:[ImageTransformOptions; 2] = [
+const ENUM_VALUES_IMAGE_TRANSFORM_OPTIONS:[ImageTransformOptions; 3] = [
   ImageTransformOptions::NONE,
-  ImageTransformOptions::ImageWebPEncode
+  ImageTransformOptions::ImageWebPEncode,
+  ImageTransformOptions::ImageResize
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_IMAGE_TRANSFORM_OPTIONS:[&'static str; 2] = [
+const ENUM_NAMES_IMAGE_TRANSFORM_OPTIONS:[&'static str; 3] = [
     "NONE",
-    "ImageWebPEncode"
+    "ImageWebPEncode",
+    "ImageResize"
 ];
 
 pub fn enum_name_image_transform_options(e: ImageTransformOptions) -> &'static str {
@@ -4253,6 +4328,106 @@ impl<'a: 'b, 'b> ImageWebPEncodeBuilder<'a, 'b> {
   }
 }
 
+pub enum ImageResizeOffset {}
+#[derive(Copy, Clone, Debug, PartialEq)]
+
+pub struct ImageResize<'a> {
+  pub _tab: flatbuffers::Table<'a>,
+}
+
+impl<'a> flatbuffers::Follow<'a> for ImageResize<'a> {
+    type Inner = ImageResize<'a>;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        Self {
+            _tab: flatbuffers::Table { buf: buf, loc: loc },
+        }
+    }
+}
+
+impl<'a> ImageResize<'a> {
+    #[inline]
+    pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
+        ImageResize {
+            _tab: table,
+        }
+    }
+    #[allow(unused_mut)]
+    pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
+        _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
+        args: &'args ImageResizeArgs) -> flatbuffers::WIPOffset<ImageResize<'bldr>> {
+      let mut builder = ImageResizeBuilder::new(_fbb);
+      builder.add_height(args.height);
+      builder.add_width(args.width);
+      builder.add_filter(args.filter);
+      builder.finish()
+    }
+
+    pub const VT_WIDTH: flatbuffers::VOffsetT = 4;
+    pub const VT_HEIGHT: flatbuffers::VOffsetT = 6;
+    pub const VT_FILTER: flatbuffers::VOffsetT = 8;
+
+  #[inline]
+  pub fn width(&self) -> u32 {
+    self._tab.get::<u32>(ImageResize::VT_WIDTH, Some(0)).unwrap()
+  }
+  #[inline]
+  pub fn height(&self) -> u32 {
+    self._tab.get::<u32>(ImageResize::VT_HEIGHT, Some(0)).unwrap()
+  }
+  #[inline]
+  pub fn filter(&self) -> ImageSamplingFilter {
+    self._tab.get::<ImageSamplingFilter>(ImageResize::VT_FILTER, Some(ImageSamplingFilter::Nearest)).unwrap()
+  }
+}
+
+pub struct ImageResizeArgs {
+    pub width: u32,
+    pub height: u32,
+    pub filter: ImageSamplingFilter,
+}
+impl<'a> Default for ImageResizeArgs {
+    #[inline]
+    fn default() -> Self {
+        ImageResizeArgs {
+            width: 0,
+            height: 0,
+            filter: ImageSamplingFilter::Nearest,
+        }
+    }
+}
+pub struct ImageResizeBuilder<'a: 'b, 'b> {
+  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+}
+impl<'a: 'b, 'b> ImageResizeBuilder<'a, 'b> {
+  #[inline]
+  pub fn add_width(&mut self, width: u32) {
+    self.fbb_.push_slot::<u32>(ImageResize::VT_WIDTH, width, 0);
+  }
+  #[inline]
+  pub fn add_height(&mut self, height: u32) {
+    self.fbb_.push_slot::<u32>(ImageResize::VT_HEIGHT, height, 0);
+  }
+  #[inline]
+  pub fn add_filter(&mut self, filter: ImageSamplingFilter) {
+    self.fbb_.push_slot::<ImageSamplingFilter>(ImageResize::VT_FILTER, filter, ImageSamplingFilter::Nearest);
+  }
+  #[inline]
+  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageResizeBuilder<'a, 'b> {
+    let start = _fbb.start_table();
+    ImageResizeBuilder {
+      fbb_: _fbb,
+      start_: start,
+    }
+  }
+  #[inline]
+  pub fn finish(self) -> flatbuffers::WIPOffset<ImageResize<'a>> {
+    let o = self.fbb_.end_table(self.start_);
+    flatbuffers::WIPOffset::new(o.value())
+  }
+}
+
 pub enum ImageTransformOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
@@ -4294,7 +4469,7 @@ impl<'a> ImageTransform<'a> {
 
   #[inline]
   pub fn transform(&self) -> ImageTransformType {
-    self._tab.get::<ImageTransformType>(ImageTransform::VT_TRANSFORM, Some(ImageTransformType::ImageWebPEncode)).unwrap()
+    self._tab.get::<ImageTransformType>(ImageTransform::VT_TRANSFORM, Some(ImageTransformType::WebPEncode)).unwrap()
   }
   #[inline]
   pub fn options_type(&self) -> ImageTransformOptions {
@@ -4314,6 +4489,16 @@ impl<'a> ImageTransform<'a> {
     }
   }
 
+  #[inline]
+  #[allow(non_snake_case)]
+  pub fn options_as_image_resize(&'a self) -> Option<ImageResize> {
+    if self.options_type() == ImageTransformOptions::ImageResize {
+      self.options().map(|u| ImageResize::init_from_table(u))
+    } else {
+      None
+    }
+  }
+
 }
 
 pub struct ImageTransformArgs {
@@ -4325,7 +4510,7 @@ impl<'a> Default for ImageTransformArgs {
     #[inline]
     fn default() -> Self {
         ImageTransformArgs {
-            transform: ImageTransformType::ImageWebPEncode,
+            transform: ImageTransformType::WebPEncode,
             options_type: ImageTransformOptions::NONE,
             options: None,
         }
@@ -4338,7 +4523,7 @@ pub struct ImageTransformBuilder<'a: 'b, 'b> {
 impl<'a: 'b, 'b> ImageTransformBuilder<'a, 'b> {
   #[inline]
   pub fn add_transform(&mut self, transform: ImageTransformType) {
-    self.fbb_.push_slot::<ImageTransformType>(ImageTransform::VT_TRANSFORM, transform, ImageTransformType::ImageWebPEncode);
+    self.fbb_.push_slot::<ImageTransformType>(ImageTransform::VT_TRANSFORM, transform, ImageTransformType::WebPEncode);
   }
   #[inline]
   pub fn add_options_type(&mut self, options_type: ImageTransformOptions) {

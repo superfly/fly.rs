@@ -14,6 +14,7 @@ use libfly::*;
 use crate::get_next_stream_id;
 
 use futures::{sync::mpsc, Future, Stream};
+use std::{fmt, fmt::Display};
 
 #[derive(Debug)]
 struct WebPEncodeOptions {
@@ -23,8 +24,28 @@ struct WebPEncodeOptions {
     pub alpha_quality: f32,
 }
 
+struct ResizeOptions {
+    pub width: u32,
+    pub height: u32,
+    pub filter: image::FilterType,
+}
+
 enum ImageTransform {
     WebPEncode(WebPEncodeOptions),
+    Resize(ResizeOptions),
+}
+
+impl Display for ImageTransform {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                ImageTransform::Resize(_) => "Resize",
+                ImageTransform::WebPEncode(_) => "WebP",
+            }
+        )
+    }
 }
 
 pub fn op_image_transform(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
@@ -43,13 +64,35 @@ pub fn op_image_transform(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> 
                 .map(|i| {
                     let item = t.get(i);
                     match item.transform() {
-                        msg::ImageTransformType::ImageWebPEncode => {
+                        msg::ImageTransformType::WebPEncode => {
                             let opts = item.options_as_image_web_pencode().unwrap();
                             ImageTransform::WebPEncode(WebPEncodeOptions {
                                 lossless: opts.lossless(),
                                 near_lossless: opts.near_lossless(),
                                 alpha_quality: opts.alpha_quality(),
                                 quality: opts.quality(),
+                            })
+                        }
+                        msg::ImageTransformType::Resize => {
+                            let opts = item.options_as_image_resize().unwrap();
+                            ImageTransform::Resize(ResizeOptions {
+                                width: opts.width(),
+                                height: opts.height(),
+                                filter: match opts.filter() {
+                                    msg::ImageSamplingFilter::Nearest => image::FilterType::Nearest,
+                                    msg::ImageSamplingFilter::Triangle => {
+                                        image::FilterType::Triangle
+                                    }
+                                    msg::ImageSamplingFilter::CatmullRom => {
+                                        image::FilterType::CatmullRom
+                                    }
+                                    msg::ImageSamplingFilter::Gaussian => {
+                                        image::FilterType::Gaussian
+                                    }
+                                    msg::ImageSamplingFilter::Lanczos3 => {
+                                        image::FilterType::Lanczos3
+                                    }
+                                },
                             })
                         }
                     }
@@ -75,15 +118,32 @@ pub fn op_image_transform(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> 
             .and_then(
                 move |chunks: Vec<u8>| match image::load_from_memory(chunks.as_slice()) {
                     Err(e) => Err(error!("error loading image from memory: {}", e)),
-                    Ok(img) => {
-                        for t in transforms {
+                    Ok(mut img) => {
+                        let mut encode: Option<&ImageTransform> = None;
+                        for t in transforms.iter() {
+                            debug!("Applying image transform: {}", t);
                             match t {
-                                ImageTransform::WebPEncode(opts) => {
-                                    let v = encode_webp(&img, opts).unwrap();
-                                    send_body_stream(ptr, out_id, JsBody::Static(v));
+                                ImageTransform::Resize(opts) => {
+                                    img = img.resize(opts.width, opts.height, opts.filter);
+                                }
+                                ImageTransform::WebPEncode(_) => {
+                                    encode = Some(t);
                                 }
                             };
                         }
+
+                        if let Some(enc) = encode {
+                            match enc {
+                                ImageTransform::WebPEncode(opts) => {
+                                    let v = encode_webp(&img, opts).unwrap();
+                                    send_body_stream(ptr, out_id, JsBody::Static(v));
+                                    return Ok(());
+                                }
+                                _ => {}
+                            }
+                        }
+
+                        send_body_stream(ptr, out_id, JsBody::Static(img.raw_pixels()));
                         Ok(())
                     }
                 },
@@ -103,10 +163,12 @@ pub fn op_image_transform(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> 
     ))
 }
 
-fn encode_webp(img: &image::DynamicImage, opts: WebPEncodeOptions) -> Result<Vec<u8>, String> {
+fn encode_webp(img: &image::DynamicImage, opts: &WebPEncodeOptions) -> Result<Vec<u8>, String> {
     let width = img.width();
     let height = img.height();
     let stride = width * 3;
+
+    debug!("WEBP WIDTH: {}, HEIGHT: {}", width, height);
 
     let lossless = opts.lossless; // Set to true for lossless (Warning: CPU intensive/slow)
     let _near_lossless = opts.near_lossless;

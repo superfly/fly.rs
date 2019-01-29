@@ -1,4 +1,4 @@
-import { sendAsync, streams, sendStreamChunks, sendStreamChunk } from '../../bridge'
+import { sendAsync, streams, sendStreamChunks } from '../../bridge'
 import * as fbs from "../../msg_generated";
 import * as flatbuffers from "../../flatbuffers";
 import { ReadableStream } from '@stardazed/streams';
@@ -10,8 +10,14 @@ export class Image {
         this.src = src;
     }
 
-    webp(opts: Image.WebPOptions) {
+    webp(opts: Image.WebPOptions = {}) {
         this.operations.push({ type: Image.OperationType.WebPEncode, options: opts });
+        return this
+    }
+
+    resize(opts: Image.ResizeOptions = {}) {
+        this.operations.push({ type: Image.OperationType.Resize, options: opts });
+        return this
     }
 
     transform(): Promise<ReadableStream> {
@@ -21,15 +27,29 @@ export class Image {
         let i = 0;
         for (const op of this.operations) {
             if (op.type == Image.OperationType.WebPEncode) {
+                let opts = <Image.WebPOptions>op.options;
                 fbs.ImageWebPEncode.startImageWebPEncode(fbb);
-                fbs.ImageWebPEncode.addLossless(fbb, op.options.lossless);
-                fbs.ImageWebPEncode.addNearLossless(fbb, op.options.nearLossless);
-                fbs.ImageWebPEncode.addQuality(fbb, op.options.quality || 75);
-                fbs.ImageWebPEncode.addAlphaQuality(fbb, op.options.alphaQuality || 75);
+                fbs.ImageWebPEncode.addLossless(fbb, !!opts.lossless);
+                fbs.ImageWebPEncode.addNearLossless(fbb, !!opts.nearLossless);
+                fbs.ImageWebPEncode.addQuality(fbb, opts.quality || 75);
+                fbs.ImageWebPEncode.addAlphaQuality(fbb, opts.alphaQuality || 75);
                 let fbbOpts = fbs.ImageWebPEncode.endImageWebPEncode(fbb);
                 fbs.ImageTransform.startImageTransform(fbb);
-                fbs.ImageTransform.addTransform(fbb, fbs.ImageTransformType.ImageWebPEncode);
+                fbs.ImageTransform.addTransform(fbb, fbs.ImageTransformType.WebPEncode);
                 fbs.ImageTransform.addOptionsType(fbb, fbs.ImageTransformOptions.ImageWebPEncode);
+                fbs.ImageTransform.addOptions(fbb, fbbOpts);
+                fbbTransforms[i++] = fbs.ImageTransform.endImageTransform(fbb);
+            }
+            else if (op.type === Image.OperationType.Resize) {
+                let opts = <Image.ResizeOptions>op.options;
+                fbs.ImageResize.startImageResize(fbb);
+                fbs.ImageResize.addWidth(fbb, opts.width || 1);
+                fbs.ImageResize.addHeight(fbb, opts.height || 1);
+                fbs.ImageResize.addFilter(fbb, opts.filter || fbs.ImageSamplingFilter.Nearest);
+                let fbbOpts = fbs.ImageResize.endImageResize(fbb);
+                fbs.ImageTransform.startImageTransform(fbb);
+                fbs.ImageTransform.addTransform(fbb, fbs.ImageTransformType.Resize);
+                fbs.ImageTransform.addOptionsType(fbb, fbs.ImageTransformOptions.ImageResize);
                 fbs.ImageTransform.addOptions(fbb, fbbOpts);
                 fbbTransforms[i++] = fbs.ImageTransform.endImageTransform(fbb);
             }
@@ -63,9 +83,10 @@ export class Image {
 export namespace Image {
     export enum OperationType {
         WebPEncode,
+        Resize,
     }
 
-    type OperationOptions = WebPOptions;
+    type OperationOptions = WebPOptions | ResizeOptions;
 
     export interface Operation {
         type: OperationType,
@@ -83,5 +104,19 @@ export namespace Image {
         nearLossless?: boolean,
         /** force WebP output, otherwise attempt to use input format, defaults to true */
         force?: boolean
+    }
+
+    export interface ResizeOptions {
+        width?: number,
+        height?: number,
+        filter?: fbs.ImageSamplingFilter,
+    }
+
+    export const SamplingFilter = {
+        Nearest: fbs.ImageSamplingFilter.Nearest,
+        Triangle: fbs.ImageSamplingFilter.Triangle,
+        CatmullRom: fbs.ImageSamplingFilter.CatmullRom,
+        Gaussian: fbs.ImageSamplingFilter.Gaussian,
+        Lanczos3: fbs.ImageSamplingFilter.Lanczos3,
     }
 }

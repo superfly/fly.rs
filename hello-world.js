@@ -68,7 +68,7 @@ addEventListener("fetch", function (event) {
   else if (url.pathname == "/image") {
     event.respondWith(fetch(url.searchParams.get("url")).then(res => {
       let img = new fly.Image(res.body);
-      img.webp({ lossless: false, quality: 75 });
+      img.resize({ width: 512, height: 512 }).webp({ lossless: false, quality: 75 });
       return img.transform().then(stream => {
         console.log("image accepted!");
         return new Response(stream, {
