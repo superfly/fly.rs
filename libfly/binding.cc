@@ -540,7 +540,6 @@ extern "C"
       break;
     case v8::kPromiseHandlerAddedAfterReject:
       printf("promise handler added after reject\n");
-      printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), error));
       break;
     case v8::kPromiseRejectAfterResolved:
       // ignore
