@@ -97,7 +97,19 @@ export enum DnsRecordData{
  * @enum
  */
 export enum ImageTransformType{
-  ImageWebPEncode= 0
+  WebPEncode= 0,
+  Resize= 1
+};
+
+/**
+ * @enum
+ */
+export enum ImageSamplingFilter{
+  Nearest= 0,
+  Triangle= 1,
+  CatmullRom= 2,
+  Gaussian= 3,
+  Lanczos3= 4
 };
 
 /**
@@ -105,7 +117,8 @@ export enum ImageTransformType{
  */
 export enum ImageTransformOptions{
   NONE= 0,
-  ImageWebPEncode= 1
+  ImageWebPEncode= 1,
+  ImageResize= 2
 };
 
 /**
@@ -3808,6 +3821,143 @@ static endImageWebPEncode(builder:flatbuffers.Builder):flatbuffers.Offset {
 /**
  * @constructor
  */
+export class ImageResize {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns ImageResize
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):ImageResize {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param ImageResize= obj
+ * @returns ImageResize
+ */
+static getRootAsImageResize(bb:flatbuffers.ByteBuffer, obj?:ImageResize):ImageResize {
+  return (obj || new ImageResize).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @returns number
+ */
+width():number {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_width(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeUint32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @returns number
+ */
+height():number {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_height(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeUint32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @returns ImageSamplingFilter
+ */
+filter():ImageSamplingFilter {
+  var offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? /**  */ (this.bb!.readInt8(this.bb_pos + offset)) : ImageSamplingFilter.Nearest;
+};
+
+/**
+ * @param ImageSamplingFilter value
+ * @returns boolean
+ */
+mutate_filter(value:ImageSamplingFilter):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 8);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt8(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startImageResize(builder:flatbuffers.Builder) {
+  builder.startObject(3);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number width
+ */
+static addWidth(builder:flatbuffers.Builder, width:number) {
+  builder.addFieldInt32(0, width, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number height
+ */
+static addHeight(builder:flatbuffers.Builder, height:number) {
+  builder.addFieldInt32(1, height, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param ImageSamplingFilter filter
+ */
+static addFilter(builder:flatbuffers.Builder, filter:ImageSamplingFilter) {
+  builder.addFieldInt8(2, filter, ImageSamplingFilter.Nearest);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endImageResize(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
 export class ImageTransform {
   bb: flatbuffers.ByteBuffer|null = null;
 
@@ -3837,7 +3987,7 @@ static getRootAsImageTransform(bb:flatbuffers.ByteBuffer, obj?:ImageTransform):I
  */
 transform():ImageTransformType {
   var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? /**  */ (this.bb!.readInt8(this.bb_pos + offset)) : ImageTransformType.ImageWebPEncode;
+  return offset ? /**  */ (this.bb!.readInt8(this.bb_pos + offset)) : ImageTransformType.WebPEncode;
 };
 
 /**
@@ -3899,7 +4049,7 @@ static startImageTransform(builder:flatbuffers.Builder) {
  * @param ImageTransformType transform
  */
 static addTransform(builder:flatbuffers.Builder, transform:ImageTransformType) {
-  builder.addFieldInt8(0, transform, ImageTransformType.ImageWebPEncode);
+  builder.addFieldInt8(0, transform, ImageTransformType.WebPEncode);
 };
 
 /**
