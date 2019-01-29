@@ -2,6 +2,7 @@ use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
 use crate::runtime::Runtime;
+use crate::v8env::V8ENV_SOURCEMAP;
 use libfly::*;
 
 use crate::utils::*;
@@ -11,8 +12,6 @@ use std::sync::{mpsc, Mutex};
 
 use futures::{sync::oneshot, Future};
 use std::thread;
-
-lazy_static_include_bytes!(V8ENV_SOURCEMAP, "v8env/dist/v8env.js.map");
 
 type SourceMapId = (u32, u32, String, String);
 

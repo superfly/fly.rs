@@ -109,13 +109,10 @@ fn main() {
     app_logger: &app_logger,
     msg_handler: None,
     permissions: None,
+    dev_tools: true,
   });
 
-  debug!("Loading dev tools");
-  runtime.eval_file("v8env/dist/dev-tools.js");
-  runtime.eval("<installDevTools>", "installDevTools();");
-  debug!("Loading dev tools done");
-  runtime.eval(entry_file, &format!("dev.run('{}')", entry_file));
+  runtime.eval_file_with_dev_tools(entry_file);
 
   let port: u16 = match matches.value_of("port") {
     Some(pstr) => pstr.parse::<u16>().unwrap(),
