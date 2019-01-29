@@ -34,4 +34,4 @@ lazy_static! {
 
 lazy_static_include_bytes!(pub V8ENV_SOURCEMAP, "v8env/dist/v8env.js.map");
 
-lazy_static_include_str!(pub DEV_TOOLS_SOURCE, "v8env/dist/dev_tools.js");
+lazy_static_include_str!(pub DEV_TOOLS_SOURCE, "v8env/dist/dev-tools.js");
