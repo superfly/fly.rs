@@ -8,7 +8,7 @@ pub fn configure() -> (GlobalLoggerGuard, Logger) {
     let root_logger = Logger::root(
         Async::default(term_full().fuse()).fuse(),
         o!(
-          "build" => crate::build_number(),
+          "build" => crate::BUILD_VERSION,
         ),
     );
 

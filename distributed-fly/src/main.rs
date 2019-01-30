@@ -264,10 +264,7 @@ fn main() {
         .and_then(move |_| {
             info!("http server closed.");
             unsafe { SELECTOR = None };
-            match sigrelaytx.send(()) {
-                Ok(_) => {}
-                Err(_) => {}
-            }; // don't care about result, do care about compiler warning...
+            sigrelaytx.send(()).ok();// do care about compiler warning...
             Ok(())
         });
 

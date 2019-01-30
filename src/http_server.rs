@@ -18,7 +18,7 @@ type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Ca
 lazy_static! {
     // static ref SERVER_HEADER: &'static str =
     static ref SERVER_HEADER_VALUE: header::HeaderValue = {
-        let s = format!("Fly ({})", super::build_number());
+        let s = format!("Fly ({})", crate::BUILD_VERSION);
         header::HeaderValue::from_str(s.as_str()).unwrap()
     };
 }

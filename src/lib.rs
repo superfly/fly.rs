@@ -27,14 +27,7 @@ pub fn get_next_stream_id() -> u32 {
   NEXT_EVENT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as u32
 }
 
-pub fn build_number() -> &'static str {
-  match build_info::GIT_VERSION {
-    Some(v) => v,
-    None => "unknown",
-  }
-}
-
-pub mod build_info;
+pub static BUILD_VERSION: &str = env!("BUILD_VERSION");
 
 pub mod js;
 pub mod v8env;
