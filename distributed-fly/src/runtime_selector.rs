@@ -125,7 +125,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
                     "<app config>",
-                    &format!("window.fly.app = {{ config: {} }};", merged_conf),
+                    &format!("window.fly.app = {{ config: {}, version: {} }};", merged_conf, rel.version),
                 );
 
                 // load external libraries if requested

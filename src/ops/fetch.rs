@@ -15,17 +15,14 @@ use crate::errors::{FlyError, FlyResult};
 
 use crate::get_next_stream_id;
 
-extern crate hyper;
+use hyper::body::Payload;
+use hyper::client::HttpConnector;
+use hyper::header::HeaderName;
+use hyper::rt::{Future, Stream};
+use hyper::HeaderMap;
+use hyper::{Body, Client, Method, Request, StatusCode};
 
-use self::hyper::body::Payload;
-use self::hyper::client::HttpConnector;
-use self::hyper::header::HeaderName;
-use self::hyper::rt::{Future, Stream};
-use self::hyper::HeaderMap;
-use self::hyper::{Body, Client, Method, Request, StatusCode};
-
-extern crate hyper_tls;
-use self::hyper_tls::HttpsConnector;
+use hyper_tls::HttpsConnector;
 
 use std::io;
 
@@ -287,6 +284,7 @@ pub fn op_http_response(rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box
             }
             body = Some(JsBody::Stream(recver));
         } else {
+            debug!("http response will have a static body");
             body = Some(JsBody::Static(
                 unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec(),
             ));

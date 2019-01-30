@@ -13,6 +13,8 @@ use floating_duration::TimeAsFloat;
 use std::io;
 use std::time;
 
+use slog::{slog_info, slog_o};
+
 type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send>;
 
 lazy_static! {

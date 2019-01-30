@@ -1,6 +1,3 @@
-extern crate http;
-extern crate libc;
-
 use tokio;
 
 use tokio::runtime::current_thread;
@@ -36,7 +33,6 @@ use flatbuffers::FlatBufferBuilder;
 
 use crate::errors::FlyError;
 
-extern crate log;
 use slog::{slog_debug, slog_error, slog_info, slog_o, slog_trace, slog_warn, Logger};
 
 use crate::acme_store;
