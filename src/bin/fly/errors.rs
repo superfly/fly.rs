@@ -16,14 +16,6 @@ enum Repr {
   ClapError(clap::Error),
 }
 
-impl FlyCliError {
-  pub fn new(msg: String) -> FlyCliError {
-    FlyCliError {
-      repr: Repr::Simple(msg),
-    }
-  }
-}
-
 impl fmt::Display for FlyCliError {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self.repr {
@@ -76,12 +68,6 @@ impl From<&str> for FlyCliError {
     FlyCliError {
       repr: Repr::Simple(err.to_owned()),
     }
-  }
-}
-
-impl From<globset::Error> for FlyCliError {
-  fn from(err: globset::Error) -> FlyCliError {
-    FlyCliError::new(format!("Invalid path pattern: {}", err))
   }
 }
 

@@ -55,7 +55,6 @@ trust-dns-proto = "*"
 trust-dns-resolver = "0.10"
 trust-dns-server = "0.15"
 url = "1.7"
-walkdir = "2.2.7"
 
 [workspace]
 members = [
