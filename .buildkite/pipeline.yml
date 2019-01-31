@@ -1,0 +1,2 @@
+steps:
+  - commands: "docker build -t fly ."
