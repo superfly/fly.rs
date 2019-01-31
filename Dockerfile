@@ -137,9 +137,9 @@ RUN apk --no-cache add rust cargo g++ openssl openssl-dev
 
 ADD . ./
 
-RUN cargo install cargo-tree
+# RUN cargo install cargo-tree
 
-RUN cargo tree
+# RUN cargo tree
 # RUN sudo chown -R rust:rust /usr/src/myapp
 
 # RUN ln -s /usr/bin/g++ /usr/bin/musl-g++
@@ -150,7 +150,7 @@ RUN cargo build --release -p create_snapshot
 
 RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
-RUN cargo build --no-default-features --release -p distributed-fly
+RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --release -p distributed-fly
 
 RUN ls -lah target/release
 

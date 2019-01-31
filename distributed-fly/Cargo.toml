@@ -12,7 +12,7 @@ lazy_static = "1.1"
 tokio = "0.1"
 futures = "0.1"
 hyper = "0.12"
-openssl = {version="0.10",features=["vendored"]}
+openssl = "0.10"
 tokio-openssl = "0.3"
 r2d2 = "*"
 r2d2_redis = "*"
