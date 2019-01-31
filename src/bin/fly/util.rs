@@ -1,7 +1,6 @@
-use crate::errors::FlyCliResult;
+use crate::errors::{FlyCliError, FlyCliResult};
 use clap::{AppSettings, ArgMatches, SubCommand};
-use globset::{Glob, GlobSetBuilder};
-use walkdir::{DirEntry, WalkDir};
+use std::error::Error;
 
 pub type App = clap::App<'static, 'static>;
 
@@ -16,28 +15,23 @@ pub fn subcommand(name: &'static str) -> App {
 }
 
 pub fn glob(patterns: Vec<&str>) -> FlyCliResult<Vec<String>> {
-    let mut builder = GlobSetBuilder::new();
-    for pattern in patterns {
-        builder.add(Glob::new(pattern)?);
-    }
+    let patterns: Vec<&str> = patterns.into_iter().map(clean_pattern).collect();
 
-    let glob = builder.build()?;
+    let walker = globwalk::GlobWalkerBuilder::from_patterns(".", &patterns)
+        .build()
+        .map_err(|e| FlyCliError::from(e.description()))?;
 
     let mut files: Vec<String> = vec![];
 
-    for entry in WalkDir::new(".")
-        .min_depth(1)
-        .into_iter()
-        .filter_entry(|e| !skip(e))
-        .filter_map(|e| e.ok())
-    {
-        if !glob.is_match(entry.path()) {
-            continue;
-        }
+    for entry in walker {
+        if let Ok(entry) = entry {
+            let path = entry.path();
 
-        if let Some(path) = entry.path().to_str() {
-            let path = path.to_owned();
-            if !files.contains(&path) {
+            if !path.is_file() {
+                continue;
+            }
+
+            if let Some(path) = path.to_str() {
                 files.push(path.to_owned());
             }
         }
@@ -46,10 +40,9 @@ pub fn glob(patterns: Vec<&str>) -> FlyCliResult<Vec<String>> {
     Ok(files)
 }
 
-fn skip(entry: &DirEntry) -> bool {
-    entry
-        .file_name()
-        .to_str()
-        .map(|s| s.starts_with(".") || s == "node_modules")
-        .unwrap_or(false)
+fn clean_pattern(pattern: &str) -> &str {
+    if pattern.starts_with("./") {
+        return &pattern[2..];
+    }
+    pattern
 }

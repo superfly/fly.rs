@@ -73,7 +73,7 @@ pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
     if let Some(path) = glob(vec![args.value_of("path").unwrap()])?.first() {
         runtime.eval_file_with_dev_tools(path);
     } else {
-        return Err(FlyCliError::from("No source code found".to_owned()));
+        return Err(FlyCliError::from("No source code found"));
     }
 
     let bind = match args.value_of("bind") {
