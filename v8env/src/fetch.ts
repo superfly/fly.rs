@@ -1,14 +1,12 @@
 /**
  * @module fetch
  */
-import { RequestInit, RequestInfo, HeadersInit } from './dom_types';
+import { RequestInit, RequestInfo } from './dom_types';
 import { FlyResponse } from './response';
 import { FlyRequest } from './request';
-import { sendAsync, sendSync, streams, sendStreamChunks } from './bridge';
+import { sendAsync, streams, sendStreamChunks } from './bridge';
 
 import * as fbs from "./msg_generated";
-import * as errors from "./errors";
-import * as util from "./util";
 import * as flatbuffers from "./flatbuffers"
 import { ReadableStream } from '@stardazed/streams';
 
@@ -74,10 +72,10 @@ export function fetch(info: RequestInfo, init?: FlyRequestInit): Promise<FlyResp
 	fbs.HttpRequest.addHeaders(fbb, reqHeaders);
 
 	let reqBody = req.body;
-	let hasBody = reqBody != null && (!req.isStatic || req.isStatic && req.staticBody.length > 0);
+	let hasBody = reqBody != null && (!req.isStatic || req.isStatic && req.staticBody.byteLength > 0);
 	fbs.HttpRequest.addHasBody(fbb, hasBody);
 
-	let staticBody: ArrayBufferView;
+	let staticBody: BufferSource;
 	if (hasBody && req.isStatic)
 		staticBody = req.staticBody
 

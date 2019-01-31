@@ -30,7 +30,7 @@ export default class FlyBody implements Body {
     if (this.bodySource instanceof WhatWGReadableStream) {
       this.stream = this.bodySource
     }
-    if (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array) {
+    if (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array || this.bodySource instanceof ArrayBuffer) {
       const bodySource = this.bodySource
       this.stream = new WhatWGReadableStream({
         start(controller: ReadableStreamDefaultController) {
@@ -49,11 +49,11 @@ export default class FlyBody implements Body {
   }
 
   get isStatic(): boolean {
-    return (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array)
+    return (typeof this.bodySource === "string" || this.bodySource instanceof Uint8Array || this.bodySource instanceof ArrayBuffer)
   }
 
-  get staticBody(): Uint8Array {
-    if (this.bodySource instanceof Uint8Array)
+  get staticBody(): BufferSource {
+    if (this.bodySource instanceof Uint8Array || this.bodySource instanceof ArrayBuffer)
       return this.bodySource
     else if (typeof this.bodySource === "string")
       return new TextEncoder().encode(this.bodySource)

@@ -15,7 +15,7 @@ hyper = "0.12"
 lazy_static = "1.1"
 log = {version="*", features = ["max_level_debug", "release_max_level_info"] }
 openssl = {version="0.10",features=["vendored"]}
-prometheus = "0.4"
+prometheus = "0.5"
 r2d2 = "*"
 r2d2_redis = "*"
 rmp-serde = "0.13.7"

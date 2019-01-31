@@ -7,13 +7,9 @@ use serde::Deserialize;
 use r2d2_redis::redis;
 use redis::Commands;
 
-extern crate serde_json;
-
 use rmpv::Value;
 
 use crate::kms::decrypt;
-
-extern crate base64;
 
 use crate::settings::GLOBAL_SETTINGS;
 
@@ -279,7 +275,7 @@ pub fn start_new_release_check() {
                         },
                       }
                     } else if notif.key.starts_with("app_hosts") {
-                      use self::serde_json::Value;
+                      use serde_json::Value;
                       match notif.context {
                         Value::Array(arr) => {
                           let hostnames: Vec<String> = arr

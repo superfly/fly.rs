@@ -13,12 +13,14 @@ use floating_duration::TimeAsFloat;
 use std::io;
 use std::time;
 
+use slog::{slog_info, slog_o};
+
 type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send>;
 
 lazy_static! {
     // static ref SERVER_HEADER: &'static str =
     static ref SERVER_HEADER_VALUE: header::HeaderValue = {
-        let s = format!("Fly ({})", super::build_number());
+        let s = format!("Fly ({})", crate::BUILD_VERSION);
         header::HeaderValue::from_str(s.as_str()).unwrap()
     };
 }
