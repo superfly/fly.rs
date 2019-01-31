@@ -62,5 +62,8 @@ members = [
     "create_snapshot"
 ]
 
-[target.'cfg(not(target_vendor = "alpine"))'.features]
-openssl = ["vendored"]
+[target.x84_64-unknown-linux-gnu.dependencies]
+openssl = {version ="0.10.16", features=["vendored"]}
+
+[target.x84_64-apple-darwin.dependencies]
+openssl = {version ="0.10.16", features=["vendored"]}

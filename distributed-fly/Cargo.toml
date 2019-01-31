@@ -36,5 +36,8 @@ tokio = "0.1"
 tokio-openssl = "0.3"
 openssl = "0.10.16"
 
-[target.'cfg(not(target_vendor = "alpine"))'.features]
-openssl = ["vendored"]
+[target.x84_64-unknown-linux-gnu.dependencies]
+openssl = {version ="0.10.16", features=["vendored"]}
+
+[target.x84_64-apple-darwin.dependencies]
+openssl = {version ="0.10.16", features=["vendored"]}
