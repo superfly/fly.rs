@@ -1,30 +1,25 @@
-extern crate tokio_udp;
+use tokio_udp::UdpSocket;
 
-use self::tokio_udp::UdpSocket;
+use trust_dns as dns;
 
-extern crate trust_dns as dns;
-extern crate trust_dns_proto;
-extern crate trust_dns_server;
+use trust_dns_server::authority::{AuthLookup, MessageResponseBuilder};
 
-use self::trust_dns_server::authority::{AuthLookup, MessageResponseBuilder};
+use dns::proto::op::header::Header;
+use dns::proto::op::response_code::ResponseCode;
+use dns::proto::rr::{Record, RrsetRecords};
+use trust_dns_server::authority::authority::LookupRecords;
 
-use self::trust_dns_proto::op::header::Header;
-use self::trust_dns_proto::op::response_code::ResponseCode;
-use self::trust_dns_proto::rr::{Record, RrsetRecords};
-use self::trust_dns_server::authority::authority::LookupRecords;
-
-use self::trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
+use trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
 use std::io;
 
 use std::net::SocketAddr;
 
-extern crate flatbuffers;
-
 use tokio::prelude::*;
 
-use crate::ops::dns::*;
-use crate::runtime::{EventResponseChannel, JsEvent};
 use crate::{get_next_stream_id, RuntimeSelector};
+
+use crate::js::*;
+use crate::utils::*;
 
 pub struct DnsServer {
     addr: SocketAddr,
@@ -75,7 +70,7 @@ impl RequestHandler for DnsServer {
                             req.message.op_code(),
                             ResponseCode::ServFail,
                         ),
-                    )
+                    );
                 }
             },
             Err(e) => {
@@ -105,7 +100,7 @@ impl RequestHandler for DnsServer {
                         req.message.op_code(),
                         ResponseCode::ServFail,
                     ),
-                )
+                );
             }
             Some(Err(e)) => {
                 error!("error sending js dns request: {:?}", e);

@@ -1,21 +1,15 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use crate::rmps::Deserializer;
-use r2d2;
+use rmp_serde::Deserializer;
 use serde::Deserialize;
 
-use self::redis::Commands;
 use r2d2_redis::redis;
+use redis::Commands;
 
-extern crate serde_json;
-
-extern crate rmpv;
-use self::rmpv::Value;
+use rmpv::Value;
 
 use crate::kms::decrypt;
-
-extern crate base64;
 
 use crate::settings::GLOBAL_SETTINGS;
 
@@ -281,7 +275,7 @@ pub fn start_new_release_check() {
                         },
                       }
                     } else if notif.key.starts_with("app_hosts") {
-                      use self::serde_json::Value;
+                      use serde_json::Value;
                       match notif.context {
                         Value::Array(arr) => {
                           let hostnames: Vec<String> = arr

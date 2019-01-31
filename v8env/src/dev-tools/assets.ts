@@ -43,7 +43,8 @@ import libWebworkerImportscripts from "node_modules/typescript/lib/lib.webworker
 
 import libFlyRuntime from "lib.fly.runtime.d.ts!string";
 
-export const ContainerName = "$assets$";
+export const AssetsProtocol = "assets";
+export const ContainerName = AssetsProtocol + "://local/"; // < I had to include a host for the url parser to do what I wanted.
 
 // // @internal
 export const assetSourceCode: { [key: string]: string } = {

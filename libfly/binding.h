@@ -35,6 +35,24 @@ struct fly_buf
   uintptr_t data_len;
 };
 
+struct js_module_data {
+  const char *origin_url;
+  const char *source_map_url;
+  bool is_wasm;
+  fly_simple_buf source_code;
+};
+
+struct js_compiled_module {
+  int hash;
+  js_module_data data;
+  void *ptr; // pointer to v8::Persistent<v8::Module>
+};
+
+struct js_compile_module_result {
+  const js_compiled_module *compiled_module;
+  bool success;
+};
+
 struct js_runtime;
 typedef struct js_runtime runtime;
 
@@ -42,12 +60,15 @@ typedef void (*fly_recv_cb)(runtime *rt, fly_buf control_buf,
                             fly_buf data_buf);
 typedef void (*fly_print_cb)(runtime *rt, int8_t lvl, const char *msg);
 
+typedef js_compiled_module (*fly_resolve_cb)(runtime *rt, const char *specifier, int referer_identity_hash);
+
 struct js_runtime_options
 {
   fly_simple_buf snapshot;
   void *data;
   fly_recv_cb recv_cb;
   fly_print_cb print_cb;
+  fly_resolve_cb resolve_cb;
   size_t soft_memory_limit;
   size_t hard_memory_limit;
 };
@@ -61,6 +82,8 @@ extern "C"
   extern bool js_dump_heap_snapshot(const runtime *rt, const char *filename);
 
   extern bool js_eval(const runtime *rt, const char *filename, const char *code);
+
+  extern bool js_run_module(const runtime *rt, js_compiled_module module_data);
 
   extern const void *js_get_data(const runtime *rt);
 
@@ -78,6 +101,8 @@ extern "C"
   extern void js_runtime_run_micro_tasks(const runtime *rt);
 
   extern const char *js_version();
+
+  extern js_compile_module_result js_compile_module(const runtime *rt, js_module_data module_data);
 
 } // extern "C"
 

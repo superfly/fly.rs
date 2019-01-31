@@ -1,22 +1,24 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-extern crate trust_dns as dns;
-extern crate trust_dns_proto as dns_proto;
-extern crate trust_dns_resolver as dns_resolver;
-use self::dns::client::ClientHandle; // necessary for trait to be in scope
-use self::dns_resolver::config::ResolverConfig;
+use dns::client::ClientHandle; // necessary for trait to be in scope
+use dns::proto as dns_proto;
+use dns_resolver::config::ResolverConfig;
+use trust_dns as dns;
+use trust_dns_resolver as dns_resolver;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use crate::runtime::{JsRuntime, Op, EVENT_LOOP};
+use crate::runtime::{Runtime, EVENT_LOOP};
 use crate::utils::*;
 use libfly::*;
 
 use futures::Future;
 
 use std::net::{SocketAddr, ToSocketAddrs};
+
+use crate::js::*;
 
 lazy_static! {
   static ref DEFAULT_RESOLVER_CONFIG: ResolverConfig = {
@@ -28,57 +30,20 @@ lazy_static! {
       }
     }
   };
-  static ref DEFAULT_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
-    let (stream, handle) =
+  static ref DEFAULT_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::udp::UdpResponse>> = {
+    let stream =
       dns::udp::UdpClientStream::new(DEFAULT_RESOLVER_CONFIG.name_servers()[0].socket_addr);
-    let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
+    let (bg, client) = dns::client::ClientFuture::connect(stream);
     EVENT_LOOP.0.spawn(bg);
     Mutex::new(client)
   };
-  static ref DNS_RESOLVERS: Mutex<
-    HashMap<
-      SocketAddr,
-      dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
-    >,
-  > = Mutex::new(HashMap::new());
-}
-
-#[derive(Debug)]
-pub struct JsDnsResponse {
-  pub op_code: dns::op::OpCode,
-  pub message_type: dns::op::MessageType,
-  pub response_code: dns::op::ResponseCode,
-  pub answers: Vec<JsDnsRecord>,
-  pub queries: Vec<JsDnsQuery>,
-  pub authoritative: bool,
-  pub truncated: bool,
-}
-
-#[derive(Debug)]
-pub struct JsDnsRequest {
-  pub id: u32,
-  pub message_type: dns::op::MessageType,
-  pub queries: Vec<dns::op::LowerQuery>,
-}
-
-#[derive(Debug)]
-pub struct JsDnsRecord {
-  pub name: dns::rr::Name,
-  pub rdata: dns::rr::RData,
-  pub dns_class: dns::rr::DNSClass,
-  pub ttl: u32,
-}
-
-#[derive(Debug)]
-pub struct JsDnsQuery {
-  pub name: dns::rr::Name,
-  pub rr_type: dns::rr::RecordType,
-  pub dns_class: dns::rr::DNSClass,
+  static ref DNS_RESOLVERS: Mutex<HashMap<SocketAddr, dns::client::BasicClientHandle<dns_proto::udp::UdpResponse>>> =
+    Mutex::new(HashMap::new());
 }
 
 fn dns_query(
   cmd_id: u32,
-  client: &mut dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
+  client: &mut dns::client::BasicClientHandle<dns_proto::udp::UdpResponse>,
   name: &str,
   query_type: dns::rr::RecordType,
 ) -> Box<Op> {
@@ -305,7 +270,7 @@ fn dns_query(
   )
 }
 
-pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_dns_query(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   debug!("handle dns");
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_dns_query().unwrap();
@@ -346,8 +311,8 @@ pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
         return dns_query(cmd_id, client, name, query_type);
       }
     }
-    let (stream, handle) = dns::udp::UdpClientStream::new(sockaddr.clone());
-    let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
+    let stream = dns::udp::UdpClientStream::new(sockaddr.clone());
+    let (bg, client) = dns::client::ClientFuture::connect(stream);
     EVENT_LOOP.0.spawn(bg);
     {
       DNS_RESOLVERS
@@ -369,7 +334,7 @@ pub fn op_dns_query(_ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op>
   }
 }
 
-pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_dns_response().unwrap();
   let req_id = msg.id();
 
@@ -521,8 +486,6 @@ pub fn op_dns_response(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<O
   } else {
     vec![]
   };
-
-  let rt = ptr.to_runtime();
 
   let mut responses = rt.dns_responses.lock().unwrap();
   match responses.remove(&req_id) {

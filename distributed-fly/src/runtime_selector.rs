@@ -1,10 +1,14 @@
 use futures::Future;
 
-use fly::{runtime::Runtime, RuntimeSelector, SelectorError};
+use fly::{
+    runtime::{Runtime, RuntimeConfig},
+    RuntimeSelector, SelectorError,
+};
 
 use std::collections::HashMap;
 use std::sync::RwLock;
 
+use super::APP_LOGGER;
 use crate::libs::fetch_libs;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
@@ -18,6 +22,19 @@ impl DistributedRuntimeSelector {
         DistributedRuntimeSelector {
             runtimes: RwLock::new(HashMap::new()),
         }
+    }
+}
+
+impl Drop for DistributedRuntimeSelector {
+    fn drop(&mut self) {
+        self.runtimes
+            .write()
+            .unwrap()
+            .iter_mut()
+            .for_each(|(k, rt)| {
+                debug!("Disposing of runtime: {}", k);
+                rt.dispose();
+            });
     }
 }
 
@@ -94,15 +111,21 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                         })),
                     }
                 };
-                let mut rt = Runtime::new(
-                    Some(rel.app_id.to_string()),
-                    Some(rel.version.to_string()),
-                    &settings,
-                );
+
+                let mut rt = Runtime::new(RuntimeConfig {
+                    name: Some(rel.app_id.to_string()),
+                    version: Some(rel.version.to_string()),
+                    settings: &settings,
+                    module_resolvers: Some(vec![]),
+                    app_logger: &APP_LOGGER,
+                    msg_handler: None,
+                    permissions: None,
+                    dev_tools: false,
+                });
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
                     "<app config>",
-                    &format!("window.fly.app = {{ config: {} }};", merged_conf),
+                    &format!("window.fly.app = {{ config: {}, version: {} }};", merged_conf, rel.version),
                 );
 
                 // load external libraries if requested

@@ -6,7 +6,7 @@
 import CachePolicy from 'http-cache-semantics'
 import { Request, Response } from './dom_types';
 import { FlyResponse } from './response';
-import flyCache from "./fly/cache";
+import * as flyCache from "./fly/cache";
 
 /**
  * export:
@@ -76,8 +76,8 @@ const cache = {
 
 		const ttl = Math.floor(policy.timeToLive() / 1000)
 		if (policy.storable() && ttl > 0) {
-			await flyCache.set("httpcache:policy:" + key, JSON.stringify(policy.toObject()), ttl)
-			await flyCache.set("httpcache:body:" + key, res.body, ttl)
+			await flyCache.set("httpcache:policy:" + key, JSON.stringify(policy.toObject()), {ttl})
+			await flyCache.set("httpcache:body:" + key, res.body, {ttl})
 		}
 	}
 }

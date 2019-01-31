@@ -1,6 +1,6 @@
 language: rust
 rust:
-- 1.31.1
+- stable
 matrix:
   include:
   - os: linux
@@ -18,7 +18,7 @@ services:
 env:
   global:
   - AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA
-  - SCCACHE_VERSION=0.2.7
+  - SCCACHE_VERSION=0.2.8
   - SCCACHE_BUCKET=fly-proxy-sccache
   - RUSTUP_HOME=$HOME/.rustup/
 
@@ -76,6 +76,7 @@ before_script:
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start redis; fi
 script:
 - RUST_BACKTRACE=1 cargo test
+- RUST_BACKTRACE=1 cargo run --bin test "v8env/tests/**/*.spec.*"
 - "./scripts/build-release.sh"
 - sccache --stop-server
 before_cache:

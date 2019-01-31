@@ -97,7 +97,19 @@ export enum DnsRecordData{
  * @enum
  */
 export enum ImageTransformType{
-  ImageWebPEncode= 0
+  WebPEncode= 0,
+  Resize= 1
+};
+
+/**
+ * @enum
+ */
+export enum ImageSamplingFilter{
+  Nearest= 0,
+  Triangle= 1,
+  CatmullRom= 2,
+  Gaussian= 3,
+  Lanczos3= 4
 };
 
 /**
@@ -105,7 +117,8 @@ export enum ImageTransformType{
  */
 export enum ImageTransformOptions{
   NONE= 0,
-  ImageWebPEncode= 1
+  ImageWebPEncode= 1,
+  ImageResize= 2
 };
 
 /**
@@ -142,17 +155,19 @@ export enum Any{
   DataGet= 27,
   DataGetReady= 28,
   DataDel= 29,
-  DataDropCollection= 30,
-  DnsQuery= 31,
-  DnsRequest= 32,
-  DnsResponse= 33,
-  AddEventListener= 34,
-  LoadModule= 35,
-  LoadModuleResp= 36,
-  ImageApplyTransforms= 37,
-  ImageReady= 38,
-  AcmeGetChallenge= 39,
-  AcmeGetChallengeReady= 40
+  DataIncr= 30,
+  DataDropCollection= 31,
+  DnsQuery= 32,
+  DnsRequest= 33,
+  DnsResponse= 34,
+  AddEventListener= 35,
+  LoadModule= 36,
+  LoadModuleResp= 37,
+  ImageApplyTransforms= 38,
+  ImageReady= 39,
+  AcmeGetChallenge= 40,
+  AcmeGetChallengeReady= 41,
+  OsExit= 42
 };
 
 /**
@@ -3115,6 +3130,529 @@ static endCachePurgeTag(builder:flatbuffers.Builder):flatbuffers.Offset {
 /**
  * @constructor
  */
+export class DataPut {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns DataPut
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):DataPut {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param DataPut= obj
+ * @returns DataPut
+ */
+static getRootAsDataPut(bb:flatbuffers.ByteBuffer, obj?:DataPut):DataPut {
+  return (obj || new DataPut).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+collection():string|null
+collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+collection(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+json():string|null
+json(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+json(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startDataPut(builder:flatbuffers.Builder) {
+  builder.startObject(3);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset collectionOffset
+ */
+static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, collectionOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset jsonOffset
+ */
+static addJson(builder:flatbuffers.Builder, jsonOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, jsonOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endDataPut(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class DataGet {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns DataGet
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):DataGet {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param DataGet= obj
+ * @returns DataGet
+ */
+static getRootAsDataGet(bb:flatbuffers.ByteBuffer, obj?:DataGet):DataGet {
+  return (obj || new DataGet).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+collection():string|null
+collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+collection(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startDataGet(builder:flatbuffers.Builder) {
+  builder.startObject(2);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset collectionOffset
+ */
+static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, collectionOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endDataGet(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class DataGetReady {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns DataGetReady
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):DataGetReady {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param DataGetReady= obj
+ * @returns DataGetReady
+ */
+static getRootAsDataGetReady(bb:flatbuffers.ByteBuffer, obj?:DataGetReady):DataGetReady {
+  return (obj || new DataGetReady).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+json():string|null
+json(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+json(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startDataGetReady(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset jsonOffset
+ */
+static addJson(builder:flatbuffers.Builder, jsonOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, jsonOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endDataGetReady(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class DataDel {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns DataDel
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):DataDel {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param DataDel= obj
+ * @returns DataDel
+ */
+static getRootAsDataDel(bb:flatbuffers.ByteBuffer, obj?:DataDel):DataDel {
+  return (obj || new DataDel).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+collection():string|null
+collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+collection(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startDataDel(builder:flatbuffers.Builder) {
+  builder.startObject(2);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset collectionOffset
+ */
+static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, collectionOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endDataDel(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class DataDropCollection {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns DataDropCollection
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):DataDropCollection {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param DataDropCollection= obj
+ * @returns DataDropCollection
+ */
+static getRootAsDataDropCollection(bb:flatbuffers.ByteBuffer, obj?:DataDropCollection):DataDropCollection {
+  return (obj || new DataDropCollection).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+collection():string|null
+collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+collection(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startDataDropCollection(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset collectionOffset
+ */
+static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, collectionOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endDataDropCollection(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class DataIncr {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns DataIncr
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):DataIncr {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param DataIncr= obj
+ * @returns DataIncr
+ */
+static getRootAsDataIncr(bb:flatbuffers.ByteBuffer, obj?:DataIncr):DataIncr {
+  return (obj || new DataIncr).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+collection():string|null
+collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+collection(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+key():string|null
+key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+key(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+field():string|null
+field(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+field(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
+ * @returns number
+ */
+amount():number {
+  var offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_amount(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 10);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startDataIncr(builder:flatbuffers.Builder) {
+  builder.startObject(4);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset collectionOffset
+ */
+static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, collectionOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset keyOffset
+ */
+static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, keyOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset fieldOffset
+ */
+static addField(builder:flatbuffers.Builder, fieldOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, fieldOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number amount
+ */
+static addAmount(builder:flatbuffers.Builder, amount:number) {
+  builder.addFieldInt32(3, amount, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endDataIncr(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
 export class ImageWebPEncode {
   bb: flatbuffers.ByteBuffer|null = null;
 
@@ -3283,6 +3821,143 @@ static endImageWebPEncode(builder:flatbuffers.Builder):flatbuffers.Offset {
 /**
  * @constructor
  */
+export class ImageResize {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns ImageResize
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):ImageResize {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param ImageResize= obj
+ * @returns ImageResize
+ */
+static getRootAsImageResize(bb:flatbuffers.ByteBuffer, obj?:ImageResize):ImageResize {
+  return (obj || new ImageResize).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @returns number
+ */
+width():number {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_width(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeUint32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @returns number
+ */
+height():number {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+  return offset ? this.bb!.readUint32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_height(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 6);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeUint32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @returns ImageSamplingFilter
+ */
+filter():ImageSamplingFilter {
+  var offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? /**  */ (this.bb!.readInt8(this.bb_pos + offset)) : ImageSamplingFilter.Nearest;
+};
+
+/**
+ * @param ImageSamplingFilter value
+ * @returns boolean
+ */
+mutate_filter(value:ImageSamplingFilter):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 8);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt8(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startImageResize(builder:flatbuffers.Builder) {
+  builder.startObject(3);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number width
+ */
+static addWidth(builder:flatbuffers.Builder, width:number) {
+  builder.addFieldInt32(0, width, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number height
+ */
+static addHeight(builder:flatbuffers.Builder, height:number) {
+  builder.addFieldInt32(1, height, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param ImageSamplingFilter filter
+ */
+static addFilter(builder:flatbuffers.Builder, filter:ImageSamplingFilter) {
+  builder.addFieldInt8(2, filter, ImageSamplingFilter.Nearest);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endImageResize(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
 export class ImageTransform {
   bb: flatbuffers.ByteBuffer|null = null;
 
@@ -3312,7 +3987,7 @@ static getRootAsImageTransform(bb:flatbuffers.ByteBuffer, obj?:ImageTransform):I
  */
 transform():ImageTransformType {
   var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? /**  */ (this.bb!.readInt8(this.bb_pos + offset)) : ImageTransformType.ImageWebPEncode;
+  return offset ? /**  */ (this.bb!.readInt8(this.bb_pos + offset)) : ImageTransformType.WebPEncode;
 };
 
 /**
@@ -3374,7 +4049,7 @@ static startImageTransform(builder:flatbuffers.Builder) {
  * @param ImageTransformType transform
  */
 static addTransform(builder:flatbuffers.Builder, transform:ImageTransformType) {
-  builder.addFieldInt8(0, transform, ImageTransformType.ImageWebPEncode);
+  builder.addFieldInt8(0, transform, ImageTransformType.WebPEncode);
 };
 
 /**
@@ -3771,6 +4446,81 @@ static addContents(builder:flatbuffers.Builder, contentsOffset:flatbuffers.Offse
  * @returns flatbuffers.Offset
  */
 static endAcmeGetChallengeReady(builder:flatbuffers.Builder):flatbuffers.Offset {
+  var offset = builder.endObject();
+  return offset;
+};
+
+}
+/**
+ * @constructor
+ */
+export class OsExit {
+  bb: flatbuffers.ByteBuffer|null = null;
+
+  bb_pos:number = 0;
+/**
+ * @param number i
+ * @param flatbuffers.ByteBuffer bb
+ * @returns OsExit
+ */
+__init(i:number, bb:flatbuffers.ByteBuffer):OsExit {
+  this.bb_pos = i;
+  this.bb = bb;
+  return this;
+};
+
+/**
+ * @param flatbuffers.ByteBuffer bb
+ * @param OsExit= obj
+ * @returns OsExit
+ */
+static getRootAsOsExit(bb:flatbuffers.ByteBuffer, obj?:OsExit):OsExit {
+  return (obj || new OsExit).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+};
+
+/**
+ * @returns number
+ */
+code():number {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+  return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
+};
+
+/**
+ * @param number value
+ * @returns boolean
+ */
+mutate_code(value:number):boolean {
+  var offset = this.bb!.__offset(this.bb_pos, 4);
+
+  if (offset === 0) {
+    return false;
+  }
+
+  this.bb!.writeInt32(this.bb_pos + offset, value);
+  return true;
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ */
+static startOsExit(builder:flatbuffers.Builder) {
+  builder.startObject(1);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @param number code
+ */
+static addCode(builder:flatbuffers.Builder, code:number) {
+  builder.addFieldInt32(0, code, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
+ * @returns flatbuffers.Offset
+ */
+static endOsExit(builder:flatbuffers.Builder):flatbuffers.Offset {
   var offset = builder.endObject();
   return offset;
 };
@@ -5772,397 +6522,6 @@ static endSourceMapReady(builder:flatbuffers.Builder):flatbuffers.Offset {
 /**
  * @constructor
  */
-export class DataPut {
-  bb: flatbuffers.ByteBuffer|null = null;
-
-  bb_pos:number = 0;
-/**
- * @param number i
- * @param flatbuffers.ByteBuffer bb
- * @returns DataPut
- */
-__init(i:number, bb:flatbuffers.ByteBuffer):DataPut {
-  this.bb_pos = i;
-  this.bb = bb;
-  return this;
-};
-
-/**
- * @param flatbuffers.ByteBuffer bb
- * @param DataPut= obj
- * @returns DataPut
- */
-static getRootAsDataPut(bb:flatbuffers.ByteBuffer, obj?:DataPut):DataPut {
-  return (obj || new DataPut).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-collection():string|null
-collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-collection(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-key():string|null
-key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-key(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-json():string|null
-json(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-json(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 8);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Builder builder
- */
-static startDataPut(builder:flatbuffers.Builder) {
-  builder.startObject(3);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset collectionOffset
- */
-static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, collectionOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset keyOffset
- */
-static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, keyOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset jsonOffset
- */
-static addJson(builder:flatbuffers.Builder, jsonOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, jsonOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @returns flatbuffers.Offset
- */
-static endDataPut(builder:flatbuffers.Builder):flatbuffers.Offset {
-  var offset = builder.endObject();
-  return offset;
-};
-
-}
-/**
- * @constructor
- */
-export class DataGet {
-  bb: flatbuffers.ByteBuffer|null = null;
-
-  bb_pos:number = 0;
-/**
- * @param number i
- * @param flatbuffers.ByteBuffer bb
- * @returns DataGet
- */
-__init(i:number, bb:flatbuffers.ByteBuffer):DataGet {
-  this.bb_pos = i;
-  this.bb = bb;
-  return this;
-};
-
-/**
- * @param flatbuffers.ByteBuffer bb
- * @param DataGet= obj
- * @returns DataGet
- */
-static getRootAsDataGet(bb:flatbuffers.ByteBuffer, obj?:DataGet):DataGet {
-  return (obj || new DataGet).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-collection():string|null
-collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-collection(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-key():string|null
-key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-key(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Builder builder
- */
-static startDataGet(builder:flatbuffers.Builder) {
-  builder.startObject(2);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset collectionOffset
- */
-static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, collectionOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset keyOffset
- */
-static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, keyOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @returns flatbuffers.Offset
- */
-static endDataGet(builder:flatbuffers.Builder):flatbuffers.Offset {
-  var offset = builder.endObject();
-  return offset;
-};
-
-}
-/**
- * @constructor
- */
-export class DataGetReady {
-  bb: flatbuffers.ByteBuffer|null = null;
-
-  bb_pos:number = 0;
-/**
- * @param number i
- * @param flatbuffers.ByteBuffer bb
- * @returns DataGetReady
- */
-__init(i:number, bb:flatbuffers.ByteBuffer):DataGetReady {
-  this.bb_pos = i;
-  this.bb = bb;
-  return this;
-};
-
-/**
- * @param flatbuffers.ByteBuffer bb
- * @param DataGetReady= obj
- * @returns DataGetReady
- */
-static getRootAsDataGetReady(bb:flatbuffers.ByteBuffer, obj?:DataGetReady):DataGetReady {
-  return (obj || new DataGetReady).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-json():string|null
-json(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-json(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Builder builder
- */
-static startDataGetReady(builder:flatbuffers.Builder) {
-  builder.startObject(1);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset jsonOffset
- */
-static addJson(builder:flatbuffers.Builder, jsonOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, jsonOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @returns flatbuffers.Offset
- */
-static endDataGetReady(builder:flatbuffers.Builder):flatbuffers.Offset {
-  var offset = builder.endObject();
-  return offset;
-};
-
-}
-/**
- * @constructor
- */
-export class DataDel {
-  bb: flatbuffers.ByteBuffer|null = null;
-
-  bb_pos:number = 0;
-/**
- * @param number i
- * @param flatbuffers.ByteBuffer bb
- * @returns DataDel
- */
-__init(i:number, bb:flatbuffers.ByteBuffer):DataDel {
-  this.bb_pos = i;
-  this.bb = bb;
-  return this;
-};
-
-/**
- * @param flatbuffers.ByteBuffer bb
- * @param DataDel= obj
- * @returns DataDel
- */
-static getRootAsDataDel(bb:flatbuffers.ByteBuffer, obj?:DataDel):DataDel {
-  return (obj || new DataDel).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-collection():string|null
-collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-collection(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-key():string|null
-key(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-key(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Builder builder
- */
-static startDataDel(builder:flatbuffers.Builder) {
-  builder.startObject(2);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset collectionOffset
- */
-static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, collectionOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset keyOffset
- */
-static addKey(builder:flatbuffers.Builder, keyOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, keyOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @returns flatbuffers.Offset
- */
-static endDataDel(builder:flatbuffers.Builder):flatbuffers.Offset {
-  var offset = builder.endObject();
-  return offset;
-};
-
-}
-/**
- * @constructor
- */
-export class DataDropCollection {
-  bb: flatbuffers.ByteBuffer|null = null;
-
-  bb_pos:number = 0;
-/**
- * @param number i
- * @param flatbuffers.ByteBuffer bb
- * @returns DataDropCollection
- */
-__init(i:number, bb:flatbuffers.ByteBuffer):DataDropCollection {
-  this.bb_pos = i;
-  this.bb = bb;
-  return this;
-};
-
-/**
- * @param flatbuffers.ByteBuffer bb
- * @param DataDropCollection= obj
- * @returns DataDropCollection
- */
-static getRootAsDataDropCollection(bb:flatbuffers.ByteBuffer, obj?:DataDropCollection):DataDropCollection {
-  return (obj || new DataDropCollection).__init(bb.readInt32(bb.position()) + bb.position(), bb);
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-collection():string|null
-collection(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-collection(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Builder builder
- */
-static startDataDropCollection(builder:flatbuffers.Builder) {
-  builder.startObject(1);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset collectionOffset
- */
-static addCollection(builder:flatbuffers.Builder, collectionOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, collectionOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @returns flatbuffers.Offset
- */
-static endDataDropCollection(builder:flatbuffers.Builder):flatbuffers.Offset {
-  var offset = builder.endObject();
-  return offset;
-};
-
-}
-/**
- * @constructor
- */
 export class AddEventListener {
   bb: flatbuffers.ByteBuffer|null = null;
 
@@ -6266,9 +6625,9 @@ static getRootAsLoadModule(bb:flatbuffers.ByteBuffer, obj?:LoadModule):LoadModul
  * @param flatbuffers.Encoding= optionalEncoding
  * @returns string|Uint8Array|null
  */
-moduleSpecifier():string|null
-moduleSpecifier(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-moduleSpecifier(optionalEncoding?:any):string|Uint8Array|null {
+specifierUrl():string|null
+specifierUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+specifierUrl(optionalEncoding?:any):string|Uint8Array|null {
   var offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
@@ -6277,9 +6636,9 @@ moduleSpecifier(optionalEncoding?:any):string|Uint8Array|null {
  * @param flatbuffers.Encoding= optionalEncoding
  * @returns string|Uint8Array|null
  */
-containingFile():string|null
-containingFile(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-containingFile(optionalEncoding?:any):string|Uint8Array|null {
+refererOriginUrl():string|null
+refererOriginUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+refererOriginUrl(optionalEncoding?:any):string|Uint8Array|null {
   var offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
@@ -6293,18 +6652,18 @@ static startLoadModule(builder:flatbuffers.Builder) {
 
 /**
  * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset moduleSpecifierOffset
+ * @param flatbuffers.Offset specifierUrlOffset
  */
-static addModuleSpecifier(builder:flatbuffers.Builder, moduleSpecifierOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, moduleSpecifierOffset, 0);
+static addSpecifierUrl(builder:flatbuffers.Builder, specifierUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, specifierUrlOffset, 0);
 };
 
 /**
  * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset containingFileOffset
+ * @param flatbuffers.Offset refererOriginUrlOffset
  */
-static addContainingFile(builder:flatbuffers.Builder, containingFileOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, containingFileOffset, 0);
+static addRefererOriginUrl(builder:flatbuffers.Builder, refererOriginUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, refererOriginUrlOffset, 0);
 };
 
 /**
@@ -6348,21 +6707,10 @@ static getRootAsLoadModuleResp(bb:flatbuffers.ByteBuffer, obj?:LoadModuleResp):L
  * @param flatbuffers.Encoding= optionalEncoding
  * @returns string|Uint8Array|null
  */
-moduleId():string|null
-moduleId(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-moduleId(optionalEncoding?:any):string|Uint8Array|null {
+originUrl():string|null
+originUrl(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+originUrl(optionalEncoding?:any):string|Uint8Array|null {
   var offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
-};
-
-/**
- * @param flatbuffers.Encoding= optionalEncoding
- * @returns string|Uint8Array|null
- */
-fileName():string|null
-fileName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-fileName(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
 
@@ -6373,7 +6721,7 @@ fileName(optionalEncoding?:any):string|Uint8Array|null {
 sourceCode():string|null
 sourceCode(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
 sourceCode(optionalEncoding?:any):string|Uint8Array|null {
-  var offset = this.bb!.__offset(this.bb_pos, 8);
+  var offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 };
 
@@ -6381,23 +6729,15 @@ sourceCode(optionalEncoding?:any):string|Uint8Array|null {
  * @param flatbuffers.Builder builder
  */
 static startLoadModuleResp(builder:flatbuffers.Builder) {
-  builder.startObject(3);
+  builder.startObject(2);
 };
 
 /**
  * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset moduleIdOffset
+ * @param flatbuffers.Offset originUrlOffset
  */
-static addModuleId(builder:flatbuffers.Builder, moduleIdOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(0, moduleIdOffset, 0);
-};
-
-/**
- * @param flatbuffers.Builder builder
- * @param flatbuffers.Offset fileNameOffset
- */
-static addFileName(builder:flatbuffers.Builder, fileNameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, fileNameOffset, 0);
+static addOriginUrl(builder:flatbuffers.Builder, originUrlOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(0, originUrlOffset, 0);
 };
 
 /**
@@ -6405,7 +6745,7 @@ static addFileName(builder:flatbuffers.Builder, fileNameOffset:flatbuffers.Offse
  * @param flatbuffers.Offset sourceCodeOffset
  */
 static addSourceCode(builder:flatbuffers.Builder, sourceCodeOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(2, sourceCodeOffset, 0);
+  builder.addFieldOffset(1, sourceCodeOffset, 0);
 };
 
 /**

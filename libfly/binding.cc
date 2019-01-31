@@ -64,6 +64,10 @@ static inline v8::Local<v8::String> v8_str(const char *s)
                                  v8::NewStringType::kNormal)
       .ToLocalChecked();
 }
+static inline v8::Local<v8::String> v8_str_from_fly_simple_buf(v8::Isolate *iso, fly_simple_buf buf)
+{
+  return v8::String::NewFromUtf8(iso, buf.ptr, v8::NewStringType::kNormal, buf.len).ToLocalChecked();
+}
 
 // Extracts a C string from a v8::V8 Utf8Value.
 // const char *ToCString(const v8::String::Utf8Value &value)
@@ -239,6 +243,22 @@ static fly_buf GetContents(const js_runtime *rt,
   return buf;
 }
 
+static fly_buf GetArrayBufferContents(const js_runtime *rt,
+                                      v8::Local<v8::ArrayBuffer> ab)
+{
+  auto contents = ab->GetContents();
+
+  auto length = ab->ByteLength();
+
+  fly_buf buf;
+  buf.alloc_ptr = reinterpret_cast<uint8_t *>(contents.Data());
+  buf.alloc_len = contents.ByteLength();
+  buf.data_ptr = buf.alloc_ptr;
+  buf.data_len = length;
+
+  return buf;
+}
+
 bool ExecuteV8StringSource(v8::Local<v8::Context> context,
                            const char *filename,
                            const char *code)
@@ -274,6 +294,111 @@ bool ExecuteV8StringSource(v8::Local<v8::Context> context,
   }
 
   return true;
+}
+
+v8::MaybeLocal<v8::Module> ModuleImportCallback(
+    v8::Local<v8::Context> context,
+    v8::Local<v8::String> specifier,
+    v8::Local<v8::Module> referrer)
+{
+  auto *isolate = context->GetIsolate();
+
+  js_runtime *rt = static_cast<js_runtime *>(isolate->GetData(0));
+
+  v8::String::Utf8Value specifier_utf_val(isolate, specifier);
+
+  js_compiled_module module_data = rt->resolve_cb(rt, *specifier_utf_val, referrer->GetIdentityHash());
+
+  v8::Persistent<v8::Module> *module_persistent = static_cast<v8::Persistent<v8::Module> *>(module_data.ptr);
+
+  v8::Local<v8::Module> module_local = module_persistent->Get(isolate);
+
+  return module_local;
+}
+
+bool ExecuteV8Module(v8::Local<v8::Context> context, js_compiled_module module_data)
+{
+  auto *isolate = context->GetIsolate();
+  v8::Isolate::Scope isolate_scope(isolate);
+  v8::HandleScope handle_scope(isolate);
+
+  v8::Context::Scope context_scope(context);
+
+  v8::TryCatch try_catch(isolate);
+
+  v8::Persistent<v8::Module> *module_persistent = static_cast<v8::Persistent<v8::Module> *>(module_data.ptr);
+
+  v8::Local<v8::Module> module_local = module_persistent->Get(isolate);
+
+  auto module_instantiated = module_local->InstantiateModule(context, &ModuleImportCallback);
+
+  if (module_instantiated.FromMaybe(false))
+  {
+    // DCHECK(try_catch.HasCaught());
+    HandleException(context, try_catch.Exception());
+    return false;
+  }
+
+  auto result = module_local->Evaluate(context);
+
+  if (result.IsEmpty())
+  {
+    // DCHECK(try_catch.HasCaught());
+    HandleException(context, try_catch.Exception());
+    return false;
+  }
+
+  return true;
+}
+
+js_compile_module_result CompileV8Module(v8::Local<v8::Context> context, js_module_data module_data)
+{
+  auto *isolate = context->GetIsolate();
+  v8::Isolate::Scope isolate_scope(isolate);
+  v8::HandleScope handle_scope(isolate);
+
+  v8::Context::Scope context_scope(context);
+
+  v8::TryCatch try_catch(isolate);
+
+  v8::ScriptOrigin origin(v8_str(isolate, module_data.origin_url),
+                          Integer::New(isolate, 0),                       // line offset
+                          Integer::New(isolate, 0),                       // column offset
+                          False(isolate),                                 // is cross origin
+                          Local<Integer>(),                               // script id
+                          Local<Value>(),                                 // source map URL
+                          False(isolate),                                 // is opaque
+                          v8::Boolean::New(isolate, module_data.is_wasm), // is WASM
+                          True(isolate));                                 // is ES6 module
+
+  v8::ScriptCompiler::Source module_source(v8_str_from_fly_simple_buf(isolate, module_data.source_code), origin);
+
+  auto module = v8::ScriptCompiler::CompileModule(isolate, &module_source);
+
+  if (module.IsEmpty())
+  {
+    // DCHECK(try_catch.HasCaught());
+    HandleException(context, try_catch.Exception());
+    return js_compile_module_result{
+        NULL,
+        false,
+    };
+  }
+
+  auto module_local = module.ToLocalChecked();
+
+  v8::Persistent<v8::Module> module_persistent(isolate, module_local);
+
+  auto compiled_module = js_compiled_module{
+      module_local->GetIdentityHash(),
+      module_data,
+      &module_persistent,
+  };
+
+  return js_compile_module_result{
+      &compiled_module,
+      true,
+  };
 }
 
 // Sets the recv callback.
@@ -318,6 +443,10 @@ void Send(const v8::FunctionCallbackInfo<v8::Value> &args)
   if (args[1]->IsArrayBufferView())
   {
     raw = GetContents(rt, v8::Local<v8::ArrayBufferView>::Cast(args[1]));
+  }
+  else if (args[1]->IsArrayBuffer())
+  {
+    raw = GetArrayBufferContents(rt, v8::Local<v8::ArrayBuffer>::Cast(args[1]));
   }
 
   rt->current_args = &args;
@@ -416,7 +545,6 @@ extern "C"
 
   void promise_rejected_cb(v8::PromiseRejectMessage message)
   {
-    printf("Unhandled promise rejection:\n");
     auto iso = v8::Isolate::GetCurrent();
     auto rt = FromIsolate(iso);
     v8::HandleScope handle_scope(rt->isolate);
@@ -428,18 +556,18 @@ extern "C"
     switch (message.GetEvent())
     {
     case v8::kPromiseRejectWithNoHandler:
-      printf("no handler!\n");
+      printf("Unhandled promise rejection:\n");
       printf("is native error? %s\n", error->IsNativeError() ? "true" : "false");
       printf("%s\n", *v8::String::Utf8Value(v8::Isolate::GetCurrent(), error));
-      break;
-    case v8::kPromiseRejectAfterResolved:
-      printf("promise reject after resolved\n");
       break;
     case v8::kPromiseHandlerAddedAfterReject:
       printf("promise handler added after reject\n");
       break;
+    case v8::kPromiseRejectAfterResolved:
+      // ignore
+      break;
     case v8::kPromiseResolveAfterResolved:
-      printf("promise resolved after resolved\n");
+      // ignore
       break;
     }
   }
@@ -591,6 +719,12 @@ extern "C"
     // }
   }
 
+  bool js_run_module(const js_runtime *rt, js_compiled_module module_data)
+  {
+    VALUE_SCOPE(rt->isolate, rt->context);
+    return ExecuteV8Module(ctx, module_data);
+  }
+
   // StartupData js_snapshot_create(const char *js)
   // {
   //   v8::StartupData data = v8::V8::CreateSnapshotDataBlob(js);
@@ -668,5 +802,11 @@ extern "C"
     }
 
     return fly_simple_buf{blob.data, blob.raw_size};
+  }
+
+  js_compile_module_result js_compile_module(const runtime *rt, js_module_data module_data)
+  {
+    VALUE_SCOPE(rt->isolate, rt->context);
+    return CompileV8Module(ctx, module_data);
   }
 }

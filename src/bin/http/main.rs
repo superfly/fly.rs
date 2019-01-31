@@ -1,37 +1,22 @@
 #[macro_use]
 extern crate log;
-
-extern crate clap;
-
-extern crate env_logger;
-extern crate fly;
-extern crate tokio;
-
-extern crate libfly;
-
-extern crate hyper;
 use hyper::rt::Future;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::Server;
 
-extern crate futures;
-
 use tokio::prelude::*;
 
 use fly::fixed_runtime_selector::FixedRuntimeSelector;
 use fly::http_server::serve_http;
+use fly::logging;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
 
-use env_logger::Env;
-
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
-fn main() {
-    let env = Env::default().filter_or("LOG_LEVEL", "info");
-
-    env_logger::init_from_env(env);
+fn main() -> Result<(), Box<::std::error::Error>> {
+    let (_guard, app_logger) = logging::configure();
 
     let matches = clap::App::new("fly-http")
         .version("0.0.1-alpha")
@@ -59,13 +44,18 @@ fn main() {
     info!("V8 version: {}", libfly::version());
 
     let entry_file = matches.value_of("input").unwrap();
-    let mut runtime = Runtime::new(None, None, &SETTINGS.read().unwrap());
+    let mut runtime = Runtime::new(RuntimeConfig {
+        name: None,
+        version: None,
+        settings: &SETTINGS.read().unwrap(),
+        module_resolvers: None,
+        app_logger: &app_logger,
+        msg_handler: None,
+        permissions: None,
+        dev_tools: true,
+    });
 
-    debug!("Loading dev tools");
-    runtime.eval_file("v8env/dist/dev-tools.js");
-    runtime.eval("<installDevTools>", "installDevTools();");
-    debug!("Loading dev tools done");
-    runtime.eval(entry_file, &format!("dev.run('{}')", entry_file));
+    runtime.eval_file_with_dev_tools(entry_file);
 
     let bind = match matches.value_of("bind") {
         Some(b) => b,
@@ -78,6 +68,28 @@ fn main() {
 
     let addr = format!("{}:{}", bind, port).parse().unwrap();
 
+    let (sigfut, sigrx) = fly::utils::signal_monitor();
+
+    let server = Server::bind(&addr)
+        .serve(make_service_fn(move |conn: &AddrStream| {
+            let remote_addr = conn.remote_addr();
+            service_fn(move |req| {
+                serve_http(
+                    false,
+                    req,
+                    unsafe { SELECTOR.as_ref().unwrap() },
+                    remote_addr,
+                )
+            })
+        }))
+        .with_graceful_shutdown(sigrx)
+        .map_err(|e| error!("server error: {}", e))
+        .and_then(|_| {
+            info!("HTTP server closed.");
+            unsafe { SELECTOR = None };
+            Ok(())
+        });
+
     tokio::run(future::lazy(move || {
         tokio::spawn(
             runtime
@@ -85,21 +97,11 @@ fn main() {
                 .map_err(|e| error!("error running runtime event loop: {}", e)),
         );
         unsafe { SELECTOR = Some(FixedRuntimeSelector::new(runtime)) }
-        let server = Server::bind(&addr)
-            .serve(make_service_fn(move |conn: &AddrStream| {
-                let remote_addr = conn.remote_addr();
-                service_fn(move |req| {
-                    serve_http(
-                        false,
-                        req,
-                        unsafe { SELECTOR.as_ref().unwrap() },
-                        remote_addr,
-                    )
-                })
-            }))
-            .map_err(|e| eprintln!("server error: {}", e));
 
+        tokio::spawn(server);
         info!("Listening on http://{}", addr);
-        server
+        sigfut
     }));
+
+    Ok(())
 }

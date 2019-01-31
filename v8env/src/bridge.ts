@@ -85,7 +85,8 @@ export function addEventListener(name: string, fn: Function) {
         for (let i = 0; i < msg.headersLength(); i++) {
           const h = msg.headers(i);
           // console.log("header:", h.key(), h.value());
-          headersInit.push([h.key(), h.value()]);
+          // Not null operators to appease the typescript gods. These should never be null as far as I can tell.
+          headersInit.push([h!.key()!, h!.value()!]);
         }
 
         let req = new FlyRequest(msg.url(), {
@@ -341,12 +342,10 @@ function handleError(id: number, err: Error) {
 }
 
 export async function sendStreamChunks(id: number, stream: ReadableStream) {
-  console.debug("send stream chunk");
   let reader = stream.getReader();
   let cur = await reader.read()
   let done = false
   while (!done) {
-    console.debug("done?", cur.done, "typeof value:", typeof cur.value);
     let value: ArrayBufferView;
     if (typeof cur.value === 'string')
       value = new TextEncoder().encode(cur.value)
@@ -400,12 +399,12 @@ async function handleRes(id: number, res: FlyResponse) {
     fbs.HttpResponse.addHeaders(fbb, resHeaders);
     fbs.HttpResponse.addStatus(fbb, res.status);
     let resBody = res.body;
-    let hasBody = resBody != null && (!res.isStatic || res.isStatic && res.staticBody.length > 0)
+    let hasBody = resBody != null && (!res.isStatic || res.isStatic && res.staticBody.byteLength > 0)
     fbs.HttpResponse.addHasBody(fbb, hasBody)
 
     const resMsg = fbs.HttpResponse.endHttpResponse(fbb);
 
-    let staticBody: ArrayBufferView;
+    let staticBody: BufferSource;
     if (hasBody && res.isStatic)
       staticBody = res.staticBody
     sendSync(fbb, fbs.Any.HttpResponse, resMsg, staticBody); // sync so we can send body chunks when it's ready!
@@ -425,7 +424,7 @@ export function sendAsync(
   fbb: flatbuffers.Builder,
   msgType: fbs.Any,
   msg: flatbuffers.Offset,
-  raw?: ArrayBufferView
+  raw?: BufferSource
 ): Promise<fbs.Base> {
   const [cmdId, resBuf] = sendInternal(fbb, msgType, msg, false, raw);
   util.assert(resBuf == null);
@@ -439,7 +438,7 @@ export function sendSync(
   fbb: flatbuffers.Builder,
   msgType: fbs.Any,
   msg: flatbuffers.Offset,
-  raw?: ArrayBufferView
+  raw?: BufferSource
 ): null | fbs.Base {
   const [cmdId, resBuf] = sendInternal(fbb, msgType, msg, true, raw);
   util.assert(cmdId >= 0);
@@ -459,7 +458,7 @@ function sendInternal(
   msgType: fbs.Any,
   msg: flatbuffers.Offset,
   sync = true,
-  raw?: ArrayBufferView
+  raw?: BufferSource
 ): [number, null | Uint8Array] {
   const cmdId = nextCmdId++;
   fbs.Base.startBase(fbb);

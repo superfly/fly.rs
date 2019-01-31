@@ -59,7 +59,7 @@ impl CacheStore for SqliteCacheStore {
 
       let mut stmt = conn
         .prepare(
-          "SELECT rowid FROM cache
+          "SELECT rowid,meta FROM cache
       WHERE key = ? AND
         (
           expires_at IS NULL OR
@@ -70,19 +70,28 @@ impl CacheStore for SqliteCacheStore {
 
       let mut rows = stmt.query(&[&key])?;
 
-      let rowid: i64 = match rows.next() {
-        Some(res) => match res {
-          Ok(row) => row.get(0),
-          Err(e) => return Err(CacheError::Failure(format!("{}", e))),
-        },
+      let row_res = rows.next();
+
+      let rowid: i64 = match row_res {
+        Some(Ok(ref row)) => row.get(0),
+        Some(Err(e)) => return Err(CacheError::Failure(format!("{}", e))),
         None => {
           debug!("row not found");
           return Ok(None);
         }
       };
 
+      let meta: Option<String> = match row_res {
+        Some(Ok(ref row)) => row.get(1),
+        Some(Err(e)) => {
+          error!("error getting metadata from row: {}", e);
+          None
+        }
+        None => None,
+      };
+
       Ok(Some(CacheEntry {
-        meta: None,
+        meta: meta,
         stream: Box::new(stream::unfold(0, move |pos| {
           debug!("sqlite cache get in stream future, pos: {}", pos);
 
@@ -149,10 +158,10 @@ impl CacheStore for SqliteCacheStore {
           if let Some(ttl) = opts.ttl {
             let mut stmt = conn
               .prepare(
-                "INSERT INTO cache(key, value, expires_at)
-      VALUES (?, ?, datetime('now', ?))
+                "INSERT INTO cache(key, value, meta, expires_at)
+      VALUES (?, ?, ?, datetime('now', ?))
       ON CONFLICT (key) DO
-        UPDATE SET value=excluded.value,expires_at=excluded.expires_at
+        UPDATE SET value=excluded.value,meta=excluded.meta,expires_at=excluded.expires_at
     ",
               )
               .unwrap();
@@ -161,21 +170,24 @@ impl CacheStore for SqliteCacheStore {
               .insert(&[
                 &key as &ToSql,
                 &b as &ToSql,
+                &opts.meta as &ToSql,
                 &format!("+{} seconds", ttl) as &ToSql,
               ])
               .unwrap()
           } else {
             let mut stmt = conn
               .prepare(
-                "INSERT INTO cache(key, value, expires_at)
-      VALUES (?, ?, NULL)
+                "INSERT INTO cache(key, value, meta, expires_at)
+      VALUES (?, ?, ?, NULL)
       ON CONFLICT (key) DO
-        UPDATE SET value=excluded.value,expires_at=excluded.expires_at
+        UPDATE SET value=excluded.value,meta=excluded.meta,expires_at=excluded.expires_at
     ",
               )
               .unwrap();
 
-            stmt.insert(&[&key as &ToSql, &b as &ToSql]).unwrap()
+            stmt
+              .insert(&[&key as &ToSql, &b as &ToSql, &opts.meta as &ToSql])
+              .unwrap()
           };
           Ok(())
         }),

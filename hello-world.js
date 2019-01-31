@@ -1,3 +1,7 @@
+// Requires the secrets module loader, not enabled everywhere yet.
+// import someSecret from "secrets:///secretObject/subSecret";
+// console.log(someSecret);
+
 console.log("hello world")
 const helloWorldStr = "Hello World";
 const helloWorld = new TextEncoder().encode(helloWorldStr);
@@ -17,14 +21,19 @@ addEventListener("fetch", function (event) {
 
   else if (url.pathname == "/kitchensink") {
     const coll = fly.data.collection("testing")
-    coll.put("id", { foo: "bar" }).then(b => {
+    coll.put("id", { foo: "bar", counter: 10 }).then(b => {
       console.log("put returned:", b);
       coll.get("id").then(d => {
         console.log("get returned:", d)
-        coll.del("id").then(b => {
-          console.log("del returned:", b)
+        coll.increment("id", "counter", 3).then(b => {
           coll.get("id").then(d => {
-            console.log("get returned:", d);
+            console.log("get after incr returned:", d)
+            coll.del("id").then(b => {
+              console.log("del returned:", b)
+              coll.get("id").then(d => {
+                console.log("get returned:", d);
+              }).catch(console.log)
+            }).catch(console.log)
           }).catch(console.log)
         }).catch(console.log)
       }).catch(console.log)
@@ -59,7 +68,7 @@ addEventListener("fetch", function (event) {
   else if (url.pathname == "/image") {
     event.respondWith(fetch(url.searchParams.get("url")).then(res => {
       let img = new fly.Image(res.body);
-      img.webp({ lossless: false, quality: 75 });
+      img.resize({ width: 512, height: 512 }).webp({ lossless: false, quality: 75 });
       return img.transform().then(stream => {
         console.log("image accepted!");
         return new Response(stream, {

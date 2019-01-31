@@ -33,9 +33,16 @@ export function typedArrayToArrayBuffer(ta: TypedArray): ArrayBuffer {
     return ab as ArrayBuffer;
 }
 
-// @internal
-export function arrayToStr(ui8: Uint8Array): string {
+export function arrayBufferToString(ab: ArrayBuffer): string {
+    return new TextDecoder("utf-8").decode(ab);
+}
+
+export function arrayToString(ui8: Uint8Array): string {
     return String.fromCharCode(...ui8);
+}
+
+export function stringToArrayBuffer(str: string): ArrayBuffer {
+    return new TextEncoder().encode(str);
 }
 
 /**
@@ -100,4 +107,19 @@ export function containsOnlyASCII(str: string): boolean {
         return false;
     }
     return /^[\x00-\x7F]*$/.test(str);
+}
+
+// @internal
+export function isError(err: any): err is Error {
+    return err instanceof Error || (err && typeof err.message === 'string');
+}
+
+export function isIterable<T>(obj: Array<T> | IterableIterator<T> | any): obj is IterableIterator<T> {
+    if (obj == null) {
+        return false;
+    }
+    if (typeof obj !== "object") {
+        return false;
+    }
+    return typeof obj[Symbol.iterator] === 'function';
 }

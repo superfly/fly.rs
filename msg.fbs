@@ -1,7 +1,9 @@
 include "src/ops/dns.fbs";
 include "src/ops/cache.fbs";
+include "src/ops/data.fbs";
 include "src/ops/image.fbs";
 include "src/ops/acme.fbs";
+include "src/ops/os.fbs";
 
 union Any {
   TimerStart,
@@ -33,6 +35,7 @@ union Any {
   DataGet,
   DataGetReady,
   DataDel,
+  DataIncr,
   DataDropCollection,
   DnsQuery,
   DnsRequest,
@@ -44,6 +47,7 @@ union Any {
   ImageReady,
   AcmeGetChallenge,
   AcmeGetChallengeReady,
+  OsExit,
 }
 
 enum ErrorKind: byte {
@@ -193,26 +197,6 @@ table SourceMapReady {
   frames: [Frame];
 }
 
-table DataPut {
-  collection: string;
-  key: string;
-  json: string;
-}
-table DataGet {
-  collection: string;
-  key: string;
-}
-table DataGetReady {
-  json: string;
-}
-table DataDel {
-  collection: string;
-  key: string;
-}
-table DataDropCollection {
-  collection: string;
-}
-
 enum EventType: byte {
   Fetch = 0,
   Resolv,
@@ -223,13 +207,12 @@ table AddEventListener {
 }
 
 table LoadModule {
-  module_specifier: string;
-  containing_file: string;
+  specifier_url: string;
+  referer_origin_url: string;
 }
 
 table LoadModuleResp {
-  module_id: string;
-  file_name: string;
+  origin_url: string;
   source_code: string;
 }
 

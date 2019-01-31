@@ -3,7 +3,8 @@ use futures::sync::mpsc;
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsBody, JsRuntime, Op};
+use crate::js::*;
+use crate::runtime::Runtime;
 use crate::utils::*;
 use libfly::*;
 
@@ -14,11 +15,9 @@ use futures::{Future, Stream};
 use crate::cache_store::*;
 use crate::cache_store_notifier::*;
 
-pub fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_del(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_del().unwrap();
   let key = msg.key().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
 
   rt.spawn(
     rt.cache_store
@@ -29,12 +28,10 @@ pub fn op_cache_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   ok_future(None)
 }
 
-pub fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_expire(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_expire().unwrap();
   let key = msg.key().unwrap().to_string();
   let ttl = msg.ttl();
-
-  let rt = ptr.to_runtime();
 
   rt.spawn(
     rt.cache_store
@@ -45,14 +42,12 @@ pub fn op_cache_expire(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<O
   ok_future(None)
 }
 
-pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_set(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_set().unwrap();
   let key = msg.key().unwrap().to_string();
 
   let stream_id = get_next_stream_id();
-
-  let rt = ptr.to_runtime();
 
   let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
   {
@@ -76,15 +71,14 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
     None => None,
   };
 
-  let fut = rt.cache_store.set(
-    key,
-    Box::new(recver),
-    CacheSetOptions {
-      ttl,
-      tags,
-      meta: None,
-    },
-  );
+  let meta = match msg.meta() {
+    Some(m) => Some(m.to_string()),
+    None => None,
+  };
+
+  let fut = rt
+    .cache_store
+    .set(key, Box::new(recver), CacheSetOptions { ttl, tags, meta });
 
   rt.spawn(
     fut
@@ -111,25 +105,34 @@ pub fn op_cache_set(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   ))
 }
 
-pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_get(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let cmd_id = base.cmd_id();
   let msg = base.msg_as_cache_get().unwrap();
 
   let stream_id = get_next_stream_id();
 
   let key = msg.key().unwrap().to_string();
+  let ptr = rt.ptr;
 
-  let rt = ptr.to_runtime();
   Box::new(
     rt.cache_store
       .get(key)
       .map_err(|e| format!("cache error: {:?}", e).into())
       .and_then(move |maybe_entry| {
         let builder = &mut FlatBufferBuilder::new();
+        let meta = if let Some(ref entry) = maybe_entry {
+          match entry.meta {
+            Some(ref m) => Some(builder.create_string(m.as_str())),
+            None => None,
+          }
+        } else {
+          None
+        };
         let msg = msg::CacheGetReady::create(
           builder,
           &msg::CacheGetReadyArgs {
             id: stream_id,
+            meta,
             stream: maybe_entry.is_some(),
             ..Default::default()
           },
@@ -156,10 +159,9 @@ pub fn op_cache_get(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> 
   )
 }
 
-pub fn op_cache_notify_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_notify_del(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_notify_del().unwrap();
 
-  let rt = ptr.to_runtime();
   let key = msg.key().unwrap().to_string();
 
   Box::new(
@@ -176,10 +178,8 @@ pub fn op_cache_notify_del(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> B
   )
 }
 
-pub fn op_cache_notify_purge_tag(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_notify_purge_tag(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_notify_purge_tag().unwrap();
-
-  let rt = ptr.to_runtime();
 
   let tag = msg.tag().unwrap().to_string();
 
@@ -197,12 +197,10 @@ pub fn op_cache_notify_purge_tag(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf
   )
 }
 
-pub fn op_cache_set_meta(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_set_meta(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_set_meta().unwrap();
   let key = msg.key().unwrap().to_string();
   let meta = msg.meta().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
 
   rt.spawn(
     rt.cache_store
@@ -213,11 +211,9 @@ pub fn op_cache_set_meta(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box
   ok_future(None)
 }
 
-pub fn op_cache_purge_tag(ptr: JsRuntime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
+pub fn op_cache_purge_tag(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<Op> {
   let msg = base.msg_as_cache_purge_tag().unwrap();
   let tag = msg.tag().unwrap().to_string();
-
-  let rt = ptr.to_runtime();
 
   rt.spawn(
     rt.cache_store

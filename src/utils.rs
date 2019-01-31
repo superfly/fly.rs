@@ -4,11 +4,37 @@ use libfly::*;
 
 use crate::errors::FlyError;
 
-use crate::runtime::{Buf, JsBody, JsRuntime, Op};
+use crate::runtime::{JsRuntime, Runtime};
 
-use futures::{future, Future, Stream};
+use futures::{
+  future,
+  sync::{mpsc, oneshot},
+  Future, Stream,
+};
 
+use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
+
+use crate::js::*;
 use std::ptr;
+
+// Buf represents a byte array returned from a "Op".
+// The message might be empty (which will be translated into a null object on
+// the javascript side) or it is a heap allocated opaque sequence of bytes.
+// Usually a flatbuffer message.
+pub type Buf = Option<Box<[u8]>>;
+
+// JS promises in Fly map onto a specific Future
+// which yields either a FlyError or a byte array.
+pub type Op = Future<Item = Buf, Error = FlyError> + Send;
+pub type Handler = fn(&mut Runtime, &msg::Base, fly_buf) -> Box<Op>;
+
+pub fn take_last_n(str: &str, n: usize) -> Option<&str> {
+  if str.len() >= n {
+    Some(&str[str.len() - n..])
+  } else {
+    None
+  }
+}
 
 pub fn serialize_response(
   cmd_id: u32,
@@ -74,7 +100,8 @@ pub fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
         .for_each(move |v| {
           send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), false);
           Ok(())
-        }).and_then(move |_| {
+        })
+        .and_then(move |_| {
           send_done_stream(ptr, req_id);
           Ok(())
         }),
@@ -91,7 +118,8 @@ pub fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
           .for_each(move |v| {
             send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), false);
             Ok(())
-          }).and_then(move |_| {
+          })
+          .and_then(move |_| {
             send_done_stream(ptr, req_id);
             Ok(())
           }),
@@ -103,7 +131,8 @@ pub fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
           .for_each(move |mut b| {
             send_stream_chunk(ptr, req_id, b.as_mut_ptr() as *mut u8, b.len(), false);
             Ok(())
-          }).and_then(move |_| {
+          })
+          .and_then(move |_| {
             send_done_stream(ptr, req_id);
             Ok(())
           }),
@@ -122,7 +151,8 @@ pub fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
               false,
             );
             Ok(())
-          }).and_then(move |_| {
+          })
+          .and_then(move |_| {
             send_done_stream(ptr, req_id);
             Ok(())
           }),
@@ -150,7 +180,8 @@ pub fn send_stream_chunk(ptr: JsRuntime, req_id: u32, chunk: *mut u8, len: usize
           msg_type: msg::Any::StreamChunk,
           ..Default::default()
         },
-      ).unwrap(),
+      )
+      .unwrap(),
     ),
     Some(fly_buf {
       alloc_ptr: ptr::null_mut() as *mut u8,
@@ -180,8 +211,59 @@ pub fn send_done_stream(ptr: JsRuntime, req_id: u32) {
           msg_type: msg::Any::StreamChunk,
           ..Default::default()
         },
-      ).unwrap(),
+      )
+      .unwrap(),
     ),
     None,
   );
+}
+
+pub enum EventResponseChannel {
+  Http(oneshot::Receiver<JsHttpResponse>),
+  Dns(oneshot::Receiver<JsDnsResponse>),
+}
+
+#[derive(Debug)]
+pub enum EventDispatchError {
+  PoisonedLock,
+  Http(mpsc::SendError<JsHttpRequest>),
+  Dns(mpsc::SendError<JsDnsRequest>),
+}
+
+pub fn signal_monitor() -> (
+  impl Future<Item = (), Error = ()> + Send + 'static,
+  oneshot::Receiver<()>,
+) {
+  let (sigtx, sigrx) = oneshot::channel();
+  (
+    Signal::new(SIGTERM)
+      .join(Signal::new(SIGINT))
+      .map_err(|error| {
+        error!("Failed to set up process signal monitoring: {:?}", error);
+      })
+      .and_then(|(sigterms, sigints)| {
+        // Stream of all signals we care about
+        let signals = sigterms.select(sigints);
+        // Take only the first signal in the stream and log that it was triggered
+        signals
+          .take(1)
+          .map_err(|error| {
+            error!("Error while listening on process signals: {:?}", error);
+          })
+          .for_each(|signal| {
+            let signal_name = match signal {
+              SIGTERM => "SIGTERM",
+              SIGINT => "SIGINT",
+              _ => unreachable!(),
+            };
+            info!("Received {}, gracefully shutting down", signal_name);
+            Ok(())
+          })
+      })
+      .and_then(move |_| {
+        sigtx.send(()).unwrap();
+        Ok(())
+      }),
+    sigrx,
+  )
 }

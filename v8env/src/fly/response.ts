@@ -20,9 +20,15 @@
  */
 
 /** */
-import cache, { CacheSetOptions } from "."
-import { Response } from '../../dom_types'
-import { FlyResponse } from "../../response"
+import * as cache from "./cache"
+import { Response } from '../dom_types'
+import { FlyResponse } from "../response"
+
+export const {
+  del,
+  expire,
+  setTags
+} = cache;
 
 /**
  * Response metadata suitable for caching
@@ -35,7 +41,7 @@ export interface Metadata {
   tags?: string[]
 }
 
-export interface ResponseCacheSetOptions extends CacheSetOptions {
+export interface ResponseCacheSetOptions extends cache.CacheSetOptions {
   skipCacheHeaders?: string[]
 }
 
@@ -95,6 +101,8 @@ export async function set(key: string, resp: Response, options?: ResponseCacheSe
   } else if (typeof options === "object") {
     tags = options.tags;
     skipHeaderOption = [...skipHeaderOption, ...(options.skipCacheHeaders || []).map((headerKey) => headerKey.toLowerCase())];
+  } else {
+    options = {}
   }
 
   const meta = {
@@ -141,15 +149,6 @@ export async function touch(key: string) {
   const meta = JSON.parse(entry.meta)
   meta.at = Math.round(Date.now() / 1000)
   return await cache.setMeta(key, JSON.stringify(meta))
-}
-
-export default {
-  get,
-  set,
-  setTags: cache.setTags, // backwards compat
-  touch,
-  expire: cache.expire, // backwards compat
-  del: cache.del // backwards compat
 }
 
 // converts a buffer to hex, mainly for hashes

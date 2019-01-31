@@ -21,6 +21,7 @@ extern "C"
     fly_recv_cb recv_cb;
     fly_print_cb print_cb;
     std::string last_exception;
+    fly_resolve_cb resolve_cb;
   };
 }
 

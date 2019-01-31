@@ -1,8 +1,5 @@
 #[macro_use]
 extern crate serde_derive;
-extern crate rmp_serde as rmps;
-
-extern crate serde;
 
 #[macro_use]
 extern crate lazy_static;
@@ -12,23 +9,16 @@ extern crate log;
 
 #[macro_use]
 extern crate futures;
-
-// use fly::dns_server::DnsServer;
-
+use std::env;
 use std::time::Duration;
 use tokio::timer::Interval;
 
-extern crate hyper;
 use futures::{future, Future, Stream};
 
 use hyper::service::{make_service_fn, service_fn};
 use hyper::Server;
 
 use tokio::net::{TcpListener, TcpStream};
-
-use env_logger::Env;
-
-// use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 mod release;
 
@@ -49,16 +39,23 @@ use tokio_openssl::SslAcceptorExt;
 extern crate prometheus;
 
 mod cert;
+mod conn;
+mod libs;
 mod metrics;
 mod proxy;
-mod libs;
 use crate::metrics::*;
+use conn::*;
 use fly::metrics::*;
 
 use r2d2_redis::RedisConnectionManager;
+use slog::{o, Drain};
+use slog_json;
+use slog_scope;
+
+static mut SELECTOR: Option<DistributedRuntimeSelector> = None;
 
 lazy_static! {
-    static ref SELECTOR: DistributedRuntimeSelector = DistributedRuntimeSelector::new();
+    // static ref SELECTOR: DistributedRuntimeSelector = DistributedRuntimeSelector::new();
     pub static ref AWS_CREDENTIALS: AwsCredentials =
         EnvironmentProvider::default().credentials().wait().unwrap();
     pub static ref REDIS_POOL: r2d2::Pool<RedisConnectionManager> = r2d2::Pool::builder()
@@ -67,11 +64,49 @@ lazy_static! {
                 .unwrap()
         )
         .unwrap();
+    pub static ref APP_LOGGER: slog::Logger = slog::Logger::root(
+        slog_async::Async::default(
+            slog_json::Json::new(std::net::TcpStream::connect("localhost:9514").unwrap())
+                .build()
+                .fuse(),
+        )
+        .fuse(),
+        o!(
+            "source" => "app",
+            "message" => slog::PushFnValue(move |record : &slog::Record, ser| {
+                ser.emit(record.msg())
+            }),
+            "level" => slog::FnValue(move |rinfo : &slog::Record| {
+                numeric_level(rinfo.level())
+            }),
+            "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
+                ser.emit(chrono::Utc::now().to_rfc3339())
+            }),
+            "region" => env::var("REGION").unwrap_or_default(),
+            "host" => env::var("HOST").unwrap_or_default(),
+        )
+    );
 }
 
 fn main() {
-    let env = Env::default().filter_or("LOG_LEVEL", "info");
-    env_logger::init_from_env(env);
+    let _log_guard = slog_scope::set_global_logger(slog::Logger::root(
+        slog_async::Async::default(slog_json::Json::new(std::io::stdout()).build().fuse()).fuse(),
+        o!(
+            "source" => "rt",
+            "message" => slog::PushFnValue(move |record : &slog::Record, ser| {
+                ser.emit(record.msg())
+            }),
+            "level" => slog::FnValue(move |rinfo : &slog::Record| {
+                numeric_level(rinfo.level())
+            }),
+            "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
+                ser.emit(chrono::Utc::now().to_rfc3339())
+            }),
+            "region" => env::var("REGION").unwrap_or_default(),
+            "host" => env::var("HOST").unwrap_or_default(),
+        ),
+    ));
+    slog_stdlog::init().unwrap();
 
     let _guard = {
         if let Some(ref sentry_dsn) = GLOBAL_SETTINGS.read().unwrap().sentry_dsn {
@@ -104,9 +139,6 @@ fn main() {
     }
     .parse()
     .unwrap();
-
-    let http_listener = TcpListener::bind(&addr).unwrap();
-    let tls_listener = TcpListener::bind(&tls_addr).unwrap();
 
     let mut tls_builder =
         openssl::ssl::SslAcceptor::mozilla_intermediate(openssl::ssl::SslMethod::tls()).unwrap();
@@ -173,38 +205,30 @@ fn main() {
 
     let tls_acceptor = tls_builder.build();
 
+    let tls_listener = TcpListener::bind(&tls_addr).unwrap();
+
     let tls_stream = tls_listener
         .incoming()
-        .and_then(|stream| proxy::ProxyTcpStream::peek(stream))
-        .map_err(|e| error!("error in incoming tls conn: {}", e))
-        .for_each(move |stream| {
-            let remote_addr = stream.peer_addr().unwrap();
+        .and_then(|stream| proxy::ProxyTcpStream::peek(stream, true))
+        .and_then(move |pstream| {
             let timer = TLS_HANDSHAKE_TIME_HISTOGRAM.start_timer();
-            tokio::spawn(
-                tls_acceptor
-                    .accept_async(stream)
-                    .map_err(|e| error!("error handshake conn: {}", e))
-                    .and_then(move |stream| {
-                        timer.observe_duration();
-                        let h = hyper::server::conn::Http::new();
-                        h.serve_connection(
-                            stream,
-                            service_fn(move |req| serve_http(true, req, &*SELECTOR, remote_addr)),
-                        )
-                        .map_err(|e| error!("error serving conn: {}", e))
-                    }),
-            );
-            Ok(())
+            tls_acceptor
+                .accept_async(pstream)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
+                .map(|ssl_stream| {
+                    timer.observe_duration();
+                    Conn::Tls(ssl_stream)
+                })
         });
 
-    let make_svc = make_service_fn(|conn: &proxy::ProxyTcpStream| {
-        let remote_addr = conn.peer_addr().unwrap_or("0.0.0.0:0".parse().unwrap());
-        service_fn(move |req| serve_http(false, req, &*SELECTOR, remote_addr))
-    });
+    let tcp_listener = TcpListener::bind(&addr).unwrap();
 
-    let http_stream = http_listener
+    let tcp_stream = tcp_listener
         .incoming()
-        .and_then(|stream| proxy::ProxyTcpStream::peek(stream));
+        .and_then(|stream| proxy::ProxyTcpStream::peek(stream, false))
+        .map(|pstream| Conn::Tcp(pstream));
+
+    let all_stream = tcp_stream.select(tls_stream);
 
     let prom_listener: Option<TcpListener> = {
         let s = GLOBAL_SETTINGS.read().unwrap();
@@ -221,17 +245,34 @@ fn main() {
         }
     };
 
+    let (sigfut, sigrx) = fly::utils::signal_monitor();
+    let (sigrelaytx, sigrelayrx) = futures::sync::oneshot::channel();
+
+    let http_server = Server::builder(all_stream)
+        .serve(make_service_fn(|conn: &Conn| {
+            let (remote_addr, tls) = match conn {
+                Conn::Tcp(c) => (c.peer_addr(), false),
+                Conn::Tls(c) => (c.get_ref().get_ref().peer_addr(), true),
+            };
+            let remote_addr = remote_addr.unwrap_or("0.0.0.0:0".parse().unwrap());
+            service_fn(move |req| {
+                serve_http(tls, req, unsafe { SELECTOR.as_ref().unwrap() }, remote_addr)
+            })
+        }))
+        .with_graceful_shutdown(sigrx)
+        .map_err(|e| error!("server error: {}", e))
+        .and_then(move |_| {
+            info!("http server closed.");
+            unsafe { SELECTOR = None };
+            sigrelaytx.send(()).ok();// do care about compiler warning...
+            Ok(())
+        });
+
     tokio::run(future::lazy(move || {
+        unsafe { SELECTOR = Some(DistributedRuntimeSelector::new()) };
         tokio::spawn(runtime_monitoring());
-
-        tokio::spawn(
-            Server::builder(http_stream)
-                .serve(make_svc)
-                .map_err(|e| error!("error in http server: {}", e)),
-        );
+        tokio::spawn(http_server);
         info!("HTTP listening on {}", addr);
-
-        tokio::spawn(tls_stream);
         info!("HTTPS listening on {}", tls_addr);
 
         if let Some(prom_ln) = prom_listener {
@@ -241,12 +282,13 @@ fn main() {
                     .serve(make_service_fn(|_conn: &TcpStream| {
                         service_fn(move |req| fly::metrics::serve_metrics_http(req))
                     }))
+                    .with_graceful_shutdown(sigrelayrx)
                     .map_err(|e| error!("error in http prom server: {}", e)),
             );
             info!("Prometheus listening on {}", addr);
         }
 
-        Ok(())
+        sigfut
     }));
 }
 
@@ -258,8 +300,9 @@ static MAX_RUNTIME_IDLE_SECONDS: usize = 5 * 60;
 fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
     Interval::new_interval(Duration::from_secs(15))
         .map_err(|e| error!("timer error: {}", e))
+        .take_while(|_| Ok(unsafe { SELECTOR.is_some() }))
         .for_each(|_| {
-            match SELECTOR.runtimes.read() {
+            match unsafe { SELECTOR.as_ref().unwrap() }.runtimes.read() {
                 Err(e) => error!("error getting read lock on runtime selector: {}", e),
                 Ok(guard) => {
                     guard.iter().for_each(|(k, rt)| {
@@ -294,7 +337,7 @@ fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
                             {
                                 let key = k.clone();
                                 tokio::spawn(future::lazy(move || {
-                                    match SELECTOR.runtimes.write() {
+                                    match unsafe { SELECTOR.as_ref().unwrap() }.runtimes.write() {
                                         Err(e) => error!(
                                             "error getting write lock on runtime selector: {}",
                                             e
@@ -315,4 +358,15 @@ fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
             };
             Ok(())
         })
+}
+
+fn numeric_level(level: slog::Level) -> u8 {
+    match level {
+        slog::Level::Critical => 2,
+        slog::Level::Error => 3,
+        slog::Level::Warning => 4,
+        slog::Level::Info => 6,
+        slog::Level::Debug => 7,
+        slog::Level::Trace => 7,
+    }
 }

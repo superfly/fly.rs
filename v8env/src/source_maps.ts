@@ -53,3 +53,12 @@ export function prepareStackTrace(error: Error, stack: CallSite[]): string {
   }
   return error.toString() + frames.join("");
 }
+
+const v8envFilter = /v8env/;
+
+/**
+ * Remove non-app frames from a stack trace
+ */
+export function filterStackTrace(stackTrace: string) {
+  return stackTrace.split("\n").filter(l => !v8envFilter.test(l)).join("\n").trim();
+}

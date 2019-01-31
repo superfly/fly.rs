@@ -13,6 +13,13 @@ pub trait DataStore {
     key: String,
     data: String,
   ) -> Box<Future<Item = (), Error = DataError> + Send>;
+  fn incr(
+    &self,
+    coll: String,
+    key: String,
+    field: String,
+    amount: i32,
+  ) -> Box<Future<Item = (), Error = DataError> + Send>;
   fn drop_coll(&self, coll: String) -> Box<Future<Item = (), Error = DataError> + Send>;
 }
 

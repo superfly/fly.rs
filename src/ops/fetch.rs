@@ -6,7 +6,8 @@ use futures::{
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-use crate::runtime::{JsBody, JsHttpResponse, JsRuntime, Op, EVENT_LOOP};
+use crate::js::*;
+use crate::runtime::{Runtime, EVENT_LOOP};
 use crate::utils::*;
 use libfly::*;
 
@@ -14,17 +15,14 @@ use crate::errors::{FlyError, FlyResult};
 
 use crate::get_next_stream_id;
 
-extern crate hyper;
+use hyper::body::Payload;
+use hyper::client::HttpConnector;
+use hyper::header::HeaderName;
+use hyper::rt::{Future, Stream};
+use hyper::HeaderMap;
+use hyper::{Body, Client, Method, Request, StatusCode};
 
-use self::hyper::body::Payload;
-use self::hyper::client::HttpConnector;
-use self::hyper::header::HeaderName;
-use self::hyper::rt::{Future, Stream};
-use self::hyper::HeaderMap;
-use self::hyper::{Body, Client, Method, Request, StatusCode};
-
-extern crate hyper_tls;
-use self::hyper_tls::HttpsConnector;
+use hyper_tls::HttpsConnector;
 
 use std::io;
 
@@ -43,14 +41,16 @@ lazy_static! {
     };
 }
 
-pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+pub fn op_fetch(rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_http_request().unwrap();
 
     let url = msg.url().unwrap();
     if url.starts_with("file://") {
-        return file_request(ptr, cmd_id, url);
+        return file_request(rt, cmd_id, url);
     }
+
+    let ptr = rt.ptr;
 
     let req_id = msg.id();
 
@@ -76,7 +76,6 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
         format!("{}:{}", host_str, port)
     };
 
-    let rt = ptr.to_runtime();
     FETCH_HTTP_REQUESTS_TOTAL
         .with_label_values(&[rt.name.as_str(), rt.version.as_str(), host.as_str()])
         .inc();
@@ -105,13 +104,13 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     }
 
     let has_body = msg.has_body();
-    println!("HAS BODY? {}", has_body);
+    trace!("HAS BODY? {}", has_body);
     let req_body = if has_body {
         if raw.data_len > 0 {
-            println!("STATIC BODY!");
+            trace!("STATIC BODY!");
             Body::from(unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec())
         } else {
-            println!("STREAMING BODY");
+            trace!("STREAMING BODY");
             let (sender, recver) = mpsc::unbounded::<Vec<u8>>();
             {
                 rt.streams.lock().unwrap().insert(req_id, sender);
@@ -251,7 +250,7 @@ pub fn op_fetch(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     Box::new(fut)
 }
 
-pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
+pub fn op_http_response(rt: &mut Runtime, base: &msg::Base, raw: fly_buf) -> Box<Op> {
     debug!("handling http response");
     let msg = base.msg_as_http_response().unwrap();
     let req_id = msg.id();
@@ -273,8 +272,6 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
         }
     }
 
-    let rt = ptr.to_runtime();
-
     let mut body: Option<JsBody> = None;
     let has_body = msg.has_body();
     if has_body {
@@ -287,6 +284,7 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
             }
             body = Some(JsBody::Stream(recver));
         } else {
+            debug!("http response will have a static body");
             body = Some(JsBody::Static(
                 unsafe { slice::from_raw_parts(raw.data_ptr, raw.data_len) }.to_vec(),
             ));
@@ -313,11 +311,11 @@ pub fn op_http_response(ptr: JsRuntime, base: &msg::Base, raw: fly_buf) -> Box<O
     ok_future(None)
 }
 
-fn file_request(ptr: JsRuntime, cmd_id: u32, url: &str) -> Box<Op> {
+fn file_request(rt: &mut Runtime, cmd_id: u32, url: &str) -> Box<Op> {
     let req_id = get_next_stream_id();
     let path: String = url.chars().skip(7).collect();
 
-    let rt = ptr.to_runtime();
+    let ptr = rt.ptr;
 
     Box::new(
         rt.fs_store
