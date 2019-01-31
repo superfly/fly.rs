@@ -144,7 +144,7 @@ ADD . ./
 
 # RUN ln -s /usr/bin/g++ /usr/bin/musl-g++
 
-ENV RUSTFLAGS="-C target-feature=+crt-static"
+ENV RUSTFLAGS="-C target-feature=+crt-static" OPENSSL_STATIC=yes OPENSSL_LIB_DIR=/usr/lib OPENSSL_INCLUDE_DIR=/usr/include/openssl
 
 RUN cargo build --release -p create_snapshot
 
@@ -152,10 +152,10 @@ RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
 RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --release -p distributed-fly
 
-RUN ls -lah target/release
+# RUN ls -lah target/release
 
-RUN ldd target/release/distributed-fly
+# RUN ldd target/release/distributed-fly
 
-RUN strip target/release/distributed-fly
+# RUN strip target/release/distributed-fly
 
-RUN ls -lah target/release
+# RUN ls -lah target/release

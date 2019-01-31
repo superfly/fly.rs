@@ -1,16 +1,14 @@
 use tokio_udp::UdpSocket;
 
-use trust_dns as dns;
-
 use trust_dns_server::authority::{AuthLookup, MessageResponseBuilder};
 
-use dns::proto::op::header::Header;
-use dns::proto::op::response_code::ResponseCode;
-use dns::proto::rr::{Record, RrsetRecords};
+use trust_dns::proto::op::header::Header;
+use trust_dns::proto::op::response_code::ResponseCode;
+use trust_dns::proto::rr::{Record, RrsetRecords};
 use trust_dns_server::authority::authority::LookupRecords;
 
-use trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
 use std::io;
+use trust_dns_server::server::{Request, RequestHandler, ResponseHandler, ServerFuture};
 
 use std::net::SocketAddr;
 
@@ -55,7 +53,7 @@ impl RequestHandler for DnsServer {
         let eid = get_next_stream_id();
 
         let queries = req.message.queries();
-        let mut name = dns::rr::Name::from(queries[0].name().clone())
+        let mut name = trust_dns::rr::Name::from(queries[0].name().clone())
             .trim_to(2)
             .to_utf8();
         name.pop();

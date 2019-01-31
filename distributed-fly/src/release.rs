@@ -4,8 +4,7 @@ use std::sync::RwLock;
 use rmp_serde::Deserializer;
 use serde::Deserialize;
 
-use r2d2_redis::redis;
-use redis::Commands;
+use r2d2_redis::{redis::{self, Commands}};
 
 use rmpv::Value;
 
