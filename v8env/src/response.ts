@@ -37,7 +37,7 @@ export class FlyResponse extends FlyBody implements Response {
 			body = null;
 
 		if (init instanceof FlyResponse)
-			super(init.body || body)
+			super(body || init.body)
 		else
 			super(body)
 
