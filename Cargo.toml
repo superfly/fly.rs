@@ -25,7 +25,7 @@ libc = "0.2.48"
 libfly = { path = "libfly" }
 libwebp-sys = "0.2.0"
 log = "0.4.6"
-openssl = "0.10.16"
+openssl = { version = "0.10.16", features = ["vendored"] }
 postgres = { version = "0.15.2", features = ["with-serde_json"] }
 postgres-openssl = "0.1.0"
 prometheus = "0.5.0"
@@ -61,3 +61,6 @@ members = [
     "distributed-fly",
     "create_snapshot"
 ]
+
+[target.x86_64-alpine-linux-musl.dependencies]
+openssl = "0.10.16"
