@@ -62,5 +62,5 @@ members = [
     "create_snapshot"
 ]
 
-[target.'cfg(not(target_vendor = "alpine"))'.dependencies]
-openssl = { version = "0.10.16", features = ["vendored"] }
+[target.'cfg(not(target_vendor = "alpine"))'.features]
+openssl = ["vendored"]
