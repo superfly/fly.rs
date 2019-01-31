@@ -63,4 +63,4 @@ members = [
 ]
 
 [target.x86_64-alpine-linux-musl.dependencies]
-openssl = "0.10.16"
+openssl = { version = "0.10.16", features = ["-vendored"] }
