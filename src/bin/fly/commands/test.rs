@@ -44,12 +44,12 @@ pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
     });
 
     if args.is_present("lib") {
-        for lib_path in glob(args.values_of("lib").unwrap().collect())? {
+        for lib_path in glob(args.values_of("lib").unwrap().collect(), None)? {
             rt.eval_file(&lib_path);
         }
     }
 
-    let test_files = glob(args.values_of("paths").unwrap().collect())?;
+    let test_files = glob(args.values_of("paths").unwrap().collect(), None)?;
 
     rt.eval(
         "<runTests>",

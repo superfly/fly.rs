@@ -14,10 +14,16 @@ pub fn subcommand(name: &'static str) -> App {
     ])
 }
 
-pub fn glob(patterns: Vec<&str>) -> FlyCliResult<Vec<String>> {
+pub fn glob(patterns: Vec<&str>, max_depth: Option<usize>) -> FlyCliResult<Vec<String>> {
     let patterns: Vec<&str> = patterns.into_iter().map(clean_pattern).collect();
 
-    let walker = globwalk::GlobWalkerBuilder::from_patterns(".", &patterns)
+    let mut builder = globwalk::GlobWalkerBuilder::from_patterns(".", &patterns);
+
+    if let Some(d) = max_depth {
+        builder = builder.max_depth(d);
+    }
+
+    let walker = builder
         .build()
         .map_err(|e| FlyCliError::from(e.description()))?;
 

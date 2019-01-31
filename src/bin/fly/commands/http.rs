@@ -23,7 +23,7 @@ pub fn cli() -> App {
         .arg(
             Arg::with_name("path")
                 .help("The app to run")
-                .default_value("index.{ts,js}")
+                .default_value("./index.{ts,js}")
                 .index(1),
         )
         .arg(
@@ -65,12 +65,13 @@ pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
     });
 
     if args.is_present("lib") {
-        for lib_path in glob(args.values_of("lib").unwrap().collect())? {
+        for lib_path in glob(args.values_of("lib").unwrap().collect(), None)? {
             runtime.eval_file(&lib_path);
         }
     }
 
-    if let Some(path) = glob(vec![args.value_of("path").unwrap()])?.first() {
+    if let Some(path) = glob(vec![args.value_of("path").unwrap()], Some(1))?.first() {
+        println!("Running app {}", path);
         runtime.eval_file_with_dev_tools(path);
     } else {
         return Err(FlyCliError::from("No source code found"));
