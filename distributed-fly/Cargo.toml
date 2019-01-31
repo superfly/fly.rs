@@ -14,7 +14,6 @@ futures = "0.1"
 hyper = "0.12"
 lazy_static = "1.1"
 log = {version="*", features = ["max_level_debug", "release_max_level_info"] }
-openssl = { version = "0.10.16", features = ["vendored"] }
 prometheus = "0.5"
 r2d2 = "*"
 r2d2_redis = "*"
@@ -35,6 +34,7 @@ slog-scope = "4.1.1"
 slog-stdlog = "3.0.2"
 tokio = "0.1"
 tokio-openssl = "0.3"
+openssl = "0.10.16"
 
-[target.x86_64-alpine-linux-musl.dependencies]
-openssl = { version = "0.10.16", features = ["-vendored"] }
+[target.'cfg(not(target_vendor = "alpine"))'.dependencies]
+openssl = { version = "0.10.16", features = ["vendored"] }

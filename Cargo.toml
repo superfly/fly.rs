@@ -25,7 +25,6 @@ libc = "0.2.48"
 libfly = { path = "libfly" }
 libwebp-sys = "0.2.0"
 log = "0.4.6"
-openssl = { version = "0.10.16", features = ["vendored"] }
 postgres = { version = "0.15.2", features = ["with-serde_json"] }
 postgres-openssl = "0.1.0"
 prometheus = "0.5.0"
@@ -54,6 +53,7 @@ trust-dns = "0.15.1"
 trust-dns-resolver = "0.10.3"
 trust-dns-server = "0.15.1"
 url = "1.7.2"
+openssl = "0.10.16"
 
 [workspace]
 members = [
@@ -62,5 +62,5 @@ members = [
     "create_snapshot"
 ]
 
-[target.x86_64-alpine-linux-musl.dependencies]
-openssl = { version = "0.10.16", features = ["-vendored"] }
+[target.'cfg(not(target_vendor = "alpine"))'.dependencies]
+openssl = { version = "0.10.16", features = ["vendored"] }
