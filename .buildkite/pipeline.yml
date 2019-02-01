@@ -1,2 +1,6 @@
 steps:
-  - commands: "docker build -t fly ."
+  - commands:
+      - docker build -t fly .
+      - docker save fly --output fly-linux-x64-static.tar
+    artifact_paths:
+      - ./*.tar
