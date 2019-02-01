@@ -151,6 +151,7 @@ RUN cargo build --release -p create_snapshot
 RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
 RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --release -p distributed-fly
+RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --release --bin fly
 
 # RUN ls -lah target/release
 
@@ -159,3 +160,10 @@ RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --releas
 # RUN strip target/release/distributed-fly
 
 # RUN ls -lah target/release
+
+FROM scratch
+
+COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/distributed-fly /fly-dist
+COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/fly /fly
+
+CMD ["/fly"]
