@@ -165,5 +165,3 @@ FROM scratch
 
 COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/distributed-fly fly-dist
 COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/fly fly
-
-RUN chmod +x fly-dist fly
