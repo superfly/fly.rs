@@ -102,5 +102,5 @@ cargo test
 
 2. Javascript tests
 ```
-cargo run --bin test "v8env/tests/**/*.spec.js"
+cargo run --bin fly test "v8env/tests/**/*.spec.js"
 ```
