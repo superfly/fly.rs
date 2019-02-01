@@ -1,5 +1,7 @@
-#[macro_use]
-extern crate log;
+use crate::errors::*;
+use crate::util::*;
+use clap::{Arg, ArgMatches};
+
 use hyper::rt::Future;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
@@ -15,12 +17,15 @@ use fly::settings::SETTINGS;
 
 static mut SELECTOR: Option<FixedRuntimeSelector> = None;
 
-fn main() -> Result<(), Box<::std::error::Error>> {
-    let (_guard, app_logger) = logging::configure();
-
-    let matches = clap::App::new("fly-http")
-        .version("0.0.1-alpha")
+pub fn cli() -> App {
+    subcommand("http")
         .about("Fly HTTP server")
+        .arg(
+            Arg::with_name("path")
+                .help("The app to run")
+                .default_value("./index.{ts,js}")
+                .index(1),
+        )
         .arg(
             clap::Arg::with_name("port")
                 .short("p")
@@ -34,16 +39,20 @@ fn main() -> Result<(), Box<::std::error::Error>> {
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("input")
-                .help("Sets the input file to use")
-                .required(true)
-                .index(1),
+            clap::Arg::with_name("lib")
+                .short("l")
+                .long("lib")
+                .help("Libraries or shims to load before app code")
+                .takes_value(true)
+                .multiple(true),
         )
-        .get_matches();
+}
+
+pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
+    let (_guard, app_logger) = logging::configure();
 
     info!("V8 version: {}", libfly::version());
 
-    let entry_file = matches.value_of("input").unwrap();
     let mut runtime = Runtime::new(RuntimeConfig {
         name: None,
         version: None,
@@ -55,13 +64,24 @@ fn main() -> Result<(), Box<::std::error::Error>> {
         dev_tools: true,
     });
 
-    runtime.eval_file_with_dev_tools(entry_file);
+    if args.is_present("lib") {
+        for lib_path in glob(args.values_of("lib").unwrap().collect(), None)? {
+            runtime.eval_file(&lib_path);
+        }
+    }
 
-    let bind = match matches.value_of("bind") {
+    if let Some(path) = glob(vec![args.value_of("path").unwrap()], Some(1))?.first() {
+        println!("Running app {}", path);
+        runtime.eval_file_with_dev_tools(path);
+    } else {
+        return Err(FlyCliError::from("No source code found"));
+    }
+
+    let bind = match args.value_of("bind") {
         Some(b) => b,
         None => "127.0.0.1",
     };
-    let port: u16 = match matches.value_of("port") {
+    let port: u16 = match args.value_of("port") {
         Some(pstr) => pstr.parse::<u16>().unwrap(),
         None => 8080,
     };
@@ -99,7 +119,9 @@ fn main() -> Result<(), Box<::std::error::Error>> {
         unsafe { SELECTOR = Some(FixedRuntimeSelector::new(runtime)) }
 
         tokio::spawn(server);
-        info!("Listening on http://{}", addr);
+
+        println!("Listening on http://{}", addr);
+
         sigfut
     }));
 
