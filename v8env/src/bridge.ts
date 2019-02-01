@@ -346,15 +346,15 @@ export async function sendStreamChunks(id: number, stream: ReadableStream) {
   let cur = await reader.read()
   let done = false
   while (!done) {
-    let value: ArrayBufferView;
+    let value: BufferSource;
     if (typeof cur.value === 'string')
       value = new TextEncoder().encode(cur.value)
-    else if (cur.value instanceof Uint8Array)
+    else if (cur.value instanceof Uint8Array || cur.value instanceof ArrayBuffer)
       value = cur.value
-    else if (typeof cur.value === 'undefined')
+    else if (typeof cur.value === 'undefined' || cur.value === null)
       value = undefined
     else
-      throw new TypeError("wrong body type")
+      throw new TypeError(`wrong body type: ${typeof cur.value} -> ${cur.value}`)
     sendStreamChunk(id, cur.done, value);
     if (cur.done)
       done = true
@@ -363,7 +363,7 @@ export async function sendStreamChunks(id: number, stream: ReadableStream) {
   }
 }
 
-export function sendStreamChunk(id: number, done: boolean, value?: ArrayBufferView) {
+export function sendStreamChunk(id: number, done: boolean, value?: BufferSource) {
   const fbb = flatbuffers.createBuilder()
   fbs.StreamChunk.startStreamChunk(fbb)
   fbs.StreamChunk.addId(fbb, id);
