@@ -43,8 +43,8 @@ mod conn;
 mod libs;
 mod metrics;
 mod proxy;
+use crate::conn::*;
 use crate::metrics::*;
-use conn::*;
 use fly::metrics::*;
 
 use r2d2_redis::RedisConnectionManager;
@@ -264,7 +264,7 @@ fn main() {
         .and_then(move |_| {
             info!("http server closed.");
             unsafe { SELECTOR = None };
-            sigrelaytx.send(()).ok();// do care about compiler warning...
+            sigrelaytx.send(()).ok(); // do care about compiler warning...
             Ok(())
         });
 

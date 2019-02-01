@@ -1,0 +1,7 @@
+target
+.envrc
+libfly/v8
+*.db
+*.bin
+.dockerignore
+Dockerfile

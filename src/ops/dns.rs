@@ -1,11 +1,9 @@
 use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
-extern crate trust_dns as dns;
-extern crate trust_dns_proto as dns_proto;
-extern crate trust_dns_resolver as dns_resolver;
-use self::dns::client::ClientHandle; // necessary for trait to be in scope
-use self::dns_resolver::config::ResolverConfig;
+use trust_dns::client::ClientHandle; // necessary for trait to be in scope
+use trust_dns::proto as dns_proto;
+use trust_dns_resolver::config::ResolverConfig;
 
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -22,7 +20,7 @@ use crate::js::*;
 
 lazy_static! {
   static ref DEFAULT_RESOLVER_CONFIG: ResolverConfig = {
-    match dns_resolver::system_conf::read_system_conf() {
+    match trust_dns_resolver::system_conf::read_system_conf() {
       Ok((r, _)) => r,
       Err(e) => {
         warn!("error getting system resolv conf: {}, using google's", e);
@@ -30,31 +28,31 @@ lazy_static! {
       }
     }
   };
-  static ref DEFAULT_RESOLVER: Mutex<dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>> = {
-    let (stream, handle) =
-      dns::udp::UdpClientStream::new(DEFAULT_RESOLVER_CONFIG.name_servers()[0].socket_addr);
-    let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
+  static ref DEFAULT_RESOLVER: Mutex<trust_dns::client::BasicClientHandle<dns_proto::udp::UdpResponse>> = {
+    let stream =
+      trust_dns::udp::UdpClientStream::new(DEFAULT_RESOLVER_CONFIG.name_servers()[0].socket_addr);
+    let (bg, client) = trust_dns::client::ClientFuture::connect(stream);
     EVENT_LOOP.0.spawn(bg);
     Mutex::new(client)
   };
-  static ref DNS_RESOLVERS: Mutex<
-    HashMap<
-      SocketAddr,
-      dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
-    >,
-  > = Mutex::new(HashMap::new());
+  static ref DNS_RESOLVERS: Mutex<HashMap<SocketAddr, trust_dns::client::BasicClientHandle<dns_proto::udp::UdpResponse>>> =
+    Mutex::new(HashMap::new());
 }
 
 fn dns_query(
   cmd_id: u32,
-  client: &mut dns::client::BasicClientHandle<dns_proto::xfer::DnsMultiplexerSerialResponse>,
+  client: &mut trust_dns::client::BasicClientHandle<dns_proto::udp::UdpResponse>,
   name: &str,
-  query_type: dns::rr::RecordType,
+  query_type: trust_dns::rr::RecordType,
 ) -> Box<Op> {
   debug!("dns_query {} {}", cmd_id, name);
   Box::new(
     client
-      .query(name.parse().unwrap(), dns::rr::DNSClass::IN, query_type)
+      .query(
+        name.parse().unwrap(),
+        trust_dns::rr::DNSClass::IN,
+        query_type,
+      )
       .map_err(|e| format!("dns query error: {}", e).into())
       .and_then(move |res| {
         // debug!("got a dns response! {:?}", res);
@@ -67,7 +65,7 @@ fn dns_query(
           .iter()
           .map(|ans| {
             debug!("answer: {:?}", ans);
-            use self::dns::rr::{DNSClass, RData, RecordType};
+            use trust_dns::rr::{DNSClass, RData, RecordType};
             let name = builder.create_string(&ans.name().to_utf8());
             let rr_type = match ans.rr_type() {
               RecordType::A => msg::DnsRecordType::A,
@@ -280,22 +278,22 @@ pub fn op_dns_query(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<O
   let msg = base.msg_as_dns_query().unwrap();
 
   let query_type = match msg.rr_type() {
-    msg::DnsRecordType::A => dns::rr::RecordType::A,
-    msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
-    msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
-    msg::DnsRecordType::AXFR => dns::rr::RecordType::AXFR,
-    msg::DnsRecordType::CAA => dns::rr::RecordType::CAA,
-    msg::DnsRecordType::CNAME => dns::rr::RecordType::CNAME,
-    msg::DnsRecordType::IXFR => dns::rr::RecordType::IXFR,
-    msg::DnsRecordType::MX => dns::rr::RecordType::MX,
-    msg::DnsRecordType::NS => dns::rr::RecordType::NS,
-    msg::DnsRecordType::NULL => dns::rr::RecordType::NULL,
-    msg::DnsRecordType::OPT => dns::rr::RecordType::OPT,
-    msg::DnsRecordType::PTR => dns::rr::RecordType::PTR,
-    msg::DnsRecordType::SOA => dns::rr::RecordType::SOA,
-    msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
-    msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
-    msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
+    msg::DnsRecordType::A => trust_dns::rr::RecordType::A,
+    msg::DnsRecordType::AAAA => trust_dns::rr::RecordType::AAAA,
+    msg::DnsRecordType::ANY => trust_dns::rr::RecordType::ANY,
+    msg::DnsRecordType::AXFR => trust_dns::rr::RecordType::AXFR,
+    msg::DnsRecordType::CAA => trust_dns::rr::RecordType::CAA,
+    msg::DnsRecordType::CNAME => trust_dns::rr::RecordType::CNAME,
+    msg::DnsRecordType::IXFR => trust_dns::rr::RecordType::IXFR,
+    msg::DnsRecordType::MX => trust_dns::rr::RecordType::MX,
+    msg::DnsRecordType::NS => trust_dns::rr::RecordType::NS,
+    msg::DnsRecordType::NULL => trust_dns::rr::RecordType::NULL,
+    msg::DnsRecordType::OPT => trust_dns::rr::RecordType::OPT,
+    msg::DnsRecordType::PTR => trust_dns::rr::RecordType::PTR,
+    msg::DnsRecordType::SOA => trust_dns::rr::RecordType::SOA,
+    msg::DnsRecordType::SRV => trust_dns::rr::RecordType::SRV,
+    msg::DnsRecordType::TLSA => trust_dns::rr::RecordType::TLSA,
+    msg::DnsRecordType::TXT => trust_dns::rr::RecordType::TXT,
   };
 
   let name = msg.name().unwrap();
@@ -315,8 +313,8 @@ pub fn op_dns_query(_rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<O
         return dns_query(cmd_id, client, name, query_type);
       }
     }
-    let (stream, handle) = dns::udp::UdpClientStream::new(sockaddr.clone());
-    let (bg, client) = dns::client::ClientFuture::new(stream, handle, None);
+    let stream = trust_dns::udp::UdpClientStream::new(sockaddr.clone());
+    let (bg, client) = trust_dns::client::ClientFuture::connect(stream);
     EVENT_LOOP.0.spawn(bg);
     {
       DNS_RESOLVERS
@@ -343,20 +341,20 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
   let req_id = msg.id();
 
   let op_code = match msg.op_code() {
-    msg::DnsOpCode::Query => dns::op::OpCode::Query,
-    msg::DnsOpCode::Status => dns::op::OpCode::Status,
-    msg::DnsOpCode::Notify => dns::op::OpCode::Notify,
-    msg::DnsOpCode::Update => dns::op::OpCode::Update,
+    msg::DnsOpCode::Query => trust_dns::op::OpCode::Query,
+    msg::DnsOpCode::Status => trust_dns::op::OpCode::Status,
+    msg::DnsOpCode::Notify => trust_dns::op::OpCode::Notify,
+    msg::DnsOpCode::Update => trust_dns::op::OpCode::Update,
   };
 
   let res_code = msg.response_code() as u16;
 
   let message_type = match msg.message_type() {
-    msg::DnsMessageType::Query => dns::op::MessageType::Query,
-    msg::DnsMessageType::Response => dns::op::MessageType::Response,
+    msg::DnsMessageType::Query => trust_dns::op::MessageType::Query,
+    msg::DnsMessageType::Response => trust_dns::op::MessageType::Response,
   };
 
-  use self::dns::rr::RData;
+  use trust_dns::rr::RData;
 
   let queries: Vec<JsDnsQuery> = if let Some(msg_queries) = msg.queries() {
     let qlen = msg_queries.len();
@@ -365,30 +363,30 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
       let q = msg_queries.get(i);
 
       let rr_type = match q.rr_type() {
-        msg::DnsRecordType::A => dns::rr::RecordType::A,
-        msg::DnsRecordType::AAAA => dns::rr::RecordType::AAAA,
-        msg::DnsRecordType::ANY => dns::rr::RecordType::ANY,
-        msg::DnsRecordType::AXFR => dns::rr::RecordType::AXFR,
-        msg::DnsRecordType::CAA => dns::rr::RecordType::CAA,
-        msg::DnsRecordType::CNAME => dns::rr::RecordType::CNAME,
-        msg::DnsRecordType::IXFR => dns::rr::RecordType::IXFR,
-        msg::DnsRecordType::MX => dns::rr::RecordType::MX,
-        msg::DnsRecordType::NS => dns::rr::RecordType::NS,
-        msg::DnsRecordType::NULL => dns::rr::RecordType::NULL,
-        msg::DnsRecordType::OPT => dns::rr::RecordType::OPT,
-        msg::DnsRecordType::PTR => dns::rr::RecordType::PTR,
-        msg::DnsRecordType::SOA => dns::rr::RecordType::SOA,
-        msg::DnsRecordType::SRV => dns::rr::RecordType::SRV,
-        msg::DnsRecordType::TLSA => dns::rr::RecordType::TLSA,
-        msg::DnsRecordType::TXT => dns::rr::RecordType::TXT,
+        msg::DnsRecordType::A => trust_dns::rr::RecordType::A,
+        msg::DnsRecordType::AAAA => trust_dns::rr::RecordType::AAAA,
+        msg::DnsRecordType::ANY => trust_dns::rr::RecordType::ANY,
+        msg::DnsRecordType::AXFR => trust_dns::rr::RecordType::AXFR,
+        msg::DnsRecordType::CAA => trust_dns::rr::RecordType::CAA,
+        msg::DnsRecordType::CNAME => trust_dns::rr::RecordType::CNAME,
+        msg::DnsRecordType::IXFR => trust_dns::rr::RecordType::IXFR,
+        msg::DnsRecordType::MX => trust_dns::rr::RecordType::MX,
+        msg::DnsRecordType::NS => trust_dns::rr::RecordType::NS,
+        msg::DnsRecordType::NULL => trust_dns::rr::RecordType::NULL,
+        msg::DnsRecordType::OPT => trust_dns::rr::RecordType::OPT,
+        msg::DnsRecordType::PTR => trust_dns::rr::RecordType::PTR,
+        msg::DnsRecordType::SOA => trust_dns::rr::RecordType::SOA,
+        msg::DnsRecordType::SRV => trust_dns::rr::RecordType::SRV,
+        msg::DnsRecordType::TLSA => trust_dns::rr::RecordType::TLSA,
+        msg::DnsRecordType::TXT => trust_dns::rr::RecordType::TXT,
       };
 
       let dns_class = match q.dns_class() {
-        msg::DnsClass::IN => dns::rr::DNSClass::IN,
-        msg::DnsClass::CH => dns::rr::DNSClass::CH,
-        msg::DnsClass::HS => dns::rr::DNSClass::HS,
-        msg::DnsClass::NONE => dns::rr::DNSClass::NONE,
-        msg::DnsClass::ANY => dns::rr::DNSClass::ANY,
+        msg::DnsClass::IN => trust_dns::rr::DNSClass::IN,
+        msg::DnsClass::CH => trust_dns::rr::DNSClass::CH,
+        msg::DnsClass::HS => trust_dns::rr::DNSClass::HS,
+        msg::DnsClass::NONE => trust_dns::rr::DNSClass::NONE,
+        msg::DnsClass::ANY => trust_dns::rr::DNSClass::ANY,
       };
 
       queries.push(JsDnsQuery {
@@ -409,11 +407,11 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
       let ans = msg_answers.get(i);
 
       let dns_class = match ans.dns_class() {
-        msg::DnsClass::IN => dns::rr::DNSClass::IN,
-        msg::DnsClass::CH => dns::rr::DNSClass::CH,
-        msg::DnsClass::HS => dns::rr::DNSClass::HS,
-        msg::DnsClass::NONE => dns::rr::DNSClass::NONE,
-        msg::DnsClass::ANY => dns::rr::DNSClass::ANY,
+        msg::DnsClass::IN => trust_dns::rr::DNSClass::IN,
+        msg::DnsClass::CH => trust_dns::rr::DNSClass::CH,
+        msg::DnsClass::HS => trust_dns::rr::DNSClass::HS,
+        msg::DnsClass::NONE => trust_dns::rr::DNSClass::NONE,
+        msg::DnsClass::ANY => trust_dns::rr::DNSClass::ANY,
       };
 
       let rdata: RData = match ans.rdata_type() {
@@ -431,7 +429,7 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
         }
         msg::DnsRecordData::DnsMx => {
           let d = ans.rdata_as_dns_mx().unwrap();
-          RData::MX(dns::rr::rdata::mx::MX::new(
+          RData::MX(trust_dns::rr::rdata::mx::MX::new(
             d.preference(),
             d.exchange().unwrap().parse().unwrap(),
           ))
@@ -446,7 +444,7 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
         }
         msg::DnsRecordData::DnsSoa => {
           let d = ans.rdata_as_dns_soa().unwrap();
-          RData::SOA(dns::rr::rdata::soa::SOA::new(
+          RData::SOA(trust_dns::rr::rdata::soa::SOA::new(
             d.mname().unwrap().parse().unwrap(),
             d.rname().unwrap().parse().unwrap(),
             d.serial(),
@@ -458,7 +456,7 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
         }
         msg::DnsRecordData::DnsSrv => {
           let d = ans.rdata_as_dns_srv().unwrap();
-          RData::SRV(dns::rr::rdata::srv::SRV::new(
+          RData::SRV(trust_dns::rr::rdata::srv::SRV::new(
             d.priority(),
             d.weight(),
             d.port(),
@@ -474,7 +472,7 @@ pub fn op_dns_response(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
             let td = tdata.get(i);
             txtdata.push(String::from_utf8_lossy(td.data().unwrap()).to_string());
           }
-          RData::TXT(dns::rr::rdata::txt::TXT::new(txtdata))
+          RData::TXT(trust_dns::rr::rdata::txt::TXT::new(txtdata))
         }
         _ => unimplemented!(),
       };

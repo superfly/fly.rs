@@ -29,16 +29,27 @@ fn main() {
   //   .expect("Unable to generate bindings")
   //   .write_to_file("binding.h");
 
-  cc::Build::new()
-    .file("binding.cc")
+  let mut b = cc::Build::new();
+  
+  b.file("binding.cc")
     .include(Path::new("v8/include/"))
     .cpp(true)
     .static_flag(true)
     .extra_warnings(false)
-    .flag("--std=c++11")
-    // .cpp_set_stdlib("c++")
-    .compile("libfly.a");
+    .flag("--std=c++11");
 
+  if cfg!(target_env = "musl") {
+    b.flag("-static-libstdc++")
+    .cpp_link_stdlib(None)
+    .static_crt(true);
+  }
+  
+  b.compile("libfly.a");
+
+  if cfg!(target_env = "musl") {
+    println!("cargo:rustc-link-search=native=/usr/lib");
+    println!("cargo:rustc-link-lib=static=stdc++");
+  }
   println!(
     "cargo:rustc-link-search=native={}/v8/out.gn/lib/obj",
     crate_dir

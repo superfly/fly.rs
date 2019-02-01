@@ -75,8 +75,8 @@ before_script:
   createuser -s postgres; fi
 - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew services start redis; fi
 script:
-- RUST_BACKTRACE=1 cargo test
-- RUST_BACKTRACE=1 cargo run --bin fly test "v8env/tests/**/*.spec.*"
+- RUST_BACKTRACE=1 cargo test --features openssl_vendored
+- RUST_BACKTRACE=1 cargo run --features openssl_vendored --bin fly test "v8env/tests/**/*.spec.*"
 - "./scripts/build-release.sh"
 - sccache --stop-server
 before_cache:

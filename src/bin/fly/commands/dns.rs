@@ -6,7 +6,6 @@ extern crate futures;
 use futures::{future, Future};
 extern crate tokio;
 extern crate trust_dns as dns;
-extern crate trust_dns_proto;
 extern crate trust_dns_server;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 extern crate flatbuffers;
