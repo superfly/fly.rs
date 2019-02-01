@@ -1,6 +1,9 @@
 steps:
   - commands:
-      - docker build -t fly .
-      - docker save fly --output fly-linux-x64-static.tar
+      - docker build -t fly:$BUILDKITE_COMMIT .
+      - docker run --name fly_$BUILDKITE_COMMIT fly:$BUILDKITE_COMMIT /fly --help
+      - docker cp fly_$BUILDKITE_COMMIT:/fly .
+      - docker cp fly_$BUILDKITE_COMMIT:/fly-dist .
+      - tar -czf fly.tar.gz fly fly-dist
     artifact_paths:
-      - ./*.tar
+      - ./*.tar.gz

@@ -163,5 +163,7 @@ RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --releas
 
 FROM scratch
 
-COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/distributed-fly fly-dist
-COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/fly fly
+COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/distributed-fly /fly-dist
+COPY --from=builder /usr/src/myapp/target/x86_64-alpine-linux-musl/release/fly /fly
+
+CMD ["/fly"]
