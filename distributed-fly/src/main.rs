@@ -110,8 +110,11 @@ fn main() {
 
     let _guard = {
         if let Some(ref sentry_dsn) = GLOBAL_SETTINGS.read().unwrap().sentry_dsn {
-            let c = sentry::init(sentry_dsn.as_str());
+            let mut opts = sentry::ClientOptions::from(sentry_dsn.as_str());
+            opts.release = Some(fly::BUILD_VERSION.into());
+            let c = sentry::init(opts);
             sentry::integrations::panic::register_panic_handler();
+
             Some(c)
         } else {
             None
