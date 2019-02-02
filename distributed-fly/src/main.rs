@@ -75,7 +75,6 @@ fn main() {
             opts.release = Some(fly::BUILD_VERSION.into());
             let c = sentry::init(opts);
             sentry::integrations::panic::register_panic_handler();
-
             Some(c)
         } else {
             None
