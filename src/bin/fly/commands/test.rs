@@ -1,7 +1,6 @@
 use crate::errors::*;
 use crate::util::*;
 use clap::{Arg, ArgMatches};
-use fly::logging;
 use fly::runtime::{Runtime, RuntimeConfig};
 use fly::runtime_permissions::RuntimePermissions;
 use fly::settings::SETTINGS;
@@ -30,14 +29,12 @@ pub fn cli() -> App {
 }
 
 pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
-    let (_guard, app_logger) = logging::configure();
-
     let mut rt = Runtime::new(RuntimeConfig {
         name: None,
         version: None,
         settings: &SETTINGS.read().unwrap(),
         module_resolvers: None,
-        app_logger: &app_logger,
+        app_logger: &slog_scope::logger(),
         msg_handler: None,
         permissions: Some(RuntimePermissions::new(true)),
         dev_tools: true,

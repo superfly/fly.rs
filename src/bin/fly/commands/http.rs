@@ -11,7 +11,6 @@ use tokio::prelude::*;
 
 use fly::fixed_runtime_selector::FixedRuntimeSelector;
 use fly::http_server::serve_http;
-use fly::logging;
 use fly::runtime::*;
 use fly::settings::SETTINGS;
 
@@ -49,8 +48,6 @@ pub fn cli() -> App {
 }
 
 pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
-    let (_guard, app_logger) = logging::configure();
-
     info!("V8 version: {}", libfly::version());
 
     let mut runtime = Runtime::new(RuntimeConfig {
@@ -58,7 +55,7 @@ pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
         version: None,
         settings: &SETTINGS.read().unwrap(),
         module_resolvers: None,
-        app_logger: &app_logger,
+        app_logger: &slog_scope::logger(),
         msg_handler: None,
         permissions: None,
         dev_tools: true,

@@ -504,20 +504,20 @@ pub unsafe extern "C" fn print_from_js(raw: *const js_runtime, lvl: i8, msg: *co
     0 => println!("{}", msg),
 
     // runtime messages from logger
-    1 => error!("{}", msg),
-    2 => warn!("{}", msg),
-    3 => info!("{}", msg),
-    4 => debug!("{}", msg),
-    5 => trace!("{}", msg),
+    1 => slog_error!(rt.app_logger, #"runtime", "{}", msg; "source" => "v8env"),
+    2 => slog_warn!(rt.app_logger, #"runtime", "{}", msg; "source" => "v8env"),
+    3 => slog_info!(rt.app_logger, #"runtime", "{}", msg; "source" => "v8env"),
+    4 => slog_debug!(rt.app_logger, #"runtime", "{}", msg; "source" => "v8env"),
+    5 => slog_trace!(rt.app_logger, #"runtime", "{}", msg; "source" => "v8env"),
 
     // app messages from console
-    11 => slog_error!(rt.app_logger, "{}", msg),
-    12 => slog_warn!(rt.app_logger, "{}", msg),
-    13 => slog_info!(rt.app_logger, "{}", msg),
-    14 => slog_debug!(rt.app_logger, "{}", msg),
-    15 => slog_trace!(rt.app_logger, "{}", msg),
+    11 => slog_error!(rt.app_logger, #"app", "{}", msg; "source" => "app"),
+    12 => slog_warn!(rt.app_logger, #"app", "{}", msg; "source" => "app"),
+    13 => slog_info!(rt.app_logger, #"app", "{}", msg; "source" => "app"),
+    14 => slog_debug!(rt.app_logger, #"app", "{}", msg; "source" => "app"),
+    15 => slog_trace!(rt.app_logger, #"app", "{}", msg; "source" => "app"),
 
-    _ => info!("{}", msg),
+    _ => slog_info!(rt.app_logger, #"runtime", "{}", msg; "source" => "v8env"),
   };
 }
 

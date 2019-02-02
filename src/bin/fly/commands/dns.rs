@@ -11,7 +11,6 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 extern crate flatbuffers;
 extern crate fly;
 extern crate libfly;
-use fly::logging;
 use fly::module_resolver::{JsonSecretsResolver, LocalDiskModuleResolver, ModuleResolver};
 use fly::runtime::*;
 use fly::settings::SETTINGS;
@@ -45,8 +44,6 @@ pub fn cli() -> App {
 }
 
 pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
-    let (_guard, app_logger) = logging::configure();
-
     debug!("V8 version: {}", libfly::version());
 
     let mut module_resolvers: Vec<Box<ModuleResolver>> = std::vec::Vec::new();
@@ -99,7 +96,7 @@ pub fn exec(args: &ArgMatches<'_>) -> FlyCliResult<()> {
         version: None,
         settings: &SETTINGS.read().unwrap(),
         module_resolvers: Some(module_resolvers),
-        app_logger: &app_logger,
+        app_logger: &slog_scope::logger(),
         msg_handler: None,
         permissions: None,
         dev_tools: true,
