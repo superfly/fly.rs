@@ -1,4 +1,4 @@
-strip target/release/dns
+strip target/release/fly
 cp target/release/fly fly
 strip target/release/distributed-fly
 cp target/release/distributed-fly fly-dist
