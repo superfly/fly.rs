@@ -9,7 +9,6 @@ extern crate log;
 
 #[macro_use]
 extern crate futures;
-use std::env;
 use std::time::Duration;
 use tokio::timer::Interval;
 
@@ -41,6 +40,7 @@ extern crate prometheus;
 mod cert;
 mod conn;
 mod libs;
+mod logging;
 mod metrics;
 mod proxy;
 use crate::conn::*;
@@ -48,8 +48,6 @@ use crate::metrics::*;
 use fly::metrics::*;
 
 use r2d2_redis::RedisConnectionManager;
-use slog::{o, Drain};
-use slog_json;
 use slog_scope;
 
 static mut SELECTOR: Option<DistributedRuntimeSelector> = None;
@@ -64,48 +62,11 @@ lazy_static! {
                 .unwrap()
         )
         .unwrap();
-    pub static ref APP_LOGGER: slog::Logger = slog::Logger::root(
-        slog_async::Async::default(
-            slog_json::Json::new(std::net::TcpStream::connect("localhost:9514").unwrap())
-                .build()
-                .fuse(),
-        )
-        .fuse(),
-        o!(
-            "source" => "app",
-            "message" => slog::PushFnValue(move |record : &slog::Record, ser| {
-                ser.emit(record.msg())
-            }),
-            "level" => slog::FnValue(move |rinfo : &slog::Record| {
-                numeric_level(rinfo.level())
-            }),
-            "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
-                ser.emit(chrono::Utc::now().to_rfc3339())
-            }),
-            "region" => env::var("REGION").unwrap_or_default(),
-            "host" => env::var("HOST").unwrap_or_default(),
-        )
-    );
 }
 
 fn main() {
-    let _log_guard = slog_scope::set_global_logger(slog::Logger::root(
-        slog_async::Async::default(slog_json::Json::new(std::io::stdout()).build().fuse()).fuse(),
-        o!(
-            "source" => "rt",
-            "message" => slog::PushFnValue(move |record : &slog::Record, ser| {
-                ser.emit(record.msg())
-            }),
-            "level" => slog::FnValue(move |rinfo : &slog::Record| {
-                numeric_level(rinfo.level())
-            }),
-            "timestamp" => slog::PushFnValue(move |_ : &slog::Record, ser| {
-                ser.emit(chrono::Utc::now().to_rfc3339())
-            }),
-            "region" => env::var("REGION").unwrap_or_default(),
-            "host" => env::var("HOST").unwrap_or_default(),
-        ),
-    ));
+    let logger = crate::logging::build_logger();
+    let _log_guard = slog_scope::set_global_logger(logger);
     slog_stdlog::init().unwrap();
 
     let _guard = {
@@ -363,15 +324,4 @@ fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
             };
             Ok(())
         })
-}
-
-fn numeric_level(level: slog::Level) -> u8 {
-    match level {
-        slog::Level::Critical => 2,
-        slog::Level::Error => 3,
-        slog::Level::Warning => 4,
-        slog::Level::Info => 6,
-        slog::Level::Debug => 7,
-        slog::Level::Trace => 7,
-    }
 }

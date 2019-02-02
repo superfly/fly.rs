@@ -8,7 +8,6 @@ use fly::{
 use std::collections::HashMap;
 use std::sync::RwLock;
 
-use super::APP_LOGGER;
 use crate::libs::fetch_libs;
 use crate::release::Release;
 use crate::settings::GLOBAL_SETTINGS;
@@ -117,7 +116,7 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                     version: Some(rel.version.to_string()),
                     settings: &settings,
                     module_resolvers: Some(vec![]),
-                    app_logger: &APP_LOGGER,
+                    app_logger: &slog_scope::logger(),
                     msg_handler: None,
                     permissions: None,
                     dev_tools: false,
@@ -125,7 +124,10 @@ impl RuntimeSelector for DistributedRuntimeSelector {
                 let merged_conf = rel.clone().parsed_config().unwrap();
                 rt.eval(
                     "<app config>",
-                    &format!("window.fly.app = {{ config: {}, version: {} }};", merged_conf, rel.version),
+                    &format!(
+                        "window.fly.app = {{ config: {}, version: {} }};",
+                        merged_conf, rel.version
+                    ),
                 );
 
                 // load external libraries if requested
