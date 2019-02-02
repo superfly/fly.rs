@@ -4,9 +4,6 @@ version = "0.1.0"
 authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 edition = "2018"
 
-[profile.release]
-debug = true
-
 [dependencies]
 base64 = "0.10"
 bytes = "*"

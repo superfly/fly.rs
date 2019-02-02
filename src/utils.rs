@@ -261,7 +261,7 @@ pub fn signal_monitor() -> (
           })
       })
       .and_then(move |_| {
-        sigtx.send(()).unwrap();
+        sigtx.send(()).ok(); // don't care.
         Ok(())
       }),
     sigrx,

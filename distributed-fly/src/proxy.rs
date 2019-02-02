@@ -22,7 +22,8 @@ impl ProxyTcpStream {
             let _n = try_ready!(stream.as_mut().unwrap().poll_peek(&mut bytes));
             // TODO: check bytes[..n] for PROXY line
             let mut stream = stream.take().unwrap();
-            let mut remote_addr: SocketAddr = stream.peer_addr().unwrap();
+            let mut remote_addr: SocketAddr =
+                stream.peer_addr().unwrap_or("0.0.0.0:0".parse().unwrap());
             let mut s = String::new();
             match bytes.as_ref().read_line(&mut s) {
                 Ok(ln) => {
@@ -31,8 +32,8 @@ impl ProxyTcpStream {
                         let mut v = vec![0; ln];
                         stream.read_exact(&mut v).unwrap();
                         let mut split = s.split(" ").skip(2);
-                        let ip = split.next().unwrap();
-                        let port = split.skip(1).next().unwrap();
+                        let ip = split.next().unwrap_or("0.0.0.0");
+                        let port = split.skip(1).next().unwrap_or("0");
                         remote_addr = format!("{}:{}", ip, port).parse().unwrap();
                         debug!("using proxy proto, remote addr: {}", remote_addr);
                     }
