@@ -5,6 +5,9 @@ authors = ["Jerome Gravel-Niquet <jeromegn@gmail.com>"]
 edition = "2018"
 publish = false
 
+[profile.release]
+debug = true
+
 [dependencies]
 bytes = "0.4.11"
 chrono = "0.4.6"
