@@ -137,6 +137,9 @@ RUN yarn install
 ADD v8env/ .
 ADD scripts/build-version.sh ../scripts/build-version.sh
 
+ARG BUILD_VERSION
+ENV BUILD_VERSION=$BUILD_VERSION
+
 RUN ./node_modules/.bin/rollup -c
 
 RUN ls -lah dist
@@ -173,6 +176,9 @@ RUN sccache --start-server \
   && sccache --stop-server
 
 RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
+
+ARG BUILD_VERSION
+ENV BUILD_VERSION=$BUILD_VERSION
 
 RUN sccache --start-server \
   && cargo build --target x86_64-alpine-linux-musl --no-default-features --release -p distributed-fly \

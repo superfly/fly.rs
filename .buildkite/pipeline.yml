@@ -1,6 +1,6 @@
 steps:
   - commands:
-      - docker build --build-arg AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA --build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -t fly:$BUILDKITE_COMMIT .
+      - docker build --build_arg BUILD_VERSION=$BUILDKITE_COMMIT --build-arg AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA --build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -t fly:$BUILDKITE_COMMIT .
       - docker run --name fly_$BUILDKITE_COMMIT fly:$BUILDKITE_COMMIT /fly --help
       - docker cp fly_$BUILDKITE_COMMIT:/fly . && docker cp fly_$BUILDKITE_COMMIT:/fly-dist .
       - docker rm fly_$BUILDKITE_COMMIT
