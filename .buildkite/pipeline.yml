@@ -5,12 +5,6 @@ steps:
       - docker cp fly_$BUILDKITE_COMMIT:/fly . && docker cp fly_$BUILDKITE_COMMIT:/fly-dist .
       - docker rm fly_$BUILDKITE_COMMIT
       - tar -czf fly-linux-x64-static.tar.gz fly fly-dist
-      - docker run --rm -v $(pwd):/data brahaney/s3-uploadr  \
-        fly-linux-x64-static.tar.gz \
-        --bucket fly-proxy \
-        --aws_access_key AKIAIUEJ6IB7XWPIBUXA \
-        --aws_secret_key $AWS_SECRET_ACCESS_KEY \
-        --public \
-        --s3_subdir $BUILDKITE_BRANCH
+      - docker run --rm -v $(pwd):/data brahaney/s3-uploadr fly-linux-x64-static.tar.gz --bucket fly-proxy --aws_access_key AKIAIUEJ6IB7XWPIBUXA --aws_secret_key $AWS_SECRET_ACCESS_KEY --public --s3_subdir $BUILDKITE_BRANCH
     artifact_paths:
       - ./*.tar.gz
