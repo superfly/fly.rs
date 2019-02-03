@@ -75,7 +75,7 @@ function runtimeInfo(path) {
     name: "runtimeInfo",
     transform: (code, id) => {
       if (filter(id)) {
-        const build = execSync('./scripts/build-number.sh', {
+        const build = execSync('./scripts/build-version.sh', {
           cwd: '..'
         }).toString();
 

@@ -1,3 +1,9 @@
+FROM alpine:3.8 AS sccache
+
+WORKDIR /tmp
+RUN wget --no-check-certificate -qO- https://github.com/mozilla/sccache/releases/download/0.2.8/sccache-0.2.8-x86_64-unknown-linux-musl.tar.gz | tar xvz \
+  && mv sccache-0.2.8-x86_64-unknown-linux-musl/sccache .
+
 FROM alpine:3.8 as libv8
 
 LABEL repository.hub="alexmasterov/alpine-libv8:7.2" \
@@ -75,10 +81,21 @@ RUN set -x \
   libstdc++ \
   && curl -fSL --connect-timeout 30 ${GN_SOURCE} | tar xmz -C /tmp/v8/buildtools/linux64/
 
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
+
+COPY --from=sccache /tmp/sccache /usr/bin/sccache
+
+ENV SCCACHE_BUCKET=fly-proxy-sccache \
+  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+
 RUN : "---------- Build instructions ----------" \
+  && sccache --start-server \
   && cd /tmp/v8 \
   && ./tools/dev/v8gen.py \
   x64.release -- \
+  cc_wrapper=\"sccache\" \
   binutils_path=\"/usr/bin\" \
   target_os=\"linux\" \
   target_cpu=\"x64\" \
@@ -98,7 +115,8 @@ RUN : "---------- Build instructions ----------" \
   v8_monolithic = true \
   use_jumbo_build = true \
   && : "---------- Build ----------" \
-  && ninja d8 -C out.gn/x64.release/ -j $(getconf _NPROCESSORS_ONLN) v8_monolith
+  && ninja d8 -C out.gn/x64.release/ -j $(getconf _NPROCESSORS_ONLN) v8_monolith \
+  && sccache --stop-server
 
 RUN : "---------- Extract shared libraries ----------" \
   && mkdir -p ${V8_DIR}/include ${V8_DIR}/lib \
@@ -117,8 +135,7 @@ COPY v8env/package.json package.json
 RUN yarn install
 
 ADD v8env/ .
-ADD scripts/build-number.sh ../scripts/build-number.sh
-ADD .git ../.git
+ADD scripts/build-version.sh ../scripts/build-version.sh
 
 RUN ./node_modules/.bin/rollup -c
 
@@ -128,38 +145,39 @@ FROM alpine:edge as builder
 
 WORKDIR /usr/src/myapp
 
+RUN apk --no-cache add rust cargo g++ openssl openssl-dev
+
 COPY libfly libfly
 COPY --from=libv8 /usr/local/v8/lib libfly/v8/out.gn/lib/obj
 COPY --from=libv8 /usr/local/v8/include libfly/v8/include
 COPY --from=v8env v8env/ v8env/
 
-RUN apk --no-cache add rust cargo g++ openssl openssl-dev
-
 ADD . ./
 
-# RUN cargo install cargo-tree
+ARG AWS_ACCESS_KEY_ID
+ARG AWS_SECRET_ACCESS_KEY
 
-# RUN cargo tree
-# RUN sudo chown -R rust:rust /usr/src/myapp
+COPY --from=sccache /tmp/sccache /usr/bin/sccache
 
-# RUN ln -s /usr/bin/g++ /usr/bin/musl-g++
+ENV RUSTFLAGS="-C target-feature=+crt-static"\
+  OPENSSL_STATIC=yes\
+  OPENSSL_LIB_DIR=/usr/lib\
+  OPENSSL_INCLUDE_DIR=/usr/include/openssl \
+  SCCACHE_BUCKET=fly-proxy-sccache \
+  RUSTC_WRAPPER=/usr/bin/sccache \
+  AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
-ENV RUSTFLAGS="-C target-feature=+crt-static" OPENSSL_STATIC=yes OPENSSL_LIB_DIR=/usr/lib OPENSSL_INCLUDE_DIR=/usr/include/openssl
-
-RUN cargo build --release -p create_snapshot
+RUN sccache --start-server \
+  && cargo build --release -p create_snapshot \
+  && sccache --stop-server
 
 RUN target/release/create_snapshot v8env/dist/v8env.js v8env.bin
 
-RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --release -p distributed-fly
-RUN cargo build --target x86_64-alpine-linux-musl --no-default-features --release --bin fly
-
-# RUN ls -lah target/release
-
-# RUN ldd target/release/distributed-fly
-
-# RUN strip target/release/distributed-fly
-
-# RUN ls -lah target/release
+RUN sccache --start-server \
+  && cargo build --target x86_64-alpine-linux-musl --no-default-features --release -p distributed-fly \
+  && cargo build --target x86_64-alpine-linux-musl --no-default-features --release --bin fly \
+  && sccache --stop-server
 
 FROM scratch
 

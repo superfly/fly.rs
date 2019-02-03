@@ -16,9 +16,10 @@ pub fn get_pool(url: String) -> r2d2::Pool<RedisConnectionManager> {
         .entry(url.clone())
         .or_insert_with(move || {
             r2d2::Pool::builder()
-                .max_size(50)
+                .max_size(100)
+                .min_idle(Some(0))
                 .build(RedisConnectionManager::new(url.as_str()).unwrap())
-                .unwrap()
+                .unwrap() // should not fail because min_idle set to 0
         })
         .clone() // that's like Arc::clone, no worries.
 }
