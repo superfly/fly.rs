@@ -189,7 +189,7 @@ fn main() {
 
     let tls_stream = tls_listener
         .incoming()
-        .and_then(|stream| proxy::ProxyTcpStream::peek(stream, true))
+        .and_then(|stream| proxy::ProxyTcpStream::from_tcp_stream(stream, true))
         .and_then(move |pstream| {
             let timer = TLS_HANDSHAKE_TIME_HISTOGRAM.start_timer();
             tls_acceptor
@@ -205,7 +205,7 @@ fn main() {
 
     let tcp_stream = tcp_listener
         .incoming()
-        .and_then(|stream| proxy::ProxyTcpStream::peek(stream, false))
+        .and_then(|stream| proxy::ProxyTcpStream::from_tcp_stream(stream, false))
         .map(|pstream| Conn::Tcp(pstream));
 
     let all_stream = tcp_stream.select(tls_stream);

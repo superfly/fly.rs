@@ -6,6 +6,7 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 
 use std::io::BufRead;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub struct ProxyTcpStream {
@@ -15,8 +16,13 @@ pub struct ProxyTcpStream {
 }
 
 impl ProxyTcpStream {
-    pub fn peek(stream: TcpStream, tls: bool) -> impl Future<Item = Self, Error = io::Error> {
+    pub fn from_tcp_stream(
+        stream: TcpStream,
+        tls: bool,
+    ) -> impl Future<Item = Self, Error = io::Error> {
         let mut bytes = [0; 107];
+        stream.set_nodelay(true).ok();
+        stream.set_keepalive(Some(Duration::from_secs(10))).ok();
         let mut stream = Some(stream);
         future::poll_fn(move || {
             let _n = try_ready!(stream.as_mut().unwrap().poll_peek(&mut bytes));
