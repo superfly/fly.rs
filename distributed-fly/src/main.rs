@@ -192,14 +192,19 @@ fn main() {
         .and_then(|stream| proxy::ProxyTcpStream::from_tcp_stream(stream, true))
         .and_then(move |pstream| {
             let timer = TLS_HANDSHAKE_TIME_HISTOGRAM.start_timer();
-            tls_acceptor
-                .accept_async(pstream)
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))
-                .map(|ssl_stream| {
-                    timer.observe_duration();
-                    Conn::Tls(ssl_stream)
-                })
-        });
+            tls_acceptor.accept_async(pstream).then(|r| {
+                timer.observe_duration();
+                match r {
+                    Ok(stream) => Ok(Some(Conn::Tls(stream))),
+                    Err(e) => {
+                        error!("error accepting TLS connection: {}", e);
+                        // Err(std::io::Error::new(std::io::ErrorKind::Other, e));
+                        Ok(None)
+                    }
+                }
+            })
+        })
+        .filter_map(|ssl_stream| ssl_stream);
 
     let tcp_listener = TcpListener::bind(&addr).unwrap();
 
@@ -241,7 +246,9 @@ fn main() {
             })
         }))
         .with_graceful_shutdown(srv_shutdown_rx)
-        .map_err(|e| error!("server error: {}", e))
+        .map_err(|e| {
+            error!("server error: {}", e);
+        })
         .and_then(move |_| {
             info!("http server closed.");
             unsafe { SELECTOR = None }; // Drops the selector
