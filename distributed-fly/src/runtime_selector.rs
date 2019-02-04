@@ -53,18 +53,18 @@ impl RuntimeSelector for DistributedRuntimeSelector {
 
         let exists = {
             match runtimes.read() {
-                Ok(guard) => Ok(guard.contains_key(&key)),
-                Err(e) => Err(e),
+                Ok(guard) => guard.contains_key(&key),
+                Err(e) => return Err(SelectorError::Failure(format!("{}", e))),
             }
         };
 
-        if let Err(e) = exists {
-            return Err(SelectorError::Failure(format!("{}", e)));
-        }
-        {
+        if !exists {
             let mut writer = match runtimes.write() {
                 Ok(w) => w,
-                Err(poisoned) => poisoned.into_inner(), // recover...
+                Err(poisoned) => {
+                    error!("runtimes writer is poisoned! {}", poisoned);
+                    poisoned.into_inner() // recover...
+                }
             };
             let settings = {
                 use fly::settings::*;
