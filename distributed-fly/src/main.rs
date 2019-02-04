@@ -1,3 +1,8 @@
+use std::alloc::System;
+
+#[global_allocator]
+static A: System = System;
+
 #[macro_use]
 extern crate serde_derive;
 
@@ -50,10 +55,18 @@ use fly::metrics::*;
 use r2d2_redis::RedisConnectionManager;
 use slog_scope;
 
+use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
+pub static INTERRUPTING: AtomicBool = ATOMIC_BOOL_INIT;
+pub fn is_interrupting() -> bool {
+    return INTERRUPTING.load(Ordering::SeqCst);
+}
+fn interrupt() {
+    INTERRUPTING.store(true, Ordering::SeqCst);
+}
+
 static mut SELECTOR: Option<DistributedRuntimeSelector> = None;
 
 lazy_static! {
-    // static ref SELECTOR: DistributedRuntimeSelector = DistributedRuntimeSelector::new();
     pub static ref AWS_CREDENTIALS: AwsCredentials =
         EnvironmentProvider::default().credentials().wait().unwrap();
     pub static ref REDIS_POOL: r2d2::Pool<RedisConnectionManager> = r2d2::Pool::builder()
@@ -211,7 +224,8 @@ fn main() {
     };
 
     let (sigfut, sigrx) = fly::utils::signal_monitor();
-    let (sigrelaytx, sigrelayrx) = futures::sync::oneshot::channel();
+    let (srv_shutdown_tx, srv_shutdown_rx) = futures::sync::oneshot::channel();
+    let (prom_shutdown_tx, prom_shutdown_rx) = futures::sync::oneshot::channel();
 
     let http_server = Server::builder(all_stream)
         .serve(make_service_fn(|conn: &Conn| {
@@ -224,17 +238,26 @@ fn main() {
                 serve_http(tls, req, unsafe { SELECTOR.as_ref().unwrap() }, remote_addr)
             })
         }))
-        .with_graceful_shutdown(sigrx)
+        .with_graceful_shutdown(srv_shutdown_rx)
         .map_err(|e| error!("server error: {}", e))
         .and_then(move |_| {
             info!("http server closed.");
-            unsafe { SELECTOR = None };
-            sigrelaytx.send(()).ok(); // do care about compiler warning...
+            unsafe { SELECTOR = None }; // Drops the selector
             Ok(())
         });
 
     tokio::run(future::lazy(move || {
         unsafe { SELECTOR = Some(DistributedRuntimeSelector::new()) };
+        tokio::spawn(
+            sigrx
+                .map_err(|e| error!("error receiving signal: {}", e))
+                .and_then(move |_| {
+                    interrupt();
+                    srv_shutdown_tx.send(()).ok();
+                    prom_shutdown_tx.send(()).ok();
+                    Ok(())
+                }),
+        );
         tokio::spawn(runtime_monitoring());
         tokio::spawn(http_server);
         info!("HTTP listening on {}", addr);
@@ -247,7 +270,7 @@ fn main() {
                     .serve(make_service_fn(|_conn: &TcpStream| {
                         service_fn(move |req| fly::metrics::serve_metrics_http(req))
                     }))
-                    .with_graceful_shutdown(sigrelayrx)
+                    .with_graceful_shutdown(prom_shutdown_rx)
                     .map_err(|e| error!("error in http prom server: {}", e)),
             );
             info!("Prometheus listening on {}", addr);
@@ -257,7 +280,6 @@ fn main() {
     }));
 }
 
-use std::sync::atomic::Ordering;
 use std::time;
 
 static MAX_RUNTIME_IDLE_SECONDS: usize = 5 * 60;

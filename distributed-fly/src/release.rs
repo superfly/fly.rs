@@ -4,7 +4,8 @@ use std::sync::RwLock;
 use rmp_serde::Deserializer;
 use serde::Deserialize;
 
-use r2d2_redis::{redis::{self, Commands}};
+use crate::is_interrupting;
+use r2d2_redis::redis::{self, Commands};
 
 use rmpv::Value;
 
@@ -68,10 +69,15 @@ impl Release {
         }
         match get_by_app_key(&*conn, app_key.as_str())? {
           Some(rel) => {
-            RELEASES_BY_APP
-              .write()
-              .unwrap()
-              .insert(app_key, rel.clone());
+            let mut w = match RELEASES_BY_APP.write() {
+              Ok(w) => w,
+              Err(e) => {
+                error!("poisoned RELEASES_BY_APP lock! {}", e);
+                e.into_inner()
+              }
+            };
+
+            w.insert(app_key, rel.clone());
             Ok(Some(rel))
           }
           None => Ok(None),
@@ -213,118 +219,163 @@ fn find_cached_release(host: &str) -> Option<Release> {
 
 use std::time;
 
+fn sleep_a_bit() {
+  thread::sleep(time::Duration::from_secs(5)); // probably want to do backoff later
+}
+
 pub fn start_new_release_check() {
   thread::Builder::new()
     .name("redis-release-pubsub".to_string())
     .spawn(|| {
-      let redis_url = { GLOBAL_SETTINGS.read().unwrap().redis_url.clone() };
-      let client = redis::Client::open(redis_url.as_str()).unwrap();
-      let mut con = client.get_connection().unwrap();
-      let mut pubsub = con.as_pubsub();
-      pubsub.subscribe("__keyspace@0__:notifications").unwrap();
-      info!("subscribed to keyspace notifications");
-
       let mut last_updated_at = time::SystemTime::now()
         .duration_since(time::UNIX_EPOCH)
         .unwrap()
         .as_secs();
+      while !is_interrupting() {
+        let redis_url = { GLOBAL_SETTINGS.read().unwrap().redis_url.clone() };
+        let client = match redis::Client::open(redis_url.as_str()) {
+          Ok(c) => c,
+          Err(e) => {
+            error!("unable to connect to redis for release checking: {}", e);
+            sleep_a_bit();
+            continue;
+          }
+        };
+        let mut con = match client.get_connection() {
+          Ok(c) => c,
+          Err(e) => {
+            error!(
+              "unable to get the redis connection for release checking: {}",
+              e
+            );
+            sleep_a_bit();
+            continue;
+          }
+        };
+        let mut pubsub = con.as_pubsub();
+        match pubsub.subscribe("__keyspace@0__:notifications") {
+          Ok(_) => {}
+          Err(e) => {
+            error!("unable to subscribe to redis keyspace notifications: {}", e);
+            sleep_a_bit();
+            continue;
+          }
+        };
+        info!("subscribed to keyspace notifications");
 
-      loop {
-        let msg = pubsub.get_message().unwrap();
-        let payload: String = msg.get_payload().unwrap();
-        info!("channel '{}': {}", msg.get_channel_name(), payload,);
-        let now = time::SystemTime::now()
-          .duration_since(time::UNIX_EPOCH)
-          .unwrap()
-          .as_secs();
-        match REDIS_POOL.get() {
-          Err(e) => error!("could not acquire redis conn: {}", e),
-          Ok(conn) => match redis::cmd("ZRANGEBYSCORE")
-            .arg("notifications")
-            .arg(last_updated_at)
-            .arg(now)
-            .query::<Vec<String>>(&*conn)
-          {
-            Err(e) => error!("error getting notifications range: {}", e),
-            Ok(notifications) => {
-              for n in notifications.iter() {
-                match serde_json::from_str::<ReleaseNotification>(n.as_str()) {
-                  Err(e) => error!("could not parse notification: {}", e),
-                  Ok(notif) => {
-                    use self::NotificationAction::*;
-                    if notif.key.starts_with("app:") {
-                      match notif.action {
-                        Delete => match RELEASES_BY_APP.write() {
-                          Ok(mut guard) => {
-                            guard.remove(notif.key.as_str());
-                          }
-                          Err(e) => error!("error getting RELEASES_BY_APP write lock: {}", e),
-                        },
-                        Update => match get_by_app_key(&*conn, notif.key.as_str()) {
-                          Ok(maybe_rel) => match maybe_rel {
-                            Some(rel) => match RELEASES_BY_APP.write() {
-                              Ok(mut guard) => {
-                                guard.insert(notif.key.clone(), rel);
-                              }
-                              Err(e) => error!("error getting RELEASES_BY_APP write lock: {}", e),
-                            },
-                            None => {}
+        while !is_interrupting() {
+          let msg = match pubsub.get_message() {
+            Ok(m) => m,
+            Err(e) => {
+              error!("error getting message from pubsub: {}", e);
+              sleep_a_bit();
+              continue;
+            }
+          };
+          let payload: String = match msg.get_payload() {
+            Ok(p) => p,
+            Err(e) => {
+              error!("error getting payload from pubsub message: {}", e);
+              sleep_a_bit();
+              continue;
+            }
+          };
+          info!("channel '{}': {}", msg.get_channel_name(), payload);
+          let now = time::SystemTime::now()
+            .duration_since(time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+          match REDIS_POOL.get() {
+            Err(e) => error!("could not acquire redis conn: {}", e),
+            Ok(conn) => match redis::cmd("ZRANGEBYSCORE")
+              .arg("notifications")
+              .arg(last_updated_at)
+              .arg(now)
+              .query::<Vec<String>>(&*conn)
+            {
+              Err(e) => error!("error getting notifications range: {}", e),
+              Ok(notifications) => {
+                for n in notifications.iter() {
+                  match serde_json::from_str::<ReleaseNotification>(n.as_str()) {
+                    Err(e) => error!("could not parse notification: {}", e),
+                    Ok(notif) => {
+                      use self::NotificationAction::*;
+                      if notif.key.starts_with("app:") {
+                        match notif.action {
+                          Delete => match RELEASES_BY_APP.write() {
+                            Ok(mut guard) => {
+                              guard.remove(notif.key.as_str());
+                            }
+                            Err(e) => error!("error getting RELEASES_BY_APP write lock: {}", e),
                           },
-                          Err(e) => error!("error getting app by key: {}", e),
-                        },
-                      }
-                    } else if notif.key.starts_with("app_hosts") {
-                      use serde_json::Value;
-                      match notif.context {
-                        Value::Array(arr) => {
-                          let hostnames: Vec<String> = arr
-                            .iter()
-                            .map(|v| match v {
-                              Value::String(h) => h.clone(),
-                              _ => unimplemented!(),
-                            })
-                            .collect();
-                          match notif.action {
-                            Delete => match APP_BY_HOSTNAME.write() {
-                              Ok(mut guard) => {
-                                for h in hostnames.iter() {
-                                  guard.remove(h);
+                          Update => match get_by_app_key(&*conn, notif.key.as_str()) {
+                            Ok(maybe_rel) => match maybe_rel {
+                              Some(rel) => match RELEASES_BY_APP.write() {
+                                Ok(mut guard) => {
+                                  guard.insert(notif.key.clone(), rel);
                                 }
-                              }
-                              Err(e) => error!("error acquiring APP_BY_HOSTNAME write lock: {}", e),
+                                Err(e) => error!("error getting RELEASES_BY_APP write lock: {}", e),
+                              },
+                              None => {}
                             },
-                            Update => {
-                              for h in hostnames.iter() {
-                                match redis::cmd("HGET")
-                                  .arg("app_hosts")
-                                  .arg(h)
-                                  .query::<Option<String>>(&*conn)
-                                {
-                                  Ok(Some(app_key)) => match APP_BY_HOSTNAME.write() {
-                                    Ok(mut guard) => {
-                                      guard.insert(h.clone(), app_key);
-                                    }
-                                    Err(e) => {
-                                      error!("error acquiring APP_BY_HOSTNAME write lock: {}", e)
-                                    }
-                                  },
-                                  Ok(None) => debug!("no app host found for {}", h),
-                                  Err(e) => error!("could not get app_hosts for {}: {}", h, e),
+                            Err(e) => error!("error getting app by key: {}", e),
+                          },
+                        }
+                      } else if notif.key.starts_with("app_hosts") {
+                        use serde_json::Value;
+                        match notif.context {
+                          Value::Array(arr) => {
+                            let hostnames: Vec<String> = arr
+                              .iter()
+                              .map(|v| match v {
+                                Value::String(h) => h.clone(),
+                                _ => unimplemented!(),
+                              })
+                              .collect();
+                            match notif.action {
+                              Delete => match APP_BY_HOSTNAME.write() {
+                                Ok(mut guard) => {
+                                  for h in hostnames.iter() {
+                                    guard.remove(h);
+                                  }
+                                }
+                                Err(e) => {
+                                  error!("error acquiring APP_BY_HOSTNAME write lock: {}", e)
+                                }
+                              },
+                              Update => {
+                                for h in hostnames.iter() {
+                                  match redis::cmd("HGET")
+                                    .arg("app_hosts")
+                                    .arg(h)
+                                    .query::<Option<String>>(&*conn)
+                                  {
+                                    Ok(Some(app_key)) => match APP_BY_HOSTNAME.write() {
+                                      Ok(mut guard) => {
+                                        guard.insert(h.clone(), app_key);
+                                      }
+                                      Err(e) => {
+                                        error!("error acquiring APP_BY_HOSTNAME write lock: {}", e)
+                                      }
+                                    },
+                                    Ok(None) => debug!("no app host found for {}", h),
+                                    Err(e) => error!("could not get app_hosts for {}: {}", h, e),
+                                  }
                                 }
                               }
                             }
                           }
+                          _ => unimplemented!(),
                         }
-                        _ => unimplemented!(),
                       }
                     }
                   }
                 }
+                last_updated_at = now;
               }
-              last_updated_at = now;
-            }
-          },
-        };
+            },
+          };
+        }
       }
     })
     .unwrap();
