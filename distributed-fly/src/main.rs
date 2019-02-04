@@ -70,6 +70,8 @@ lazy_static! {
     pub static ref AWS_CREDENTIALS: AwsCredentials =
         EnvironmentProvider::default().credentials().wait().unwrap();
     pub static ref REDIS_POOL: r2d2::Pool<RedisConnectionManager> = r2d2::Pool::builder()
+        .max_size(100)
+        .min_idle(Some(0))
         .build(
             RedisConnectionManager::new(GLOBAL_SETTINGS.read().unwrap().redis_url.as_str())
                 .unwrap()
