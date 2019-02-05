@@ -5,11 +5,102 @@ use std::sync::RwLock;
 use super::REDIS_POOL;
 use crate::kms::decrypt;
 
+use crate::settings::GLOBAL_SETTINGS;
 use r2d2_redis::redis;
 
 lazy_static! {
     static ref CTX_STORE: RwLock<HashMap<String, ssl::SslContext>> = RwLock::new(HashMap::new());
+    static ref SESSION_CACHE: RwLock<HashMap<Vec<u8>, ssl::SslSession>> =
+        RwLock::new(HashMap::new());
+    static ref DEFAULT_CTX: ssl::SslContext = {
+        let mut builder = ssl::SslContextBuilder::new(ssl::SslMethod::tls()).unwrap();
+
+        setup_base_ctx(&mut builder);
+
+        let certs_path = {
+            match GLOBAL_SETTINGS.read().unwrap().certs_path {
+                Some(ref cp) => cp.clone(),
+                None => "certs".to_string(),
+            }
+        };
+        builder
+            .set_certificate_file(
+                &format!("{}/default.crt", certs_path),
+                openssl::ssl::SslFiletype::PEM,
+            )
+            .unwrap();
+        builder
+            .set_private_key_file(
+                &format!("{}/default.pem", certs_path),
+                openssl::ssl::SslFiletype::PEM,
+            )
+            .unwrap();
+        builder
+            .set_certificate_file(
+                &format!("{}/default.ecdsa.crt", certs_path),
+                openssl::ssl::SslFiletype::PEM,
+            )
+            .unwrap();
+        builder
+            .set_private_key_file(
+                &format!("{}/default.ecdsa.pem", certs_path),
+                openssl::ssl::SslFiletype::PEM,
+            )
+            .unwrap();
+        builder.build()
+    };
 }
+
+fn setup_base_ctx(builder: &mut ssl::SslContextBuilder) {
+    builder.options().insert(ssl::SslOptions::NO_TICKET);
+    builder.set_alpn_protos(b"\x02h2\x08http/1.1").unwrap();
+    builder.set_alpn_select_callback(|_, client| {
+        ssl::select_next_proto(b"\x02h2\x08http/1.1", client).ok_or(ssl::AlpnError::NOACK)
+    });
+    // builder.set_session_cache_mode(
+    //     ssl::SslSessionCacheMode::SERVER | ssl::SslSessionCacheMode::NO_INTERNAL,
+    // );
+
+    // builder.set_new_session_callback(new_session_callback);
+    // unsafe {
+    //     builder.set_get_session_callback(get_session_callback);
+    // }
+    // builder.set_remove_session_callback(remove_session_callback);
+}
+
+// fn new_session_callback(_ssl_ref: &mut ssl::SslRef, sess: ssl::SslSession) {
+//     info!("NEW SESSION callback! id: {:?}", sess.id());
+//     let mut w = match SESSION_CACHE.write() {
+//         Ok(w) => w,
+//         Err(e) => {
+//             error!("ssl session cache is poisoned! {}", e);
+//             e.into_inner()
+//         }
+//     };
+
+//     w.insert(sess.id().to_vec(), sess);
+// }
+// fn remove_session_callback(_ctx: &ssl::SslContextRef, sess: &ssl::SslSessionRef) {
+//     info!("REMOVE SESSION callback! id: {:?}", sess.id());
+//     let mut w = match SESSION_CACHE.write() {
+//         Ok(w) => w,
+//         Err(e) => {
+//             error!("ssl session cache is poisoned! {}", e);
+//             e.into_inner()
+//         }
+//     };
+//     w.remove(sess.id());
+// }
+// fn get_session_callback(_ssl_ref: &mut ssl::SslRef, id: &[u8]) -> Option<ssl::SslSession> {
+//     info!("GET SESSION callback! id: {:?}", id);
+//     match SESSION_CACHE.read() {
+//         Err(e) => {
+//             error!("ssl session cache read error: {}", e);
+//             return None;
+//         }
+//         Ok(r) => return r.get(id).cloned(),
+//     }
+// }
 
 pub fn get_cached_ctx(servername: &str) -> Option<ssl::SslContext> {
     debug!("trying to get cached ssl context for: {}", servername);
@@ -57,6 +148,7 @@ pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
                 Err(e) => Err(format!("{}", e)),
                 Ok(mut builder) => {
                     debug!("building ssl ctx");
+                    setup_base_ctx(&mut builder);
                     let mut added = 0;
                     for c in res.iter() {
                         if !c.is_empty() {
@@ -113,7 +205,7 @@ pub fn get_ctx(servername: &str) -> Result<Option<ssl::SslContext>, String> {
                         if let Some(ref wc) = wildcard {
                             return get_ctx(wc.as_str());
                         } else {
-                            return Ok(None);
+                            return Ok(Some(DEFAULT_CTX.clone()));
                         }
                     }
                     let ctx = builder.build();

@@ -143,7 +143,7 @@ fn main() {
         }
     });
 
-    tls_builder.set_alpn_protos(b"\x02h2").unwrap();
+    tls_builder.set_alpn_protos(b"\x02h2\x08http/1.1").unwrap();
     tls_builder.set_alpn_select_callback(|_, client| {
         openssl::ssl::select_next_proto(b"\x02h2\x08http/1.1", client)
             .ok_or(openssl::ssl::AlpnError::NOACK)
@@ -181,7 +181,7 @@ fn main() {
         )
         .unwrap();
 
-    tls_builder.set_session_cache_mode(openssl::ssl::SslSessionCacheMode::BOTH);
+    tls_builder.set_session_cache_mode(openssl::ssl::SslSessionCacheMode::SERVER);
 
     let tls_acceptor = tls_builder.build();
 
@@ -198,7 +198,6 @@ fn main() {
                     Ok(stream) => Ok(Some(Conn::Tls(stream))),
                     Err(e) => {
                         error!("error accepting TLS connection: {}", e);
-                        // Err(std::io::Error::new(std::io::ErrorKind::Other, e));
                         Ok(None)
                     }
                 }
