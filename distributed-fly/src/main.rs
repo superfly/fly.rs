@@ -333,17 +333,24 @@ fn runtime_monitoring() -> impl Future<Item = (), Error = ()> + Send + 'static {
                             {
                                 let key = k.clone();
                                 tokio::spawn(future::lazy(move || {
-                                    match unsafe { SELECTOR.as_ref().unwrap() }.runtimes.write() {
-                                        Err(e) => error!(
-                                            "error getting write lock on runtime selector: {}",
-                                            e
-                                        ),
-                                        Ok(mut guard) => match guard.remove(&key) {
-                                            None => {}
-                                            Some(mut rt) => {
-                                                rt.dispose();
-                                            }
-                                        },
+                                    let mut w = match unsafe { SELECTOR.as_ref().unwrap() }
+                                        .runtimes
+                                        .write()
+                                    {
+                                        Ok(w) => w,
+                                        Err(poisoned) => {
+                                            error!(
+                                                "error getting write lock on runtime selector: {}",
+                                                poisoned
+                                            );
+                                            poisoned.into_inner()
+                                        }
+                                    };
+                                    match w.remove(&key) {
+                                        None => {}
+                                        Some(mut rt) => {
+                                            rt.dispose();
+                                        }
                                     };
                                     Ok(())
                                 }));
