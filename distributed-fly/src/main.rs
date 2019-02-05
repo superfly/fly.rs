@@ -143,7 +143,7 @@ fn main() {
         }
     });
 
-    tls_builder.set_alpn_protos(b"\x02h2\x08http/1.1").unwrap();
+    tls_builder.set_alpn_protos(b"\x02h2").unwrap();
     tls_builder.set_alpn_select_callback(|_, client| {
         openssl::ssl::select_next_proto(b"\x02h2\x08http/1.1", client)
             .ok_or(openssl::ssl::AlpnError::NOACK)
