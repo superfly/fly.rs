@@ -13,7 +13,7 @@ use floating_duration::TimeAsFloat;
 use std::io;
 use std::time;
 
-use slog::{slog_info, slog_o};
+use slog::{o, slog_debug, slog_error, slog_info};
 
 type BoxedResponseFuture = Box<Future<Item = Response<Body>, Error = futures::Canceled> + Send>;
 
@@ -32,8 +32,11 @@ pub fn serve_http(
     remote_addr: SocketAddr,
 ) -> BoxedResponseFuture {
     let timer = time::Instant::now();
-    debug!("serving http: {}", req.uri());
     let req_id = ksuid::Ksuid::generate().to_base62();
+    let logger = slog_scope::logger().new(o!("request_id" => req_id.to_owned()));
+
+    slog_debug!(logger, "serving http: {}", req.uri());
+
     let (parts, body) = req.into_parts();
     let host = if parts.version == hyper::Version::HTTP_2 {
         match parts.uri.host() {
@@ -42,6 +45,7 @@ pub fn serve_http(
                 return future_response(
                     simple_response(req_id, StatusCode::NOT_FOUND, None),
                     timer,
+                    logger,
                     None,
                 );
             }
@@ -51,7 +55,7 @@ pub fn serve_http(
             Some(v) => match v.to_str() {
                 Ok(s) => s,
                 Err(e) => {
-                    error!("error stringifying host: {}", e);
+                    slog_error!(logger, "error stringifying host: {}", e);
                     return future_response(
                         simple_response(
                             req_id,
@@ -59,6 +63,7 @@ pub fn serve_http(
                             Some(Body::from("Bad host header")),
                         ),
                         timer,
+                        logger,
                         None,
                     );
                 }
@@ -67,6 +72,7 @@ pub fn serve_http(
                 return future_response(
                     simple_response(req_id, StatusCode::NOT_FOUND, None),
                     timer,
+                    logger,
                     None,
                 );
             }
@@ -84,15 +90,17 @@ pub fn serve_http(
                         Some(Body::from("app not found")),
                     ),
                     timer,
+                    logger,
                     None,
                 );
             }
         },
         Err(e) => {
-            error!("error getting runtime: {:?}", e);
+            slog_error!(logger, "error getting runtime: {:?}", e);
             return future_response(
                 simple_response(req_id, StatusCode::SERVICE_UNAVAILABLE, None),
                 timer,
+                logger,
                 None,
             );
         }
@@ -112,6 +120,15 @@ pub fn serve_http(
 
     let rt_name = rt.name.clone();
     let rt_version = rt.version.clone();
+    let logger = rt.app_logger.new(o!("request_id" => req_id.to_owned()));
+
+    slog_info!(
+        logger,
+        "Start {http_method} {request_uri} for {client_ip}",
+        http_method = parts.method.as_str(),
+        request_uri = &url,
+        client_ip = &remote_addr;
+    );
 
     match rt.dispatch_event(
         stream_id,
@@ -143,13 +160,15 @@ pub fn serve_http(
         None => future_response(
             simple_response(req_id, StatusCode::SERVICE_UNAVAILABLE, None),
             timer,
+            logger,
             Some((rt.name.clone(), rt.version.clone())),
         ),
         Some(Err(e)) => {
-            error!("error sending js http request: {:?}", e);
+            slog_error!(logger, "error sending js http request: {:?}", e);
             future_response(
                 simple_response(req_id, StatusCode::INTERNAL_SERVER_ERROR, None),
                 timer,
+                logger,
                 Some((rt.name.clone(), rt.version.clone())),
             )
         }
@@ -213,6 +232,7 @@ pub fn serve_http(
                     ))
                 }),
                 timer,
+                logger,
                 Some((rt.name.clone(), rt.version.clone())),
             )
         }
@@ -223,9 +243,10 @@ pub fn serve_http(
 fn future_response(
     res: Response<Body>,
     timer: time::Instant,
+    logger: slog::Logger,
     namever: Option<(String, String)>,
 ) -> BoxedResponseFuture {
-    wrap_future(future::ok(res), timer, namever)
+    wrap_future(future::ok(res), timer, logger, namever)
 }
 
 fn simple_response(req_id: String, status: StatusCode, body: Option<Body>) -> Response<Body> {
@@ -257,6 +278,7 @@ fn set_request_id(mut res: Response<Body>, req_id: String) -> Response<Body> {
 fn wrap_future<F>(
     fut: F,
     timer: time::Instant,
+    logger: slog::Logger,
     namever: Option<(String, String)>,
 ) -> BoxedResponseFuture
 where
@@ -266,12 +288,22 @@ where
         let (name, ver) = namever.unwrap_or((String::new(), String::new()));
         let status = res.status();
         let status_str = status.as_str();
+        let elapsed = timer.elapsed().as_fractional_secs();
+
         HTTP_RESPONSE_TIME_HISTOGRAM
             .with_label_values(&[name.as_str(), ver.as_str(), status_str])
-            .observe(timer.elapsed().as_fractional_secs());
+            .observe(elapsed);
         HTTP_RESPONSE_COUNTER
             .with_label_values(&[name.as_str(), ver.as_str(), status_str])
             .inc();
+
+        slog_info!(
+            logger,
+            "Completed {http_status} in {response_time}",
+            http_status = res.status().as_u16(),
+            response_time = elapsed
+        );
+
         Ok(res)
     }))
 }
