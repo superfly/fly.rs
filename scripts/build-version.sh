@@ -1,10 +1,8 @@
-version="unknown"
+commit_sha=${BUILD_VERSION:-${TRAVIS_COMMIT:-${BUILDKITE_COMMIT:-$(git rev-parse HEAD)}}}
+version=$(echo $commit_sha | cut -c-8)
 
 if [ -z "$CI" ]; then
-  version=${BUILD_VERSION:-${TRAVIS_COMMIT:-${BUILDKITE_COMMIT:-unknown}}}
-  version=$(echo -n $version | cut -c-8)
-elif [ -x "$(command -v git)" ]; then
-  version=$(git rev-parse HEAD | cut -c-8)-dev
+  version="$version-dev"
 fi
 
-printf "$version"
+printf $version
