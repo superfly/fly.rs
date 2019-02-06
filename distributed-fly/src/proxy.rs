@@ -44,7 +44,7 @@ impl ProxyTcpStream {
                         debug!("using proxy proto, remote addr: {}", remote_addr);
                     }
                 }
-                Err(e) => error!("error reading PROXY line: {}", e),
+                Err(e) => debug!("error reading PROXY protocol line: {}", e),
             };
             Ok(Async::Ready(ProxyTcpStream {
                 tls,
