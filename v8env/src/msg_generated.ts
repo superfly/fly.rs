@@ -5316,10 +5316,21 @@ headersLength():number {
 };
 
 /**
+ * @param flatbuffers.Encoding= optionalEncoding
+ * @returns string|Uint8Array|null
+ */
+remoteAddr():string|null
+remoteAddr(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+remoteAddr(optionalEncoding?:any):string|Uint8Array|null {
+  var offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+};
+
+/**
  * @returns boolean
  */
 hasBody():boolean {
-  var offset = this.bb!.__offset(this.bb_pos, 12);
+  var offset = this.bb!.__offset(this.bb_pos, 14);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 };
 
@@ -5328,7 +5339,7 @@ hasBody():boolean {
  * @returns boolean
  */
 mutate_has_body(value:boolean):boolean {
-  var offset = this.bb!.__offset(this.bb_pos, 12);
+  var offset = this.bb!.__offset(this.bb_pos, 14);
 
   if (offset === 0) {
     return false;
@@ -5342,7 +5353,7 @@ mutate_has_body(value:boolean):boolean {
  * @param flatbuffers.Builder builder
  */
 static startHttpRequest(builder:flatbuffers.Builder) {
-  builder.startObject(5);
+  builder.startObject(6);
 };
 
 /**
@@ -5400,10 +5411,18 @@ static startHeadersVector(builder:flatbuffers.Builder, numElems:number) {
 
 /**
  * @param flatbuffers.Builder builder
+ * @param flatbuffers.Offset remoteAddrOffset
+ */
+static addRemoteAddr(builder:flatbuffers.Builder, remoteAddrOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(4, remoteAddrOffset, 0);
+};
+
+/**
+ * @param flatbuffers.Builder builder
  * @param boolean hasBody
  */
 static addHasBody(builder:flatbuffers.Builder, hasBody:boolean) {
-  builder.addFieldInt8(4, +hasBody, +false);
+  builder.addFieldInt8(5, +hasBody, +false);
 };
 
 /**

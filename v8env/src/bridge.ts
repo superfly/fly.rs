@@ -107,6 +107,8 @@ export function addEventListener(name: string, fn: Function) {
             }) : null
         })
 
+        req.remoteAddr = msg.remoteAddr();
+
         if (isAcmeChallengeRequest(req)) {
           handleAcmeChallenge(req)
             .then(res => handleRes(id, res))

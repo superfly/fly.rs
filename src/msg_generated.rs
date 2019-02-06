@@ -5977,6 +5977,7 @@ impl<'a> HttpRequest<'a> {
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
         args: &'args HttpRequestArgs<'args>) -> flatbuffers::WIPOffset<HttpRequest<'bldr>> {
       let mut builder = HttpRequestBuilder::new(_fbb);
+      if let Some(x) = args.remote_addr { builder.add_remote_addr(x); }
       if let Some(x) = args.headers { builder.add_headers(x); }
       if let Some(x) = args.url { builder.add_url(x); }
       builder.add_id(args.id);
@@ -5989,7 +5990,8 @@ impl<'a> HttpRequest<'a> {
     pub const VT_METHOD: flatbuffers::VOffsetT = 6;
     pub const VT_URL: flatbuffers::VOffsetT = 8;
     pub const VT_HEADERS: flatbuffers::VOffsetT = 10;
-    pub const VT_HAS_BODY: flatbuffers::VOffsetT = 12;
+    pub const VT_REMOTE_ADDR: flatbuffers::VOffsetT = 12;
+    pub const VT_HAS_BODY: flatbuffers::VOffsetT = 14;
 
   #[inline]
   pub fn id(&self) -> u32 {
@@ -6008,6 +6010,10 @@ impl<'a> HttpRequest<'a> {
     self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(HttpRequest::VT_HEADERS, None)
   }
   #[inline]
+  pub fn remote_addr(&self) -> Option<&'a str> {
+    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpRequest::VT_REMOTE_ADDR, None)
+  }
+  #[inline]
   pub fn has_body(&self) -> bool {
     self._tab.get::<bool>(HttpRequest::VT_HAS_BODY, Some(false)).unwrap()
   }
@@ -6018,6 +6024,7 @@ pub struct HttpRequestArgs<'a> {
     pub method: HttpMethod,
     pub url: Option<flatbuffers::WIPOffset<&'a  str>>,
     pub headers: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<HttpHeader<'a >>>>>,
+    pub remote_addr: Option<flatbuffers::WIPOffset<&'a  str>>,
     pub has_body: bool,
 }
 impl<'a> Default for HttpRequestArgs<'a> {
@@ -6028,6 +6035,7 @@ impl<'a> Default for HttpRequestArgs<'a> {
             method: HttpMethod::Get,
             url: None,
             headers: None,
+            remote_addr: None,
             has_body: false,
         }
     }
@@ -6052,6 +6060,10 @@ impl<'a: 'b, 'b> HttpRequestBuilder<'a, 'b> {
   #[inline]
   pub fn add_headers(&mut self, headers: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<HttpHeader<'b >>>>) {
     self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_HEADERS, headers);
+  }
+  #[inline]
+  pub fn add_remote_addr(&mut self, remote_addr: flatbuffers::WIPOffset<&'b  str>) {
+    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_REMOTE_ADDR, remote_addr);
   }
   #[inline]
   pub fn add_has_body(&mut self, has_body: bool) {

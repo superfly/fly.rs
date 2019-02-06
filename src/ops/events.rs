@@ -30,7 +30,13 @@ pub fn op_add_event_ln(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
                         let req_method = match req.method {
                             Method::GET => msg::HttpMethod::Get,
                             Method::POST => msg::HttpMethod::Post,
+                            Method::PUT => msg::HttpMethod::Put,
+                            Method::DELETE => msg::HttpMethod::Delete,
                             Method::HEAD => msg::HttpMethod::Head,
+                            Method::OPTIONS => msg::HttpMethod::Options,
+                            Method::CONNECT => msg::HttpMethod::Connect,
+                            Method::PATCH => msg::HttpMethod::Patch,
+                            Method::TRACE => msg::HttpMethod::Trace,
                             _ => unimplemented!(),
                         };
 
@@ -52,6 +58,8 @@ pub fn op_add_event_ln(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
                             .collect();
 
                         let req_headers = builder.create_vector(&headers);
+                        let req_remote_addr =
+                            builder.create_string(req.remote_addr.ip().to_string().as_str());
 
                         let req_msg = msg::HttpRequest::create(
                             builder,
@@ -60,6 +68,7 @@ pub fn op_add_event_ln(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box
                                 method: req_method,
                                 url: Some(req_url),
                                 headers: Some(req_headers),
+                                remote_addr: Some(req_remote_addr),
                                 has_body: req.body.is_some(),
                                 ..Default::default()
                             },
