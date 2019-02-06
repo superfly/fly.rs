@@ -137,6 +137,21 @@ pub fn serve_http(
     let logger =
         logger.new(o!("app_name" => rt_name.to_owned(), "app_version" => rt.version.to_owned()));
 
+    let inbound_data =
+        DATA_IN_TOTAL.with_label_values(&[rt_name.as_str(), rt_version.as_str(), "http_request"]);
+    let outbound_data =
+        DATA_OUT_TOTAL.with_label_values(&[rt_name.as_str(), rt_version.as_str(), "http_response"]);
+
+    let body = if body.is_end_stream() {
+        None
+    } else {
+        Some(JsBody::BoxedStream(Box::new({
+            body.map_err(|e| format!("{}", e).into())
+                .map(move |chunk| chunk.into_bytes().to_vec())
+                .inspect(move |bytes| inbound_data.inc_by(bytes.len() as i64))
+        })))
+    };
+
     match rt.dispatch_event(
         stream_id,
         JsEvent::Fetch(JsHttpRequest {
@@ -145,23 +160,7 @@ pub fn serve_http(
             remote_addr: remote_addr,
             url: url,
             headers: parts.headers.clone(),
-            body: if body.is_end_stream() {
-                None
-            } else {
-                Some(JsBody::BoxedStream(Box::new(
-                    body.map_err(|e| format!("{}", e).into()).map(move |chunk| {
-                        let bytes = chunk.into_bytes();
-                        DATA_IN_TOTAL
-                            .with_label_values(&[
-                                rt_name.as_str(),
-                                rt_version.as_str(),
-                                "http_request",
-                            ])
-                            .inc_by(bytes.len() as i64);
-                        bytes.to_vec()
-                    }),
-                )))
-            },
+            body,
         }),
     ) {
         None => future_response(
@@ -179,67 +178,36 @@ pub fn serve_http(
                 Some((rt.name.clone(), rt.version.clone())),
             )
         }
-        Some(Ok(EventResponseChannel::Http(rx))) => {
-            let rt_name = rt.name.clone();
-            let rt_version = rt.version.clone();
-            wrap_future(
-                rx.and_then(move |res: JsHttpResponse| {
-                    let (mut parts, mut body) = Response::<Body>::default().into_parts();
-                    parts.headers = res.headers;
-                    parts.status = res.status;
+        Some(Ok(EventResponseChannel::Http(rx))) => wrap_future(
+            rx.and_then(move |res: JsHttpResponse| {
+                let (mut parts, mut body) = Response::<Body>::default().into_parts();
+                parts.headers = res.headers;
+                parts.status = res.status;
 
-                    if let Some(js_body) = res.body {
-                        body = match js_body {
-                            JsBody::Stream(s) => Body::wrap_stream(
-                                s.map_err(|_| {
-                                    io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
-                                })
-                                .inspect(move |v| {
-                                    DATA_OUT_TOTAL
-                                        .with_label_values(&[
-                                            rt_name.as_str(),
-                                            rt_version.as_str(),
-                                            "http_response",
-                                        ])
-                                        .inc_by(v.len() as i64);
-                                }),
-                            ),
-                            JsBody::BytesStream(s) => Body::wrap_stream(
-                                s.map_err(|_| {
-                                    io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
-                                })
-                                .map(|bm| bm.freeze())
-                                .inspect(move |bytes| {
-                                    DATA_OUT_TOTAL
-                                        .with_label_values(&[
-                                            rt_name.as_str(),
-                                            rt_version.as_str(),
-                                            "http_response",
-                                        ])
-                                        .inc_by(bytes.len() as i64);
-                                }),
-                            ),
-                            JsBody::Static(b) => {
-                                DATA_OUT_TOTAL
-                                    .with_label_values(&[
-                                        rt_name.as_str(),
-                                        rt_version.as_str(),
-                                        "http_response",
-                                    ])
-                                    .inc_by(b.len() as i64);
-                                Body::from(b)
-                            }
-                            _ => unimplemented!(),
-                        };
-                    }
+                if let Some(js_body) = res.body {
+                    body = match js_body {
+                        JsBody::Stream(s) => Body::wrap_stream(
+                            s.map_err(|_| {
+                                io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
+                            })
+                            .inspect(move |v| {
+                                outbound_data.inc_by(v.len() as i64);
+                            }),
+                        ),
+                        JsBody::Static(b) => {
+                            outbound_data.inc_by(b.len() as i64);
+                            Body::from(b)
+                        }
+                        _ => unimplemented!(),
+                    };
+                }
 
-                    Ok(Response::from_parts(parts, body))
-                }),
-                request_info,
-                logger,
-                Some((rt.name.clone(), rt.version.clone())),
-            )
-        }
+                Ok(Response::from_parts(parts, body))
+            }),
+            request_info,
+            logger,
+            Some((rt.name.clone(), rt.version.clone())),
+        ),
         _ => unimplemented!(),
     }
 }
@@ -284,7 +252,7 @@ where
     F: Future<Item = Response<Body>, Error = futures::Canceled> + Send + 'static,
 {
     Box::new(fut.and_then(move |res| {
-        let (name, ver) = namever.unwrap_or((String::new(), String::new()));
+        let (name, ver) = namever.unwrap_or_else(|| (String::new(), String::new()));
         let status = res.status();
         let status_str = status.as_str();
         let elapsed = req.timer.elapsed();
