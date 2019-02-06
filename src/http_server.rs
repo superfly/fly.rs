@@ -178,40 +178,36 @@ pub fn serve_http(
                 Some((rt.name.clone(), rt.version.clone())),
             )
         }
-        Some(Ok(EventResponseChannel::Http(rx))) => {
-            let rt_name = rt.name.clone();
-            let rt_version = rt.version.clone();
-            wrap_future(
-                rx.and_then(move |res: JsHttpResponse| {
-                    let (mut parts, mut body) = Response::<Body>::default().into_parts();
-                    parts.headers = res.headers;
-                    parts.status = res.status;
+        Some(Ok(EventResponseChannel::Http(rx))) => wrap_future(
+            rx.and_then(move |res: JsHttpResponse| {
+                let (mut parts, mut body) = Response::<Body>::default().into_parts();
+                parts.headers = res.headers;
+                parts.status = res.status;
 
-                    if let Some(js_body) = res.body {
-                        body = match js_body {
-                            JsBody::Stream(s) => Body::wrap_stream(
-                                s.map_err(|_| {
-                                    io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
-                                })
-                                .inspect(move |v| {
-                                    outbound_data.inc_by(v.len() as i64);
-                                }),
-                            ),
-                            JsBody::Static(b) => {
-                                outbound_data.inc_by(b.len() as i64);
-                                Body::from(b)
-                            }
-                            _ => unimplemented!(),
-                        };
-                    }
+                if let Some(js_body) = res.body {
+                    body = match js_body {
+                        JsBody::Stream(s) => Body::wrap_stream(
+                            s.map_err(|_| {
+                                io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
+                            })
+                            .inspect(move |v| {
+                                outbound_data.inc_by(v.len() as i64);
+                            }),
+                        ),
+                        JsBody::Static(b) => {
+                            outbound_data.inc_by(b.len() as i64);
+                            Body::from(b)
+                        }
+                        _ => unimplemented!(),
+                    };
+                }
 
-                    Ok(Response::from_parts(parts, body))
-                }),
-                request_info,
-                logger,
-                Some((rt.name.clone(), rt.version.clone())),
-            )
-        }
+                Ok(Response::from_parts(parts, body))
+            }),
+            request_info,
+            logger,
+            Some((rt.name.clone(), rt.version.clone())),
+        ),
         _ => unimplemented!(),
     }
 }
