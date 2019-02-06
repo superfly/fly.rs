@@ -1,10 +1,10 @@
 steps:
   - commands:
-      - docker build --build-arg BUILD_VERSION=$BUILDKITE_COMMIT --build-arg AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA --build-arg AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -t fly:$BUILDKITE_COMMIT .
+      - docker build --build-arg BUILD_VERSION=$BUILDKITE_COMMIT --build-arg AWS_ACCESS_KEY_ID=AKIAIUEJ6IB7XWPIBUXA --build-arg AWS_SECRET_ACCESS_KEY -t fly:$BUILDKITE_COMMIT .
       - docker run --name fly_$BUILDKITE_COMMIT fly:$BUILDKITE_COMMIT /fly --help
       - docker cp fly_$BUILDKITE_COMMIT:/fly . && docker cp fly_$BUILDKITE_COMMIT:/fly-dist .
       - docker rm fly_$BUILDKITE_COMMIT
       - tar -czf fly-linux-x64-static.tar.gz fly fly-dist
-      - docker run --rm -v $(pwd):/data brahaney/s3-uploadr fly-linux-x64-static.tar.gz --bucket fly-proxy --aws_access_key AKIAIUEJ6IB7XWPIBUXA --aws_secret_key $AWS_SECRET_ACCESS_KEY --public --s3_subdir $BUILDKITE_BRANCH
+      - aws s3 cp fly-linux-x64-static.tar.gz s3://fly-proxy/$BUILDKITE_BRANCH/ --acl public-read
     artifact_paths:
       - ./*.tar.gz
