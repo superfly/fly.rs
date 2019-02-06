@@ -204,21 +204,6 @@ pub fn serve_http(
                                         .inc_by(v.len() as i64);
                                 }),
                             ),
-                            JsBody::BytesStream(s) => Body::wrap_stream(
-                                s.map_err(|_| {
-                                    io::Error::new(io::ErrorKind::Interrupted, "interrupted stream")
-                                })
-                                .map(|bm| bm.freeze())
-                                .inspect(move |bytes| {
-                                    DATA_OUT_TOTAL
-                                        .with_label_values(&[
-                                            rt_name.as_str(),
-                                            rt_version.as_str(),
-                                            "http_response",
-                                        ])
-                                        .inc_by(bytes.len() as i64);
-                                }),
-                            ),
                             JsBody::Static(b) => {
                                 DATA_OUT_TOTAL
                                     .with_label_values(&[

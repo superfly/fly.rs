@@ -1,20 +1,13 @@
-use futures::{sync::mpsc, Stream};
-
-use hyper::HeaderMap;
-use hyper::{Body, StatusCode};
-
-use bytes::BytesMut;
-
 use crate::errors::FlyError;
+use futures::{sync::mpsc, Stream};
+use hyper::HeaderMap;
+use hyper::StatusCode;
 use std::net::SocketAddr;
-
 use trust_dns as dns;
 
 pub enum JsBody {
     BoxedStream(Box<Stream<Item = Vec<u8>, Error = FlyError> + Send>),
     Stream(mpsc::UnboundedReceiver<Vec<u8>>),
-    BytesStream(mpsc::UnboundedReceiver<BytesMut>),
-    HyperBody(Body),
     Static(Vec<u8>),
 }
 

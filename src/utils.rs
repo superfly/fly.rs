@@ -1,21 +1,16 @@
-use crate::msg;
-use flatbuffers::FlatBufferBuilder;
-use libfly::*;
-
 use crate::errors::FlyError;
-
+use crate::js::*;
+use crate::msg;
 use crate::runtime::{JsRuntime, Runtime};
-
+use flatbuffers::FlatBufferBuilder;
 use futures::{
   future,
   sync::{mpsc, oneshot},
   Future, Stream,
 };
-
-use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
-
-use crate::js::*;
+use libfly::*;
 use std::ptr;
+use tokio_signal::unix::{Signal, SIGINT, SIGTERM};
 
 // Buf represents a byte array returned from a "Op".
 // The message might be empty (which will be translated into a null object on
@@ -117,39 +112,6 @@ pub fn send_body_stream(ptr: JsRuntime, req_id: u32, stream: JsBody) {
         rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
           .for_each(move |v| {
             send_stream_chunk(ptr, req_id, v.as_ptr() as *mut u8, v.len(), false);
-            Ok(())
-          })
-          .and_then(move |_| {
-            send_done_stream(ptr, req_id);
-            Ok(())
-          }),
-      );
-    }
-    JsBody::BytesStream(rx) => {
-      rt.spawn(
-        rx.map_err(move |e| error!("error reading from stream channel: {:?}", e))
-          .for_each(move |mut b| {
-            send_stream_chunk(ptr, req_id, b.as_mut_ptr() as *mut u8, b.len(), false);
-            Ok(())
-          })
-          .and_then(move |_| {
-            send_done_stream(ptr, req_id);
-            Ok(())
-          }),
-      );
-    }
-    JsBody::HyperBody(b) => {
-      rt.spawn(
-        b.map_err(|e| error!("error in hyper body stream read: {:?}", e))
-          .for_each(move |chunk| {
-            let bytes = chunk.into_bytes();
-            send_stream_chunk(
-              ptr,
-              req_id,
-              (*bytes).as_ptr() as *mut u8,
-              bytes.len(),
-              false,
-            );
             Ok(())
           })
           .and_then(move |_| {
