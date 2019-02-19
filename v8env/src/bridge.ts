@@ -71,7 +71,24 @@ function handleBody(base: fbs.Base, raw: Uint8Array) {
 
 export type DNSResponseFn = () => DNSResponse | Promise<DNSResponse>
 
-export function addEventListener(name: string, fn: Function) {
+export type EventResponse<REST> = () => REST | Promise<REST> | REST;
+
+export interface RequestEvent<REST, REQT> {
+  respondWith: (this: typeof window, resp: EventResponse<REST>) => void;
+  request: REQT,
+}
+
+export interface DnsRequestEvent extends RequestEvent<DNSResponse, DNSRequest> {
+}
+
+export interface HttpRequestEvent extends RequestEvent<Response, FlyRequest> {
+}
+
+export type EventListenerFunction<ET> = (event: ET) => void;
+
+export function addEventListener(name: "fetch", fn: EventListenerFunction<HttpRequestEvent>);
+export function addEventListener(name: "resolve", fn: EventListenerFunction<DnsRequestEvent>);
+export function addEventListener(name: string, fn: EventListenerFunction<RequestEvent<any, any>>) {
   let event_type: fbs.EventType;
   switch (name) {
     case "fetch":
