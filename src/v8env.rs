@@ -3,6 +3,7 @@ use std::ffi::CString;
 use std::fs::File;
 use std::io::Read;
 use std::slice;
+use libc::c_char;
 
 #[cfg(not(debug_assertions))]
 const V8ENV_SNAPSHOT: &'static [u8] = include_bytes!("../v8env.bin");
@@ -27,7 +28,7 @@ lazy_static! {
 
 lazy_static! {
   pub static ref FLY_SNAPSHOT: fly_simple_buf = fly_simple_buf {
-    ptr: V8ENV_SNAPSHOT.as_ptr() as *const i8,
+    ptr: V8ENV_SNAPSHOT.as_ptr() as *const c_char,
     len: V8ENV_SNAPSHOT.len() as i32
   };
 }
