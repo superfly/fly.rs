@@ -117,6 +117,7 @@ pub struct Runtime {
   pub module_resolver_manager: Box<ModuleResolverManager>,
   pub msg_handler: Box<MessageHandler>,
   pub permissions: RuntimePermissions,
+  pub dev_tools: bool,
   metadata_cache: RwLock<HashMap<i32, Box<LoadedModule>>>,
   ready_ch: Option<oneshot::Sender<()>>,
   quit_ch: Option<oneshot::Receiver<()>>,
@@ -256,6 +257,7 @@ impl Runtime {
         .msg_handler
         .unwrap_or(Box::new(DefaultMessageHandler {})),
       permissions: config.permissions.unwrap_or_default(),
+      dev_tools: config.dev_tools,
     });
 
     (*rt).ptr.0 = unsafe {

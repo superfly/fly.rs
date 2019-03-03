@@ -2,6 +2,7 @@ use crate::msg;
 use flatbuffers::FlatBufferBuilder;
 
 use crate::runtime::Runtime;
+use crate::errors::permission_denied;
 use libfly::*;
 
 use crate::utils::*;
@@ -14,6 +15,10 @@ pub fn op_load_module(rt: &mut Runtime, base: &msg::Base, _raw: fly_buf) -> Box<
     let cmd_id = base.cmd_id();
     let msg = base.msg_as_load_module().unwrap();
     let specifier_url = msg.specifier_url().unwrap().to_string();
+
+    if !rt.dev_tools {
+        return odd_future(permission_denied());
+    }
 
     let referer_info = match msg.referer_origin_url() {
         Some(v) => Some(RefererInfo {
