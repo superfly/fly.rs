@@ -127,8 +127,7 @@ fn notification_listen(reader_url: String, cache_url: String) {
                     //     }
                     // }
                     // };
-                    
-                    
+
                     let mut pubcon = client.get_connection().unwrap();
 
                     let mut pubsub = pubcon.as_pubsub();
@@ -218,7 +217,11 @@ mod tests {
     use super::*;
 
     fn setup() -> RedisCacheNotifier {
-        redis::cmd("CONFIG").arg("SET").arg("notify-keyspace-events").arg("KEA").execute(&redis::Client::open("redis://localhost:6379").unwrap());
+        redis::cmd("CONFIG")
+            .arg("SET")
+            .arg("notify-keyspace-events")
+            .arg("KEA")
+            .execute(&redis::Client::open("redis://localhost:6379").unwrap());
 
         RedisCacheNotifier::new(
             RedisCacheNotifierConfig {
@@ -230,7 +233,10 @@ mod tests {
     }
 
     fn redis_conn() -> redis::Connection {
-        redis::Client::open("redis://localhost:6379").unwrap().get_connection().unwrap()
+        redis::Client::open("redis://localhost:6379")
+            .unwrap()
+            .get_connection()
+            .unwrap()
     }
 
     #[test]
@@ -256,10 +262,12 @@ mod tests {
 
         let testns = "testns".to_string();
 
-        let handle = thread::spawn(move||{
+        let handle = thread::spawn(move || {
             let mut conn_for_pubsub = redis_conn();
             let mut pconn = conn_for_pubsub.as_pubsub();
-            pconn.subscribe(format!("__keyspace@0__:{}", key).as_str()).unwrap();
+            pconn
+                .subscribe(format!("__keyspace@0__:{}", key).as_str())
+                .unwrap();
             pconn.get_message().unwrap();
         });
 

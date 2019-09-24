@@ -59,18 +59,21 @@ impl FsStore for DiskFsStore {
                                     if let Err(e) = btxerr.clone().unbounded_send(Err(e.into())) {
                                         error!("error sending into channel: {}", e);
                                     }
-                                }).for_each(move |chunk| {
+                                })
+                                .for_each(move |chunk| {
                                     if let Err(e) = btx.clone().unbounded_send(Ok(chunk.to_vec())) {
                                         error!("error sending into channel: {}", e);
                                     }
                                     Ok(())
-                                }).and_then(|_| Ok(())),
+                                })
+                                .and_then(|_| Ok(())),
                         );
 
                         if let Err(_) = tx.send(Ok(Some(Box::new(
                             brx.map_err(|_| {
                                 FsError::Failure("error receiving fs chunk".to_string())
-                            }).and_then(|chunk_res| match chunk_res {
+                            })
+                            .and_then(|chunk_res| match chunk_res {
                                 Ok(c) => Ok(c),
                                 Err(e) => Err(e),
                             }),

@@ -20,23 +20,23 @@ use std::os::raw::c_uint;
 
 #[no_mangle]
 pub unsafe extern "C" fn c_get_next_stream_id() -> c_uint {
-  get_next_stream_id()
+    get_next_stream_id()
 }
 
 pub fn get_next_stream_id() -> u32 {
-  NEXT_EVENT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as u32
+    NEXT_EVENT_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst) as u32
 }
 
 pub static BUILD_VERSION: &str = env!("BUILD_VERSION");
 
-pub mod js;
-pub mod v8env;
 pub mod errors;
+pub mod js;
 pub mod msg;
 pub mod ops;
 pub mod runtime;
 pub mod runtime_permissions;
 pub mod utils;
+pub mod v8env;
 
 pub mod acme_store;
 pub mod cache_store;

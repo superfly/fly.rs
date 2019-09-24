@@ -9,49 +9,48 @@ extern crate flatbuffers;
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DnsRecordType {
-  A = 0,
-  AAAA = 1,
-  ANY = 2,
-  AXFR = 3,
-  CAA = 4,
-  CNAME = 5,
-  IXFR = 6,
-  MX = 7,
-  NS = 8,
-  NULL = 9,
-  OPT = 10,
-  PTR = 11,
-  SOA = 12,
-  SRV = 13,
-  TLSA = 14,
-  TXT = 15,
-
+    A = 0,
+    AAAA = 1,
+    ANY = 2,
+    AXFR = 3,
+    CAA = 4,
+    CNAME = 5,
+    IXFR = 6,
+    MX = 7,
+    NS = 8,
+    NULL = 9,
+    OPT = 10,
+    PTR = 11,
+    SOA = 12,
+    SRV = 13,
+    TLSA = 14,
+    TXT = 15,
 }
 
 const ENUM_MIN_DNS_RECORD_TYPE: i8 = 0;
 const ENUM_MAX_DNS_RECORD_TYPE: i8 = 15;
 
 impl<'a> flatbuffers::Follow<'a> for DnsRecordType {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for DnsRecordType {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const DnsRecordType;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const DnsRecordType;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const DnsRecordType;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const DnsRecordType;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for DnsRecordType {
@@ -63,101 +62,86 @@ impl flatbuffers::Push for DnsRecordType {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_DNS_RECORD_TYPE:[DnsRecordType; 16] = [
-  DnsRecordType::A,
-  DnsRecordType::AAAA,
-  DnsRecordType::ANY,
-  DnsRecordType::AXFR,
-  DnsRecordType::CAA,
-  DnsRecordType::CNAME,
-  DnsRecordType::IXFR,
-  DnsRecordType::MX,
-  DnsRecordType::NS,
-  DnsRecordType::NULL,
-  DnsRecordType::OPT,
-  DnsRecordType::PTR,
-  DnsRecordType::SOA,
-  DnsRecordType::SRV,
-  DnsRecordType::TLSA,
-  DnsRecordType::TXT
+const ENUM_VALUES_DNS_RECORD_TYPE: [DnsRecordType; 16] = [
+    DnsRecordType::A,
+    DnsRecordType::AAAA,
+    DnsRecordType::ANY,
+    DnsRecordType::AXFR,
+    DnsRecordType::CAA,
+    DnsRecordType::CNAME,
+    DnsRecordType::IXFR,
+    DnsRecordType::MX,
+    DnsRecordType::NS,
+    DnsRecordType::NULL,
+    DnsRecordType::OPT,
+    DnsRecordType::PTR,
+    DnsRecordType::SOA,
+    DnsRecordType::SRV,
+    DnsRecordType::TLSA,
+    DnsRecordType::TXT,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_DNS_RECORD_TYPE:[&'static str; 16] = [
-    "A",
-    "AAAA",
-    "ANY",
-    "AXFR",
-    "CAA",
-    "CNAME",
-    "IXFR",
-    "MX",
-    "NS",
-    "NULL",
-    "OPT",
-    "PTR",
-    "SOA",
-    "SRV",
-    "TLSA",
-    "TXT"
+const ENUM_NAMES_DNS_RECORD_TYPE: [&'static str; 16] = [
+    "A", "AAAA", "ANY", "AXFR", "CAA", "CNAME", "IXFR", "MX", "NS", "NULL", "OPT", "PTR", "SOA",
+    "SRV", "TLSA", "TXT",
 ];
 
 pub fn enum_name_dns_record_type(e: DnsRecordType) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_DNS_RECORD_TYPE[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_DNS_RECORD_TYPE[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DnsResponseCode {
-  NoError = 0,
-  FormErr = 1,
-  ServFail = 2,
-  NXDomain = 3,
-  NotImp = 4,
-  Refused = 5,
-  YXDomain = 6,
-  YXRRSet = 7,
-  NXRRSet = 8,
-  NotAuth = 9,
-  NotZone = 10,
-  BADVERS = 11,
-  BADSIG = 12,
-  BADKEY = 13,
-  BADTIME = 14,
-  BADMODE = 15,
-  BADNAME = 16,
-  BADALG = 17,
-  BADTRUNC = 18,
-  BADCOOKIE = 19,
-
+    NoError = 0,
+    FormErr = 1,
+    ServFail = 2,
+    NXDomain = 3,
+    NotImp = 4,
+    Refused = 5,
+    YXDomain = 6,
+    YXRRSet = 7,
+    NXRRSet = 8,
+    NotAuth = 9,
+    NotZone = 10,
+    BADVERS = 11,
+    BADSIG = 12,
+    BADKEY = 13,
+    BADTIME = 14,
+    BADMODE = 15,
+    BADNAME = 16,
+    BADALG = 17,
+    BADTRUNC = 18,
+    BADCOOKIE = 19,
 }
 
 const ENUM_MIN_DNS_RESPONSE_CODE: i8 = 0;
 const ENUM_MAX_DNS_RESPONSE_CODE: i8 = 19;
 
 impl<'a> flatbuffers::Follow<'a> for DnsResponseCode {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for DnsResponseCode {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const DnsResponseCode;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const DnsResponseCode;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const DnsResponseCode;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const DnsResponseCode;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for DnsResponseCode {
@@ -169,31 +153,31 @@ impl flatbuffers::Push for DnsResponseCode {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_DNS_RESPONSE_CODE:[DnsResponseCode; 20] = [
-  DnsResponseCode::NoError,
-  DnsResponseCode::FormErr,
-  DnsResponseCode::ServFail,
-  DnsResponseCode::NXDomain,
-  DnsResponseCode::NotImp,
-  DnsResponseCode::Refused,
-  DnsResponseCode::YXDomain,
-  DnsResponseCode::YXRRSet,
-  DnsResponseCode::NXRRSet,
-  DnsResponseCode::NotAuth,
-  DnsResponseCode::NotZone,
-  DnsResponseCode::BADVERS,
-  DnsResponseCode::BADSIG,
-  DnsResponseCode::BADKEY,
-  DnsResponseCode::BADTIME,
-  DnsResponseCode::BADMODE,
-  DnsResponseCode::BADNAME,
-  DnsResponseCode::BADALG,
-  DnsResponseCode::BADTRUNC,
-  DnsResponseCode::BADCOOKIE
+const ENUM_VALUES_DNS_RESPONSE_CODE: [DnsResponseCode; 20] = [
+    DnsResponseCode::NoError,
+    DnsResponseCode::FormErr,
+    DnsResponseCode::ServFail,
+    DnsResponseCode::NXDomain,
+    DnsResponseCode::NotImp,
+    DnsResponseCode::Refused,
+    DnsResponseCode::YXDomain,
+    DnsResponseCode::YXRRSet,
+    DnsResponseCode::NXRRSet,
+    DnsResponseCode::NotAuth,
+    DnsResponseCode::NotZone,
+    DnsResponseCode::BADVERS,
+    DnsResponseCode::BADSIG,
+    DnsResponseCode::BADKEY,
+    DnsResponseCode::BADTIME,
+    DnsResponseCode::BADMODE,
+    DnsResponseCode::BADNAME,
+    DnsResponseCode::BADALG,
+    DnsResponseCode::BADTRUNC,
+    DnsResponseCode::BADCOOKIE,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_DNS_RESPONSE_CODE:[&'static str; 20] = [
+const ENUM_NAMES_DNS_RESPONSE_CODE: [&'static str; 20] = [
     "NoError",
     "FormErr",
     "ServFail",
@@ -213,49 +197,48 @@ const ENUM_NAMES_DNS_RESPONSE_CODE:[&'static str; 20] = [
     "BADNAME",
     "BADALG",
     "BADTRUNC",
-    "BADCOOKIE"
+    "BADCOOKIE",
 ];
 
 pub fn enum_name_dns_response_code(e: DnsResponseCode) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_DNS_RESPONSE_CODE[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_DNS_RESPONSE_CODE[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DnsOpCode {
-  Query = 0,
-  Status = 1,
-  Notify = 2,
-  Update = 3,
-
+    Query = 0,
+    Status = 1,
+    Notify = 2,
+    Update = 3,
 }
 
 const ENUM_MIN_DNS_OP_CODE: i8 = 0;
 const ENUM_MAX_DNS_OP_CODE: i8 = 3;
 
 impl<'a> flatbuffers::Follow<'a> for DnsOpCode {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for DnsOpCode {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const DnsOpCode;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const DnsOpCode;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const DnsOpCode;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const DnsOpCode;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for DnsOpCode {
@@ -267,59 +250,53 @@ impl flatbuffers::Push for DnsOpCode {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_DNS_OP_CODE:[DnsOpCode; 4] = [
-  DnsOpCode::Query,
-  DnsOpCode::Status,
-  DnsOpCode::Notify,
-  DnsOpCode::Update
+const ENUM_VALUES_DNS_OP_CODE: [DnsOpCode; 4] = [
+    DnsOpCode::Query,
+    DnsOpCode::Status,
+    DnsOpCode::Notify,
+    DnsOpCode::Update,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_DNS_OP_CODE:[&'static str; 4] = [
-    "Query",
-    "Status",
-    "Notify",
-    "Update"
-];
+const ENUM_NAMES_DNS_OP_CODE: [&'static str; 4] = ["Query", "Status", "Notify", "Update"];
 
 pub fn enum_name_dns_op_code(e: DnsOpCode) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_DNS_OP_CODE[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_DNS_OP_CODE[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DnsMessageType {
-  Query = 0,
-  Response = 1,
-
+    Query = 0,
+    Response = 1,
 }
 
 const ENUM_MIN_DNS_MESSAGE_TYPE: i8 = 0;
 const ENUM_MAX_DNS_MESSAGE_TYPE: i8 = 1;
 
 impl<'a> flatbuffers::Follow<'a> for DnsMessageType {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for DnsMessageType {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const DnsMessageType;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const DnsMessageType;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const DnsMessageType;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const DnsMessageType;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for DnsMessageType {
@@ -331,58 +308,52 @@ impl flatbuffers::Push for DnsMessageType {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_DNS_MESSAGE_TYPE:[DnsMessageType; 2] = [
-  DnsMessageType::Query,
-  DnsMessageType::Response
-];
+const ENUM_VALUES_DNS_MESSAGE_TYPE: [DnsMessageType; 2] =
+    [DnsMessageType::Query, DnsMessageType::Response];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_DNS_MESSAGE_TYPE:[&'static str; 2] = [
-    "Query",
-    "Response"
-];
+const ENUM_NAMES_DNS_MESSAGE_TYPE: [&'static str; 2] = ["Query", "Response"];
 
 pub fn enum_name_dns_message_type(e: DnsMessageType) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_DNS_MESSAGE_TYPE[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_DNS_MESSAGE_TYPE[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DnsClass {
-  IN = 0,
-  CH = 1,
-  HS = 2,
-  NONE = 3,
-  ANY = 4,
-
+    IN = 0,
+    CH = 1,
+    HS = 2,
+    NONE = 3,
+    ANY = 4,
 }
 
 const ENUM_MIN_DNS_CLASS: i8 = 0;
 const ENUM_MAX_DNS_CLASS: i8 = 4;
 
 impl<'a> flatbuffers::Follow<'a> for DnsClass {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for DnsClass {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const DnsClass;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const DnsClass;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const DnsClass;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const DnsClass;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for DnsClass {
@@ -394,69 +365,62 @@ impl flatbuffers::Push for DnsClass {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_DNS_CLASS:[DnsClass; 5] = [
-  DnsClass::IN,
-  DnsClass::CH,
-  DnsClass::HS,
-  DnsClass::NONE,
-  DnsClass::ANY
+const ENUM_VALUES_DNS_CLASS: [DnsClass; 5] = [
+    DnsClass::IN,
+    DnsClass::CH,
+    DnsClass::HS,
+    DnsClass::NONE,
+    DnsClass::ANY,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_DNS_CLASS:[&'static str; 5] = [
-    "IN",
-    "CH",
-    "HS",
-    "NONE",
-    "ANY"
-];
+const ENUM_NAMES_DNS_CLASS: [&'static str; 5] = ["IN", "CH", "HS", "NONE", "ANY"];
 
 pub fn enum_name_dns_class(e: DnsClass) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_DNS_CLASS[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_DNS_CLASS[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum DnsRecordData {
-  NONE = 0,
-  DnsA = 1,
-  DnsAaaa = 2,
-  DnsCname = 3,
-  DnsMx = 4,
-  DnsNs = 5,
-  DnsPtr = 6,
-  DnsSoa = 7,
-  DnsSrv = 8,
-  DnsTxt = 9,
-
+    NONE = 0,
+    DnsA = 1,
+    DnsAaaa = 2,
+    DnsCname = 3,
+    DnsMx = 4,
+    DnsNs = 5,
+    DnsPtr = 6,
+    DnsSoa = 7,
+    DnsSrv = 8,
+    DnsTxt = 9,
 }
 
 const ENUM_MIN_DNS_RECORD_DATA: u8 = 0;
 const ENUM_MAX_DNS_RECORD_DATA: u8 = 9;
 
 impl<'a> flatbuffers::Follow<'a> for DnsRecordData {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for DnsRecordData {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = u8::to_le(self as u8);
-    let p = &n as *const u8 as *const DnsRecordData;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = u8::from_le(self as u8);
-    let p = &n as *const u8 as *const DnsRecordData;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = u8::to_le(self as u8);
+        let p = &n as *const u8 as *const DnsRecordData;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = u8::from_le(self as u8);
+        let p = &n as *const u8 as *const DnsRecordData;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for DnsRecordData {
@@ -468,36 +432,27 @@ impl flatbuffers::Push for DnsRecordData {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_DNS_RECORD_DATA:[DnsRecordData; 10] = [
-  DnsRecordData::NONE,
-  DnsRecordData::DnsA,
-  DnsRecordData::DnsAaaa,
-  DnsRecordData::DnsCname,
-  DnsRecordData::DnsMx,
-  DnsRecordData::DnsNs,
-  DnsRecordData::DnsPtr,
-  DnsRecordData::DnsSoa,
-  DnsRecordData::DnsSrv,
-  DnsRecordData::DnsTxt
+const ENUM_VALUES_DNS_RECORD_DATA: [DnsRecordData; 10] = [
+    DnsRecordData::NONE,
+    DnsRecordData::DnsA,
+    DnsRecordData::DnsAaaa,
+    DnsRecordData::DnsCname,
+    DnsRecordData::DnsMx,
+    DnsRecordData::DnsNs,
+    DnsRecordData::DnsPtr,
+    DnsRecordData::DnsSoa,
+    DnsRecordData::DnsSrv,
+    DnsRecordData::DnsTxt,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_DNS_RECORD_DATA:[&'static str; 10] = [
-    "NONE",
-    "DnsA",
-    "DnsAaaa",
-    "DnsCname",
-    "DnsMx",
-    "DnsNs",
-    "DnsPtr",
-    "DnsSoa",
-    "DnsSrv",
-    "DnsTxt"
+const ENUM_NAMES_DNS_RECORD_DATA: [&'static str; 10] = [
+    "NONE", "DnsA", "DnsAaaa", "DnsCname", "DnsMx", "DnsNs", "DnsPtr", "DnsSoa", "DnsSrv", "DnsTxt",
 ];
 
 pub fn enum_name_dns_record_data(e: DnsRecordData) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_DNS_RECORD_DATA[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_DNS_RECORD_DATA[index]
 }
 
 pub struct DnsRecordDataUnionTableOffset {}
@@ -505,35 +460,34 @@ pub struct DnsRecordDataUnionTableOffset {}
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ImageTransformType {
-  WebPEncode = 0,
-  Resize = 1,
-
+    WebPEncode = 0,
+    Resize = 1,
 }
 
 const ENUM_MIN_IMAGE_TRANSFORM_TYPE: i8 = 0;
 const ENUM_MAX_IMAGE_TRANSFORM_TYPE: i8 = 1;
 
 impl<'a> flatbuffers::Follow<'a> for ImageTransformType {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for ImageTransformType {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const ImageTransformType;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const ImageTransformType;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const ImageTransformType;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const ImageTransformType;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for ImageTransformType {
@@ -545,58 +499,52 @@ impl flatbuffers::Push for ImageTransformType {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_IMAGE_TRANSFORM_TYPE:[ImageTransformType; 2] = [
-  ImageTransformType::WebPEncode,
-  ImageTransformType::Resize
-];
+const ENUM_VALUES_IMAGE_TRANSFORM_TYPE: [ImageTransformType; 2] =
+    [ImageTransformType::WebPEncode, ImageTransformType::Resize];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_IMAGE_TRANSFORM_TYPE:[&'static str; 2] = [
-    "WebPEncode",
-    "Resize"
-];
+const ENUM_NAMES_IMAGE_TRANSFORM_TYPE: [&'static str; 2] = ["WebPEncode", "Resize"];
 
 pub fn enum_name_image_transform_type(e: ImageTransformType) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_IMAGE_TRANSFORM_TYPE[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_IMAGE_TRANSFORM_TYPE[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ImageSamplingFilter {
-  Nearest = 0,
-  Triangle = 1,
-  CatmullRom = 2,
-  Gaussian = 3,
-  Lanczos3 = 4,
-
+    Nearest = 0,
+    Triangle = 1,
+    CatmullRom = 2,
+    Gaussian = 3,
+    Lanczos3 = 4,
 }
 
 const ENUM_MIN_IMAGE_SAMPLING_FILTER: i8 = 0;
 const ENUM_MAX_IMAGE_SAMPLING_FILTER: i8 = 4;
 
 impl<'a> flatbuffers::Follow<'a> for ImageSamplingFilter {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for ImageSamplingFilter {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const ImageSamplingFilter;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const ImageSamplingFilter;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const ImageSamplingFilter;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const ImageSamplingFilter;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for ImageSamplingFilter {
@@ -608,62 +556,56 @@ impl flatbuffers::Push for ImageSamplingFilter {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_IMAGE_SAMPLING_FILTER:[ImageSamplingFilter; 5] = [
-  ImageSamplingFilter::Nearest,
-  ImageSamplingFilter::Triangle,
-  ImageSamplingFilter::CatmullRom,
-  ImageSamplingFilter::Gaussian,
-  ImageSamplingFilter::Lanczos3
+const ENUM_VALUES_IMAGE_SAMPLING_FILTER: [ImageSamplingFilter; 5] = [
+    ImageSamplingFilter::Nearest,
+    ImageSamplingFilter::Triangle,
+    ImageSamplingFilter::CatmullRom,
+    ImageSamplingFilter::Gaussian,
+    ImageSamplingFilter::Lanczos3,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_IMAGE_SAMPLING_FILTER:[&'static str; 5] = [
-    "Nearest",
-    "Triangle",
-    "CatmullRom",
-    "Gaussian",
-    "Lanczos3"
-];
+const ENUM_NAMES_IMAGE_SAMPLING_FILTER: [&'static str; 5] =
+    ["Nearest", "Triangle", "CatmullRom", "Gaussian", "Lanczos3"];
 
 pub fn enum_name_image_sampling_filter(e: ImageSamplingFilter) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_IMAGE_SAMPLING_FILTER[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_IMAGE_SAMPLING_FILTER[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ImageTransformOptions {
-  NONE = 0,
-  ImageWebPEncode = 1,
-  ImageResize = 2,
-
+    NONE = 0,
+    ImageWebPEncode = 1,
+    ImageResize = 2,
 }
 
 const ENUM_MIN_IMAGE_TRANSFORM_OPTIONS: u8 = 0;
 const ENUM_MAX_IMAGE_TRANSFORM_OPTIONS: u8 = 2;
 
 impl<'a> flatbuffers::Follow<'a> for ImageTransformOptions {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for ImageTransformOptions {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = u8::to_le(self as u8);
-    let p = &n as *const u8 as *const ImageTransformOptions;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = u8::from_le(self as u8);
-    let p = &n as *const u8 as *const ImageTransformOptions;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = u8::to_le(self as u8);
+        let p = &n as *const u8 as *const ImageTransformOptions;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = u8::from_le(self as u8);
+        let p = &n as *const u8 as *const ImageTransformOptions;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for ImageTransformOptions {
@@ -675,22 +617,19 @@ impl flatbuffers::Push for ImageTransformOptions {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_IMAGE_TRANSFORM_OPTIONS:[ImageTransformOptions; 3] = [
-  ImageTransformOptions::NONE,
-  ImageTransformOptions::ImageWebPEncode,
-  ImageTransformOptions::ImageResize
+const ENUM_VALUES_IMAGE_TRANSFORM_OPTIONS: [ImageTransformOptions; 3] = [
+    ImageTransformOptions::NONE,
+    ImageTransformOptions::ImageWebPEncode,
+    ImageTransformOptions::ImageResize,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_IMAGE_TRANSFORM_OPTIONS:[&'static str; 3] = [
-    "NONE",
-    "ImageWebPEncode",
-    "ImageResize"
-];
+const ENUM_NAMES_IMAGE_TRANSFORM_OPTIONS: [&'static str; 3] =
+    ["NONE", "ImageWebPEncode", "ImageResize"];
 
 pub fn enum_name_image_transform_options(e: ImageTransformOptions) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_IMAGE_TRANSFORM_OPTIONS[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_IMAGE_TRANSFORM_OPTIONS[index]
 }
 
 pub struct ImageTransformOptionsUnionTableOffset {}
@@ -698,76 +637,75 @@ pub struct ImageTransformOptionsUnionTableOffset {}
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Any {
-  NONE = 0,
-  TimerStart = 1,
-  TimerReady = 2,
-  TimerClear = 3,
-  HttpRequest = 4,
-  HttpResponse = 5,
-  StreamChunk = 6,
-  HttpRequestStart = 7,
-  FetchHttpResponse = 8,
-  CacheGet = 9,
-  CacheGetReady = 10,
-  CacheSet = 11,
-  CacheSetReady = 12,
-  CacheDel = 13,
-  CacheExpire = 14,
-  CacheNotifyDel = 15,
-  CacheNotifyPurgeTag = 16,
-  CacheSetTags = 17,
-  CachePurgeTag = 18,
-  CacheSetMeta = 19,
-  CryptoDigest = 20,
-  CryptoDigestReady = 21,
-  CryptoRandomValues = 22,
-  CryptoRandomValuesReady = 23,
-  SourceMap = 24,
-  SourceMapReady = 25,
-  DataPut = 26,
-  DataGet = 27,
-  DataGetReady = 28,
-  DataDel = 29,
-  DataIncr = 30,
-  DataDropCollection = 31,
-  DnsQuery = 32,
-  DnsRequest = 33,
-  DnsResponse = 34,
-  AddEventListener = 35,
-  LoadModule = 36,
-  LoadModuleResp = 37,
-  ImageApplyTransforms = 38,
-  ImageReady = 39,
-  AcmeGetChallenge = 40,
-  AcmeGetChallengeReady = 41,
-  OsExit = 42,
-
+    NONE = 0,
+    TimerStart = 1,
+    TimerReady = 2,
+    TimerClear = 3,
+    HttpRequest = 4,
+    HttpResponse = 5,
+    StreamChunk = 6,
+    HttpRequestStart = 7,
+    FetchHttpResponse = 8,
+    CacheGet = 9,
+    CacheGetReady = 10,
+    CacheSet = 11,
+    CacheSetReady = 12,
+    CacheDel = 13,
+    CacheExpire = 14,
+    CacheNotifyDel = 15,
+    CacheNotifyPurgeTag = 16,
+    CacheSetTags = 17,
+    CachePurgeTag = 18,
+    CacheSetMeta = 19,
+    CryptoDigest = 20,
+    CryptoDigestReady = 21,
+    CryptoRandomValues = 22,
+    CryptoRandomValuesReady = 23,
+    SourceMap = 24,
+    SourceMapReady = 25,
+    DataPut = 26,
+    DataGet = 27,
+    DataGetReady = 28,
+    DataDel = 29,
+    DataIncr = 30,
+    DataDropCollection = 31,
+    DnsQuery = 32,
+    DnsRequest = 33,
+    DnsResponse = 34,
+    AddEventListener = 35,
+    LoadModule = 36,
+    LoadModuleResp = 37,
+    ImageApplyTransforms = 38,
+    ImageReady = 39,
+    AcmeGetChallenge = 40,
+    AcmeGetChallengeReady = 41,
+    OsExit = 42,
 }
 
 const ENUM_MIN_ANY: u8 = 0;
 const ENUM_MAX_ANY: u8 = 42;
 
 impl<'a> flatbuffers::Follow<'a> for Any {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for Any {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = u8::to_le(self as u8);
-    let p = &n as *const u8 as *const Any;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = u8::from_le(self as u8);
-    let p = &n as *const u8 as *const Any;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = u8::to_le(self as u8);
+        let p = &n as *const u8 as *const Any;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = u8::from_le(self as u8);
+        let p = &n as *const u8 as *const Any;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for Any {
@@ -779,54 +717,54 @@ impl flatbuffers::Push for Any {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ANY:[Any; 43] = [
-  Any::NONE,
-  Any::TimerStart,
-  Any::TimerReady,
-  Any::TimerClear,
-  Any::HttpRequest,
-  Any::HttpResponse,
-  Any::StreamChunk,
-  Any::HttpRequestStart,
-  Any::FetchHttpResponse,
-  Any::CacheGet,
-  Any::CacheGetReady,
-  Any::CacheSet,
-  Any::CacheSetReady,
-  Any::CacheDel,
-  Any::CacheExpire,
-  Any::CacheNotifyDel,
-  Any::CacheNotifyPurgeTag,
-  Any::CacheSetTags,
-  Any::CachePurgeTag,
-  Any::CacheSetMeta,
-  Any::CryptoDigest,
-  Any::CryptoDigestReady,
-  Any::CryptoRandomValues,
-  Any::CryptoRandomValuesReady,
-  Any::SourceMap,
-  Any::SourceMapReady,
-  Any::DataPut,
-  Any::DataGet,
-  Any::DataGetReady,
-  Any::DataDel,
-  Any::DataIncr,
-  Any::DataDropCollection,
-  Any::DnsQuery,
-  Any::DnsRequest,
-  Any::DnsResponse,
-  Any::AddEventListener,
-  Any::LoadModule,
-  Any::LoadModuleResp,
-  Any::ImageApplyTransforms,
-  Any::ImageReady,
-  Any::AcmeGetChallenge,
-  Any::AcmeGetChallengeReady,
-  Any::OsExit
+const ENUM_VALUES_ANY: [Any; 43] = [
+    Any::NONE,
+    Any::TimerStart,
+    Any::TimerReady,
+    Any::TimerClear,
+    Any::HttpRequest,
+    Any::HttpResponse,
+    Any::StreamChunk,
+    Any::HttpRequestStart,
+    Any::FetchHttpResponse,
+    Any::CacheGet,
+    Any::CacheGetReady,
+    Any::CacheSet,
+    Any::CacheSetReady,
+    Any::CacheDel,
+    Any::CacheExpire,
+    Any::CacheNotifyDel,
+    Any::CacheNotifyPurgeTag,
+    Any::CacheSetTags,
+    Any::CachePurgeTag,
+    Any::CacheSetMeta,
+    Any::CryptoDigest,
+    Any::CryptoDigestReady,
+    Any::CryptoRandomValues,
+    Any::CryptoRandomValuesReady,
+    Any::SourceMap,
+    Any::SourceMapReady,
+    Any::DataPut,
+    Any::DataGet,
+    Any::DataGetReady,
+    Any::DataDel,
+    Any::DataIncr,
+    Any::DataDropCollection,
+    Any::DnsQuery,
+    Any::DnsRequest,
+    Any::DnsResponse,
+    Any::AddEventListener,
+    Any::LoadModule,
+    Any::LoadModuleResp,
+    Any::ImageApplyTransforms,
+    Any::ImageReady,
+    Any::AcmeGetChallenge,
+    Any::AcmeGetChallengeReady,
+    Any::OsExit,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ANY:[&'static str; 43] = [
+const ENUM_NAMES_ANY: [&'static str; 43] = [
     "NONE",
     "TimerStart",
     "TimerReady",
@@ -869,12 +807,12 @@ const ENUM_NAMES_ANY:[&'static str; 43] = [
     "ImageReady",
     "AcmeGetChallenge",
     "AcmeGetChallengeReady",
-    "OsExit"
+    "OsExit",
 ];
 
 pub fn enum_name_any(e: Any) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_ANY[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_ANY[index]
 }
 
 pub struct AnyUnionTableOffset {}
@@ -882,68 +820,67 @@ pub struct AnyUnionTableOffset {}
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ErrorKind {
-  NoError = 0,
-  String = 1,
-  NotFound = 2,
-  PermissionDenied = 3,
-  ConnectionRefused = 4,
-  ConnectionReset = 5,
-  ConnectionAborted = 6,
-  NotConnected = 7,
-  AddrInUse = 8,
-  AddrNotAvailable = 9,
-  BrokenPipe = 10,
-  AlreadyExists = 11,
-  WouldBlock = 12,
-  InvalidInput = 13,
-  InvalidData = 14,
-  TimedOut = 15,
-  Interrupted = 16,
-  WriteZero = 17,
-  Other = 18,
-  UnexpectedEof = 19,
-  EmptyHost = 20,
-  IdnaError = 21,
-  InvalidPort = 22,
-  InvalidIpv4Address = 23,
-  InvalidIpv6Address = 24,
-  InvalidDomainCharacter = 25,
-  RelativeUrlWithoutBase = 26,
-  RelativeUrlWithCannotBeABaseBase = 27,
-  SetHostOnCannotBeABaseUrl = 28,
-  Overflow = 29,
-  HttpUser = 30,
-  HttpClosed = 31,
-  HttpCanceled = 32,
-  HttpParse = 33,
-  HttpOther = 34,
-
+    NoError = 0,
+    String = 1,
+    NotFound = 2,
+    PermissionDenied = 3,
+    ConnectionRefused = 4,
+    ConnectionReset = 5,
+    ConnectionAborted = 6,
+    NotConnected = 7,
+    AddrInUse = 8,
+    AddrNotAvailable = 9,
+    BrokenPipe = 10,
+    AlreadyExists = 11,
+    WouldBlock = 12,
+    InvalidInput = 13,
+    InvalidData = 14,
+    TimedOut = 15,
+    Interrupted = 16,
+    WriteZero = 17,
+    Other = 18,
+    UnexpectedEof = 19,
+    EmptyHost = 20,
+    IdnaError = 21,
+    InvalidPort = 22,
+    InvalidIpv4Address = 23,
+    InvalidIpv6Address = 24,
+    InvalidDomainCharacter = 25,
+    RelativeUrlWithoutBase = 26,
+    RelativeUrlWithCannotBeABaseBase = 27,
+    SetHostOnCannotBeABaseUrl = 28,
+    Overflow = 29,
+    HttpUser = 30,
+    HttpClosed = 31,
+    HttpCanceled = 32,
+    HttpParse = 33,
+    HttpOther = 34,
 }
 
 const ENUM_MIN_ERROR_KIND: i8 = 0;
 const ENUM_MAX_ERROR_KIND: i8 = 34;
 
 impl<'a> flatbuffers::Follow<'a> for ErrorKind {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for ErrorKind {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const ErrorKind;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const ErrorKind;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const ErrorKind;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const ErrorKind;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for ErrorKind {
@@ -955,46 +892,46 @@ impl flatbuffers::Push for ErrorKind {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_ERROR_KIND:[ErrorKind; 35] = [
-  ErrorKind::NoError,
-  ErrorKind::String,
-  ErrorKind::NotFound,
-  ErrorKind::PermissionDenied,
-  ErrorKind::ConnectionRefused,
-  ErrorKind::ConnectionReset,
-  ErrorKind::ConnectionAborted,
-  ErrorKind::NotConnected,
-  ErrorKind::AddrInUse,
-  ErrorKind::AddrNotAvailable,
-  ErrorKind::BrokenPipe,
-  ErrorKind::AlreadyExists,
-  ErrorKind::WouldBlock,
-  ErrorKind::InvalidInput,
-  ErrorKind::InvalidData,
-  ErrorKind::TimedOut,
-  ErrorKind::Interrupted,
-  ErrorKind::WriteZero,
-  ErrorKind::Other,
-  ErrorKind::UnexpectedEof,
-  ErrorKind::EmptyHost,
-  ErrorKind::IdnaError,
-  ErrorKind::InvalidPort,
-  ErrorKind::InvalidIpv4Address,
-  ErrorKind::InvalidIpv6Address,
-  ErrorKind::InvalidDomainCharacter,
-  ErrorKind::RelativeUrlWithoutBase,
-  ErrorKind::RelativeUrlWithCannotBeABaseBase,
-  ErrorKind::SetHostOnCannotBeABaseUrl,
-  ErrorKind::Overflow,
-  ErrorKind::HttpUser,
-  ErrorKind::HttpClosed,
-  ErrorKind::HttpCanceled,
-  ErrorKind::HttpParse,
-  ErrorKind::HttpOther
+const ENUM_VALUES_ERROR_KIND: [ErrorKind; 35] = [
+    ErrorKind::NoError,
+    ErrorKind::String,
+    ErrorKind::NotFound,
+    ErrorKind::PermissionDenied,
+    ErrorKind::ConnectionRefused,
+    ErrorKind::ConnectionReset,
+    ErrorKind::ConnectionAborted,
+    ErrorKind::NotConnected,
+    ErrorKind::AddrInUse,
+    ErrorKind::AddrNotAvailable,
+    ErrorKind::BrokenPipe,
+    ErrorKind::AlreadyExists,
+    ErrorKind::WouldBlock,
+    ErrorKind::InvalidInput,
+    ErrorKind::InvalidData,
+    ErrorKind::TimedOut,
+    ErrorKind::Interrupted,
+    ErrorKind::WriteZero,
+    ErrorKind::Other,
+    ErrorKind::UnexpectedEof,
+    ErrorKind::EmptyHost,
+    ErrorKind::IdnaError,
+    ErrorKind::InvalidPort,
+    ErrorKind::InvalidIpv4Address,
+    ErrorKind::InvalidIpv6Address,
+    ErrorKind::InvalidDomainCharacter,
+    ErrorKind::RelativeUrlWithoutBase,
+    ErrorKind::RelativeUrlWithCannotBeABaseBase,
+    ErrorKind::SetHostOnCannotBeABaseUrl,
+    ErrorKind::Overflow,
+    ErrorKind::HttpUser,
+    ErrorKind::HttpClosed,
+    ErrorKind::HttpCanceled,
+    ErrorKind::HttpParse,
+    ErrorKind::HttpOther,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_ERROR_KIND:[&'static str; 35] = [
+const ENUM_NAMES_ERROR_KIND: [&'static str; 35] = [
     "NoError",
     "String",
     "NotFound",
@@ -1029,54 +966,53 @@ const ENUM_NAMES_ERROR_KIND:[&'static str; 35] = [
     "HttpClosed",
     "HttpCanceled",
     "HttpParse",
-    "HttpOther"
+    "HttpOther",
 ];
 
 pub fn enum_name_error_kind(e: ErrorKind) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_ERROR_KIND[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_ERROR_KIND[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum HttpMethod {
-  Get = 0,
-  Head = 1,
-  Post = 2,
-  Put = 3,
-  Patch = 4,
-  Delete = 5,
-  Connect = 6,
-  Options = 7,
-  Trace = 8,
-
+    Get = 0,
+    Head = 1,
+    Post = 2,
+    Put = 3,
+    Patch = 4,
+    Delete = 5,
+    Connect = 6,
+    Options = 7,
+    Trace = 8,
 }
 
 const ENUM_MIN_HTTP_METHOD: i8 = 0;
 const ENUM_MAX_HTTP_METHOD: i8 = 8;
 
 impl<'a> flatbuffers::Follow<'a> for HttpMethod {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for HttpMethod {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const HttpMethod;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const HttpMethod;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const HttpMethod;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const HttpMethod;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for HttpMethod {
@@ -1088,69 +1024,60 @@ impl flatbuffers::Push for HttpMethod {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_HTTP_METHOD:[HttpMethod; 9] = [
-  HttpMethod::Get,
-  HttpMethod::Head,
-  HttpMethod::Post,
-  HttpMethod::Put,
-  HttpMethod::Patch,
-  HttpMethod::Delete,
-  HttpMethod::Connect,
-  HttpMethod::Options,
-  HttpMethod::Trace
+const ENUM_VALUES_HTTP_METHOD: [HttpMethod; 9] = [
+    HttpMethod::Get,
+    HttpMethod::Head,
+    HttpMethod::Post,
+    HttpMethod::Put,
+    HttpMethod::Patch,
+    HttpMethod::Delete,
+    HttpMethod::Connect,
+    HttpMethod::Options,
+    HttpMethod::Trace,
 ];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_HTTP_METHOD:[&'static str; 9] = [
-    "Get",
-    "Head",
-    "Post",
-    "Put",
-    "Patch",
-    "Delete",
-    "Connect",
-    "Options",
-    "Trace"
+const ENUM_NAMES_HTTP_METHOD: [&'static str; 9] = [
+    "Get", "Head", "Post", "Put", "Patch", "Delete", "Connect", "Options", "Trace",
 ];
 
 pub fn enum_name_http_method(e: HttpMethod) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_HTTP_METHOD[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_HTTP_METHOD[index]
 }
 
 #[allow(non_camel_case_types)]
 #[repr(i8)]
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum EventType {
-  Fetch = 0,
-  Resolv = 1,
-
+    Fetch = 0,
+    Resolv = 1,
 }
 
 const ENUM_MIN_EVENT_TYPE: i8 = 0;
 const ENUM_MAX_EVENT_TYPE: i8 = 1;
 
 impl<'a> flatbuffers::Follow<'a> for EventType {
-  type Inner = Self;
-  #[inline]
-  fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
-    flatbuffers::read_scalar_at::<Self>(buf, loc)
-  }
+    type Inner = Self;
+    #[inline]
+    fn follow(buf: &'a [u8], loc: usize) -> Self::Inner {
+        flatbuffers::read_scalar_at::<Self>(buf, loc)
+    }
 }
 
 impl flatbuffers::EndianScalar for EventType {
-  #[inline]
-  fn to_little_endian(self) -> Self {
-    let n = i8::to_le(self as i8);
-    let p = &n as *const i8 as *const EventType;
-    unsafe { *p }
-  }
-  #[inline]
-  fn from_little_endian(self) -> Self {
-    let n = i8::from_le(self as i8);
-    let p = &n as *const i8 as *const EventType;
-    unsafe { *p }
-  }
+    #[inline]
+    fn to_little_endian(self) -> Self {
+        let n = i8::to_le(self as i8);
+        let p = &n as *const i8 as *const EventType;
+        unsafe { *p }
+    }
+    #[inline]
+    fn from_little_endian(self) -> Self {
+        let n = i8::from_le(self as i8);
+        let p = &n as *const i8 as *const EventType;
+        unsafe { *p }
+    }
 }
 
 impl flatbuffers::Push for EventType {
@@ -1162,27 +1089,21 @@ impl flatbuffers::Push for EventType {
 }
 
 #[allow(non_camel_case_types)]
-const ENUM_VALUES_EVENT_TYPE:[EventType; 2] = [
-  EventType::Fetch,
-  EventType::Resolv
-];
+const ENUM_VALUES_EVENT_TYPE: [EventType; 2] = [EventType::Fetch, EventType::Resolv];
 
 #[allow(non_camel_case_types)]
-const ENUM_NAMES_EVENT_TYPE:[&'static str; 2] = [
-    "Fetch",
-    "Resolv"
-];
+const ENUM_NAMES_EVENT_TYPE: [&'static str; 2] = ["Fetch", "Resolv"];
 
 pub fn enum_name_event_type(e: EventType) -> &'static str {
-  let index: usize = e as usize;
-  ENUM_NAMES_EVENT_TYPE[index]
+    let index: usize = e as usize;
+    ENUM_NAMES_EVENT_TYPE[index]
 }
 
 pub enum DnsAOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsA<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsA<'a> {
@@ -1198,67 +1119,68 @@ impl<'a> flatbuffers::Follow<'a> for DnsA<'a> {
 impl<'a> DnsA<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsA {
-            _tab: table,
-        }
+        DnsA { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsAArgs<'args>) -> flatbuffers::WIPOffset<DnsA<'bldr>> {
-      let mut builder = DnsABuilder::new(_fbb);
-      if let Some(x) = args.ip { builder.add_ip(x); }
-      builder.finish()
+        args: &'args DnsAArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsA<'bldr>> {
+        let mut builder = DnsABuilder::new(_fbb);
+        if let Some(x) = args.ip {
+            builder.add_ip(x);
+        }
+        builder.finish()
     }
 
     pub const VT_IP: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn ip(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsA::VT_IP, None)
-  }
+    #[inline]
+    pub fn ip(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsA::VT_IP, None)
+    }
 }
 
 pub struct DnsAArgs<'a> {
-    pub ip: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub ip: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsAArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsAArgs {
-            ip: None,
-        }
+        DnsAArgs { ip: None }
     }
 }
 pub struct DnsABuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsABuilder<'a, 'b> {
-  #[inline]
-  pub fn add_ip(&mut self, ip: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsA::VT_IP, ip);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsABuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsABuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_ip(&mut self, ip: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsA::VT_IP, ip);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsA<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsABuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsABuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsA<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsAaaaOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsAaaa<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsAaaa<'a> {
@@ -1274,67 +1196,68 @@ impl<'a> flatbuffers::Follow<'a> for DnsAaaa<'a> {
 impl<'a> DnsAaaa<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsAaaa {
-            _tab: table,
-        }
+        DnsAaaa { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsAaaaArgs<'args>) -> flatbuffers::WIPOffset<DnsAaaa<'bldr>> {
-      let mut builder = DnsAaaaBuilder::new(_fbb);
-      if let Some(x) = args.ip { builder.add_ip(x); }
-      builder.finish()
+        args: &'args DnsAaaaArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsAaaa<'bldr>> {
+        let mut builder = DnsAaaaBuilder::new(_fbb);
+        if let Some(x) = args.ip {
+            builder.add_ip(x);
+        }
+        builder.finish()
     }
 
     pub const VT_IP: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn ip(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsAaaa::VT_IP, None)
-  }
+    #[inline]
+    pub fn ip(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsAaaa::VT_IP, None)
+    }
 }
 
 pub struct DnsAaaaArgs<'a> {
-    pub ip: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub ip: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsAaaaArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsAaaaArgs {
-            ip: None,
-        }
+        DnsAaaaArgs { ip: None }
     }
 }
 pub struct DnsAaaaBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsAaaaBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_ip(&mut self, ip: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsAaaa::VT_IP, ip);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsAaaaBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsAaaaBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_ip(&mut self, ip: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsAaaa::VT_IP, ip);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsAaaa<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsAaaaBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsAaaaBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsAaaa<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsCnameOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsCname<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsCname<'a> {
@@ -1350,67 +1273,68 @@ impl<'a> flatbuffers::Follow<'a> for DnsCname<'a> {
 impl<'a> DnsCname<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsCname {
-            _tab: table,
-        }
+        DnsCname { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsCnameArgs<'args>) -> flatbuffers::WIPOffset<DnsCname<'bldr>> {
-      let mut builder = DnsCnameBuilder::new(_fbb);
-      if let Some(x) = args.name { builder.add_name(x); }
-      builder.finish()
+        args: &'args DnsCnameArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsCname<'bldr>> {
+        let mut builder = DnsCnameBuilder::new(_fbb);
+        if let Some(x) = args.name {
+            builder.add_name(x);
+        }
+        builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsCname::VT_NAME, None)
-  }
+    #[inline]
+    pub fn name(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsCname::VT_NAME, None)
+    }
 }
 
 pub struct DnsCnameArgs<'a> {
-    pub name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsCnameArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsCnameArgs {
-            name: None,
-        }
+        DnsCnameArgs { name: None }
     }
 }
 pub struct DnsCnameBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsCnameBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsCname::VT_NAME, name);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsCnameBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsCnameBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsCname::VT_NAME, name);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsCname<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsCnameBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsCnameBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsCname<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsMxOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsMx<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsMx<'a> {
@@ -1426,36 +1350,38 @@ impl<'a> flatbuffers::Follow<'a> for DnsMx<'a> {
 impl<'a> DnsMx<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsMx {
-            _tab: table,
-        }
+        DnsMx { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsMxArgs<'args>) -> flatbuffers::WIPOffset<DnsMx<'bldr>> {
-      let mut builder = DnsMxBuilder::new(_fbb);
-      if let Some(x) = args.exchange { builder.add_exchange(x); }
-      builder.add_preference(args.preference);
-      builder.finish()
+        args: &'args DnsMxArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsMx<'bldr>> {
+        let mut builder = DnsMxBuilder::new(_fbb);
+        if let Some(x) = args.exchange {
+            builder.add_exchange(x);
+        }
+        builder.add_preference(args.preference);
+        builder.finish()
     }
 
     pub const VT_PREFERENCE: flatbuffers::VOffsetT = 4;
     pub const VT_EXCHANGE: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn preference(&self) -> u16 {
-    self._tab.get::<u16>(DnsMx::VT_PREFERENCE, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn exchange(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsMx::VT_EXCHANGE, None)
-  }
+    #[inline]
+    pub fn preference(&self) -> u16 {
+        self._tab.get::<u16>(DnsMx::VT_PREFERENCE, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn exchange(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsMx::VT_EXCHANGE, None)
+    }
 }
 
 pub struct DnsMxArgs<'a> {
     pub preference: u16,
-    pub exchange: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub exchange: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsMxArgs<'a> {
     #[inline]
@@ -1467,38 +1393,40 @@ impl<'a> Default for DnsMxArgs<'a> {
     }
 }
 pub struct DnsMxBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsMxBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_preference(&mut self, preference: u16) {
-    self.fbb_.push_slot::<u16>(DnsMx::VT_PREFERENCE, preference, 0);
-  }
-  #[inline]
-  pub fn add_exchange(&mut self, exchange: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsMx::VT_EXCHANGE, exchange);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsMxBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsMxBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_preference(&mut self, preference: u16) {
+        self.fbb_
+            .push_slot::<u16>(DnsMx::VT_PREFERENCE, preference, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsMx<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_exchange(&mut self, exchange: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsMx::VT_EXCHANGE, exchange);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsMxBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsMxBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsMx<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsNsOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsNs<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsNs<'a> {
@@ -1514,67 +1442,68 @@ impl<'a> flatbuffers::Follow<'a> for DnsNs<'a> {
 impl<'a> DnsNs<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsNs {
-            _tab: table,
-        }
+        DnsNs { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsNsArgs<'args>) -> flatbuffers::WIPOffset<DnsNs<'bldr>> {
-      let mut builder = DnsNsBuilder::new(_fbb);
-      if let Some(x) = args.name { builder.add_name(x); }
-      builder.finish()
+        args: &'args DnsNsArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsNs<'bldr>> {
+        let mut builder = DnsNsBuilder::new(_fbb);
+        if let Some(x) = args.name {
+            builder.add_name(x);
+        }
+        builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsNs::VT_NAME, None)
-  }
+    #[inline]
+    pub fn name(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsNs::VT_NAME, None)
+    }
 }
 
 pub struct DnsNsArgs<'a> {
-    pub name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsNsArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsNsArgs {
-            name: None,
-        }
+        DnsNsArgs { name: None }
     }
 }
 pub struct DnsNsBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsNsBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsNs::VT_NAME, name);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsNsBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsNsBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsNs::VT_NAME, name);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsNs<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsNsBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsNsBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsNs<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsPtrOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsPtr<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsPtr<'a> {
@@ -1590,67 +1519,68 @@ impl<'a> flatbuffers::Follow<'a> for DnsPtr<'a> {
 impl<'a> DnsPtr<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsPtr {
-            _tab: table,
-        }
+        DnsPtr { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsPtrArgs<'args>) -> flatbuffers::WIPOffset<DnsPtr<'bldr>> {
-      let mut builder = DnsPtrBuilder::new(_fbb);
-      if let Some(x) = args.name { builder.add_name(x); }
-      builder.finish()
+        args: &'args DnsPtrArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsPtr<'bldr>> {
+        let mut builder = DnsPtrBuilder::new(_fbb);
+        if let Some(x) = args.name {
+            builder.add_name(x);
+        }
+        builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsPtr::VT_NAME, None)
-  }
+    #[inline]
+    pub fn name(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsPtr::VT_NAME, None)
+    }
 }
 
 pub struct DnsPtrArgs<'a> {
-    pub name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsPtrArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsPtrArgs {
-            name: None,
-        }
+        DnsPtrArgs { name: None }
     }
 }
 pub struct DnsPtrBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsPtrBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsPtr::VT_NAME, name);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsPtrBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsPtrBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsPtr::VT_NAME, name);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsPtr<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsPtrBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsPtrBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsPtr<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsSoaOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsSoa<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsSoa<'a> {
@@ -1666,23 +1596,26 @@ impl<'a> flatbuffers::Follow<'a> for DnsSoa<'a> {
 impl<'a> DnsSoa<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsSoa {
-            _tab: table,
-        }
+        DnsSoa { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsSoaArgs<'args>) -> flatbuffers::WIPOffset<DnsSoa<'bldr>> {
-      let mut builder = DnsSoaBuilder::new(_fbb);
-      builder.add_minimum(args.minimum);
-      builder.add_expire(args.expire);
-      builder.add_retry(args.retry);
-      builder.add_refresh(args.refresh);
-      builder.add_serial(args.serial);
-      if let Some(x) = args.rname { builder.add_rname(x); }
-      if let Some(x) = args.mname { builder.add_mname(x); }
-      builder.finish()
+        args: &'args DnsSoaArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsSoa<'bldr>> {
+        let mut builder = DnsSoaBuilder::new(_fbb);
+        builder.add_minimum(args.minimum);
+        builder.add_expire(args.expire);
+        builder.add_retry(args.retry);
+        builder.add_refresh(args.refresh);
+        builder.add_serial(args.serial);
+        if let Some(x) = args.rname {
+            builder.add_rname(x);
+        }
+        if let Some(x) = args.mname {
+            builder.add_mname(x);
+        }
+        builder.finish()
     }
 
     pub const VT_MNAME: flatbuffers::VOffsetT = 4;
@@ -1693,39 +1626,41 @@ impl<'a> DnsSoa<'a> {
     pub const VT_EXPIRE: flatbuffers::VOffsetT = 14;
     pub const VT_MINIMUM: flatbuffers::VOffsetT = 16;
 
-  #[inline]
-  pub fn mname(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsSoa::VT_MNAME, None)
-  }
-  #[inline]
-  pub fn rname(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsSoa::VT_RNAME, None)
-  }
-  #[inline]
-  pub fn serial(&self) -> u32 {
-    self._tab.get::<u32>(DnsSoa::VT_SERIAL, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn refresh(&self) -> i32 {
-    self._tab.get::<i32>(DnsSoa::VT_REFRESH, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn retry(&self) -> i32 {
-    self._tab.get::<i32>(DnsSoa::VT_RETRY, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn expire(&self) -> i32 {
-    self._tab.get::<i32>(DnsSoa::VT_EXPIRE, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn minimum(&self) -> u32 {
-    self._tab.get::<u32>(DnsSoa::VT_MINIMUM, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn mname(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsSoa::VT_MNAME, None)
+    }
+    #[inline]
+    pub fn rname(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsSoa::VT_RNAME, None)
+    }
+    #[inline]
+    pub fn serial(&self) -> u32 {
+        self._tab.get::<u32>(DnsSoa::VT_SERIAL, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn refresh(&self) -> i32 {
+        self._tab.get::<i32>(DnsSoa::VT_REFRESH, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn retry(&self) -> i32 {
+        self._tab.get::<i32>(DnsSoa::VT_RETRY, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn expire(&self) -> i32 {
+        self._tab.get::<i32>(DnsSoa::VT_EXPIRE, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn minimum(&self) -> u32 {
+        self._tab.get::<u32>(DnsSoa::VT_MINIMUM, Some(0)).unwrap()
+    }
 }
 
 pub struct DnsSoaArgs<'a> {
-    pub mname: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub rname: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub mname: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub rname: Option<flatbuffers::WIPOffset<&'a str>>,
     pub serial: u32,
     pub refresh: i32,
     pub retry: i32,
@@ -1747,58 +1682,60 @@ impl<'a> Default for DnsSoaArgs<'a> {
     }
 }
 pub struct DnsSoaBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsSoaBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_mname(&mut self, mname: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsSoa::VT_MNAME, mname);
-  }
-  #[inline]
-  pub fn add_rname(&mut self, rname: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsSoa::VT_RNAME, rname);
-  }
-  #[inline]
-  pub fn add_serial(&mut self, serial: u32) {
-    self.fbb_.push_slot::<u32>(DnsSoa::VT_SERIAL, serial, 0);
-  }
-  #[inline]
-  pub fn add_refresh(&mut self, refresh: i32) {
-    self.fbb_.push_slot::<i32>(DnsSoa::VT_REFRESH, refresh, 0);
-  }
-  #[inline]
-  pub fn add_retry(&mut self, retry: i32) {
-    self.fbb_.push_slot::<i32>(DnsSoa::VT_RETRY, retry, 0);
-  }
-  #[inline]
-  pub fn add_expire(&mut self, expire: i32) {
-    self.fbb_.push_slot::<i32>(DnsSoa::VT_EXPIRE, expire, 0);
-  }
-  #[inline]
-  pub fn add_minimum(&mut self, minimum: u32) {
-    self.fbb_.push_slot::<u32>(DnsSoa::VT_MINIMUM, minimum, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsSoaBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsSoaBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_mname(&mut self, mname: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsSoa::VT_MNAME, mname);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsSoa<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_rname(&mut self, rname: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsSoa::VT_RNAME, rname);
+    }
+    #[inline]
+    pub fn add_serial(&mut self, serial: u32) {
+        self.fbb_.push_slot::<u32>(DnsSoa::VT_SERIAL, serial, 0);
+    }
+    #[inline]
+    pub fn add_refresh(&mut self, refresh: i32) {
+        self.fbb_.push_slot::<i32>(DnsSoa::VT_REFRESH, refresh, 0);
+    }
+    #[inline]
+    pub fn add_retry(&mut self, retry: i32) {
+        self.fbb_.push_slot::<i32>(DnsSoa::VT_RETRY, retry, 0);
+    }
+    #[inline]
+    pub fn add_expire(&mut self, expire: i32) {
+        self.fbb_.push_slot::<i32>(DnsSoa::VT_EXPIRE, expire, 0);
+    }
+    #[inline]
+    pub fn add_minimum(&mut self, minimum: u32) {
+        self.fbb_.push_slot::<u32>(DnsSoa::VT_MINIMUM, minimum, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsSoaBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsSoaBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsSoa<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsSrvOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsSrv<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsSrv<'a> {
@@ -1814,20 +1751,21 @@ impl<'a> flatbuffers::Follow<'a> for DnsSrv<'a> {
 impl<'a> DnsSrv<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsSrv {
-            _tab: table,
-        }
+        DnsSrv { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsSrvArgs<'args>) -> flatbuffers::WIPOffset<DnsSrv<'bldr>> {
-      let mut builder = DnsSrvBuilder::new(_fbb);
-      if let Some(x) = args.target { builder.add_target(x); }
-      builder.add_port(args.port);
-      builder.add_weight(args.weight);
-      builder.add_priority(args.priority);
-      builder.finish()
+        args: &'args DnsSrvArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsSrv<'bldr>> {
+        let mut builder = DnsSrvBuilder::new(_fbb);
+        if let Some(x) = args.target {
+            builder.add_target(x);
+        }
+        builder.add_port(args.port);
+        builder.add_weight(args.weight);
+        builder.add_priority(args.priority);
+        builder.finish()
     }
 
     pub const VT_PRIORITY: flatbuffers::VOffsetT = 4;
@@ -1835,29 +1773,30 @@ impl<'a> DnsSrv<'a> {
     pub const VT_PORT: flatbuffers::VOffsetT = 8;
     pub const VT_TARGET: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn priority(&self) -> u16 {
-    self._tab.get::<u16>(DnsSrv::VT_PRIORITY, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn weight(&self) -> u16 {
-    self._tab.get::<u16>(DnsSrv::VT_WEIGHT, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn port(&self) -> u16 {
-    self._tab.get::<u16>(DnsSrv::VT_PORT, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn target(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsSrv::VT_TARGET, None)
-  }
+    #[inline]
+    pub fn priority(&self) -> u16 {
+        self._tab.get::<u16>(DnsSrv::VT_PRIORITY, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn weight(&self) -> u16 {
+        self._tab.get::<u16>(DnsSrv::VT_WEIGHT, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn port(&self) -> u16 {
+        self._tab.get::<u16>(DnsSrv::VT_PORT, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn target(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsSrv::VT_TARGET, None)
+    }
 }
 
 pub struct DnsSrvArgs<'a> {
     pub priority: u16,
     pub weight: u16,
     pub port: u16,
-    pub target: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub target: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DnsSrvArgs<'a> {
     #[inline]
@@ -1871,46 +1810,47 @@ impl<'a> Default for DnsSrvArgs<'a> {
     }
 }
 pub struct DnsSrvBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsSrvBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_priority(&mut self, priority: u16) {
-    self.fbb_.push_slot::<u16>(DnsSrv::VT_PRIORITY, priority, 0);
-  }
-  #[inline]
-  pub fn add_weight(&mut self, weight: u16) {
-    self.fbb_.push_slot::<u16>(DnsSrv::VT_WEIGHT, weight, 0);
-  }
-  #[inline]
-  pub fn add_port(&mut self, port: u16) {
-    self.fbb_.push_slot::<u16>(DnsSrv::VT_PORT, port, 0);
-  }
-  #[inline]
-  pub fn add_target(&mut self, target: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsSrv::VT_TARGET, target);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsSrvBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsSrvBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_priority(&mut self, priority: u16) {
+        self.fbb_.push_slot::<u16>(DnsSrv::VT_PRIORITY, priority, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsSrv<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_weight(&mut self, weight: u16) {
+        self.fbb_.push_slot::<u16>(DnsSrv::VT_WEIGHT, weight, 0);
+    }
+    #[inline]
+    pub fn add_port(&mut self, port: u16) {
+        self.fbb_.push_slot::<u16>(DnsSrv::VT_PORT, port, 0);
+    }
+    #[inline]
+    pub fn add_target(&mut self, target: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsSrv::VT_TARGET, target);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsSrvBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsSrvBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsSrv<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsTxtDataOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsTxtData<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsTxtData<'a> {
@@ -1926,67 +1866,72 @@ impl<'a> flatbuffers::Follow<'a> for DnsTxtData<'a> {
 impl<'a> DnsTxtData<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsTxtData {
-            _tab: table,
-        }
+        DnsTxtData { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsTxtDataArgs<'args>) -> flatbuffers::WIPOffset<DnsTxtData<'bldr>> {
-      let mut builder = DnsTxtDataBuilder::new(_fbb);
-      if let Some(x) = args.data { builder.add_data(x); }
-      builder.finish()
+        args: &'args DnsTxtDataArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsTxtData<'bldr>> {
+        let mut builder = DnsTxtDataBuilder::new(_fbb);
+        if let Some(x) = args.data {
+            builder.add_data(x);
+        }
+        builder.finish()
     }
 
     pub const VT_DATA: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn data(&self) -> Option<&'a [u8]> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(DnsTxtData::VT_DATA, None).map(|v| v.safe_slice())
-  }
+    #[inline]
+    pub fn data(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                DnsTxtData::VT_DATA,
+                None,
+            )
+            .map(|v| v.safe_slice())
+    }
 }
 
 pub struct DnsTxtDataArgs<'a> {
-    pub data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a ,  u8>>>,
+    pub data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
 }
 impl<'a> Default for DnsTxtDataArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsTxtDataArgs {
-            data: None,
-        }
+        DnsTxtDataArgs { data: None }
     }
 }
 pub struct DnsTxtDataBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsTxtDataBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_data(&mut self, data: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsTxtData::VT_DATA, data);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsTxtDataBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsTxtDataBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_data(&mut self, data: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsTxtData::VT_DATA, data);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsTxtData<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsTxtDataBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsTxtDataBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsTxtData<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsTxtOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsTxt<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsTxt<'a> {
@@ -2002,67 +1947,80 @@ impl<'a> flatbuffers::Follow<'a> for DnsTxt<'a> {
 impl<'a> DnsTxt<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsTxt {
-            _tab: table,
-        }
+        DnsTxt { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsTxtArgs<'args>) -> flatbuffers::WIPOffset<DnsTxt<'bldr>> {
-      let mut builder = DnsTxtBuilder::new(_fbb);
-      if let Some(x) = args.data { builder.add_data(x); }
-      builder.finish()
+        args: &'args DnsTxtArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsTxt<'bldr>> {
+        let mut builder = DnsTxtBuilder::new(_fbb);
+        if let Some(x) = args.data {
+            builder.add_data(x);
+        }
+        builder.finish()
     }
 
     pub const VT_DATA: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn data(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>>>(DnsTxt::VT_DATA, None)
-  }
+    #[inline]
+    pub fn data(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>,
+        >>(DnsTxt::VT_DATA, None)
+    }
 }
 
 pub struct DnsTxtArgs<'a> {
-    pub data: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<DnsTxtData<'a >>>>>,
+    pub data: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<DnsTxtData<'a>>>,
+        >,
+    >,
 }
 impl<'a> Default for DnsTxtArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DnsTxtArgs {
-            data: None,
-        }
+        DnsTxtArgs { data: None }
     }
 }
 pub struct DnsTxtBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsTxtBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_data(&mut self, data: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<DnsTxtData<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsTxt::VT_DATA, data);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsTxtBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsTxtBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_data(
+        &mut self,
+        data: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<DnsTxtData<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsTxt::VT_DATA, data);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsTxt<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsTxtBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsTxtBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsTxt<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsRequestOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsRequest<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsRequest<'a> {
@@ -2078,43 +2036,52 @@ impl<'a> flatbuffers::Follow<'a> for DnsRequest<'a> {
 impl<'a> DnsRequest<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsRequest {
-            _tab: table,
-        }
+        DnsRequest { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsRequestArgs<'args>) -> flatbuffers::WIPOffset<DnsRequest<'bldr>> {
-      let mut builder = DnsRequestBuilder::new(_fbb);
-      if let Some(x) = args.queries { builder.add_queries(x); }
-      builder.add_id(args.id);
-      builder.add_message_type(args.message_type);
-      builder.finish()
+        args: &'args DnsRequestArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsRequest<'bldr>> {
+        let mut builder = DnsRequestBuilder::new(_fbb);
+        if let Some(x) = args.queries {
+            builder.add_queries(x);
+        }
+        builder.add_id(args.id);
+        builder.add_message_type(args.message_type);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
     pub const VT_MESSAGE_TYPE: flatbuffers::VOffsetT = 6;
     pub const VT_QUERIES: flatbuffers::VOffsetT = 8;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(DnsRequest::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn message_type(&self) -> DnsMessageType {
-    self._tab.get::<DnsMessageType>(DnsRequest::VT_MESSAGE_TYPE, Some(DnsMessageType::Query)).unwrap()
-  }
-  #[inline]
-  pub fn queries(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>>>(DnsRequest::VT_QUERIES, None)
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(DnsRequest::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn message_type(&self) -> DnsMessageType {
+        self._tab
+            .get::<DnsMessageType>(DnsRequest::VT_MESSAGE_TYPE, Some(DnsMessageType::Query))
+            .unwrap()
+    }
+    #[inline]
+    pub fn queries(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>,
+        >>(DnsRequest::VT_QUERIES, None)
+    }
 }
 
 pub struct DnsRequestArgs<'a> {
     pub id: u32,
     pub message_type: DnsMessageType,
-    pub queries: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<DnsQuery<'a >>>>>,
+    pub queries: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<DnsQuery<'a>>>>,
+    >,
 }
 impl<'a> Default for DnsRequestArgs<'a> {
     #[inline]
@@ -2127,42 +2094,52 @@ impl<'a> Default for DnsRequestArgs<'a> {
     }
 }
 pub struct DnsRequestBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsRequestBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(DnsRequest::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_message_type(&mut self, message_type: DnsMessageType) {
-    self.fbb_.push_slot::<DnsMessageType>(DnsRequest::VT_MESSAGE_TYPE, message_type, DnsMessageType::Query);
-  }
-  #[inline]
-  pub fn add_queries(&mut self, queries: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<DnsQuery<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsRequest::VT_QUERIES, queries);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsRequestBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsRequestBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(DnsRequest::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsRequest<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_message_type(&mut self, message_type: DnsMessageType) {
+        self.fbb_.push_slot::<DnsMessageType>(
+            DnsRequest::VT_MESSAGE_TYPE,
+            message_type,
+            DnsMessageType::Query,
+        );
+    }
+    #[inline]
+    pub fn add_queries(
+        &mut self,
+        queries: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<DnsQuery<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsRequest::VT_QUERIES, queries);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsRequestBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsRequestBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsRequest<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsQueryOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsQuery<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsQuery<'a> {
@@ -2178,20 +2155,23 @@ impl<'a> flatbuffers::Follow<'a> for DnsQuery<'a> {
 impl<'a> DnsQuery<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsQuery {
-            _tab: table,
-        }
+        DnsQuery { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsQueryArgs<'args>) -> flatbuffers::WIPOffset<DnsQuery<'bldr>> {
-      let mut builder = DnsQueryBuilder::new(_fbb);
-      if let Some(x) = args.name_servers { builder.add_name_servers(x); }
-      if let Some(x) = args.name { builder.add_name(x); }
-      builder.add_dns_class(args.dns_class);
-      builder.add_rr_type(args.rr_type);
-      builder.finish()
+        args: &'args DnsQueryArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsQuery<'bldr>> {
+        let mut builder = DnsQueryBuilder::new(_fbb);
+        if let Some(x) = args.name_servers {
+            builder.add_name_servers(x);
+        }
+        if let Some(x) = args.name {
+            builder.add_name(x);
+        }
+        builder.add_dns_class(args.dns_class);
+        builder.add_rr_type(args.rr_type);
+        builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
@@ -2199,29 +2179,40 @@ impl<'a> DnsQuery<'a> {
     pub const VT_DNS_CLASS: flatbuffers::VOffsetT = 8;
     pub const VT_NAME_SERVERS: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsQuery::VT_NAME, None)
-  }
-  #[inline]
-  pub fn rr_type(&self) -> DnsRecordType {
-    self._tab.get::<DnsRecordType>(DnsQuery::VT_RR_TYPE, Some(DnsRecordType::A)).unwrap()
-  }
-  #[inline]
-  pub fn dns_class(&self) -> DnsClass {
-    self._tab.get::<DnsClass>(DnsQuery::VT_DNS_CLASS, Some(DnsClass::IN)).unwrap()
-  }
-  #[inline]
-  pub fn name_servers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(DnsQuery::VT_NAME_SERVERS, None)
-  }
+    #[inline]
+    pub fn name(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsQuery::VT_NAME, None)
+    }
+    #[inline]
+    pub fn rr_type(&self) -> DnsRecordType {
+        self._tab
+            .get::<DnsRecordType>(DnsQuery::VT_RR_TYPE, Some(DnsRecordType::A))
+            .unwrap()
+    }
+    #[inline]
+    pub fn dns_class(&self) -> DnsClass {
+        self._tab
+            .get::<DnsClass>(DnsQuery::VT_DNS_CLASS, Some(DnsClass::IN))
+            .unwrap()
+    }
+    #[inline]
+    pub fn name_servers(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>,
+        >>(DnsQuery::VT_NAME_SERVERS, None)
+    }
 }
 
 pub struct DnsQueryArgs<'a> {
-    pub name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
     pub rr_type: DnsRecordType,
     pub dns_class: DnsClass,
-    pub name_servers: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<&'a  str>>>>,
+    pub name_servers: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>>,
+    >,
 }
 impl<'a> Default for DnsQueryArgs<'a> {
     #[inline]
@@ -2235,46 +2226,55 @@ impl<'a> Default for DnsQueryArgs<'a> {
     }
 }
 pub struct DnsQueryBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsQueryBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsQuery::VT_NAME, name);
-  }
-  #[inline]
-  pub fn add_rr_type(&mut self, rr_type: DnsRecordType) {
-    self.fbb_.push_slot::<DnsRecordType>(DnsQuery::VT_RR_TYPE, rr_type, DnsRecordType::A);
-  }
-  #[inline]
-  pub fn add_dns_class(&mut self, dns_class: DnsClass) {
-    self.fbb_.push_slot::<DnsClass>(DnsQuery::VT_DNS_CLASS, dns_class, DnsClass::IN);
-  }
-  #[inline]
-  pub fn add_name_servers(&mut self, name_servers: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<&'b  str>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsQuery::VT_NAME_SERVERS, name_servers);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsQueryBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsQueryBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsQuery::VT_NAME, name);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsQuery<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_rr_type(&mut self, rr_type: DnsRecordType) {
+        self.fbb_
+            .push_slot::<DnsRecordType>(DnsQuery::VT_RR_TYPE, rr_type, DnsRecordType::A);
+    }
+    #[inline]
+    pub fn add_dns_class(&mut self, dns_class: DnsClass) {
+        self.fbb_
+            .push_slot::<DnsClass>(DnsQuery::VT_DNS_CLASS, dns_class, DnsClass::IN);
+    }
+    #[inline]
+    pub fn add_name_servers(
+        &mut self,
+        name_servers: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<&'b str>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsQuery::VT_NAME_SERVERS, name_servers);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsQueryBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsQueryBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsQuery<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsRecordOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsRecord<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsRecord<'a> {
@@ -2290,22 +2290,25 @@ impl<'a> flatbuffers::Follow<'a> for DnsRecord<'a> {
 impl<'a> DnsRecord<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsRecord {
-            _tab: table,
-        }
+        DnsRecord { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsRecordArgs<'args>) -> flatbuffers::WIPOffset<DnsRecord<'bldr>> {
-      let mut builder = DnsRecordBuilder::new(_fbb);
-      builder.add_ttl(args.ttl);
-      if let Some(x) = args.rdata { builder.add_rdata(x); }
-      if let Some(x) = args.name { builder.add_name(x); }
-      builder.add_dns_class(args.dns_class);
-      builder.add_rdata_type(args.rdata_type);
-      builder.add_rr_type(args.rr_type);
-      builder.finish()
+        args: &'args DnsRecordArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsRecord<'bldr>> {
+        let mut builder = DnsRecordBuilder::new(_fbb);
+        builder.add_ttl(args.ttl);
+        if let Some(x) = args.rdata {
+            builder.add_rdata(x);
+        }
+        if let Some(x) = args.name {
+            builder.add_name(x);
+        }
+        builder.add_dns_class(args.dns_class);
+        builder.add_rdata_type(args.rdata_type);
+        builder.add_rr_type(args.rr_type);
+        builder.finish()
     }
 
     pub const VT_NAME: flatbuffers::VOffsetT = 4;
@@ -2315,124 +2318,131 @@ impl<'a> DnsRecord<'a> {
     pub const VT_DNS_CLASS: flatbuffers::VOffsetT = 12;
     pub const VT_TTL: flatbuffers::VOffsetT = 14;
 
-  #[inline]
-  pub fn name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DnsRecord::VT_NAME, None)
-  }
-  #[inline]
-  pub fn rr_type(&self) -> DnsRecordType {
-    self._tab.get::<DnsRecordType>(DnsRecord::VT_RR_TYPE, Some(DnsRecordType::A)).unwrap()
-  }
-  #[inline]
-  pub fn rdata_type(&self) -> DnsRecordData {
-    self._tab.get::<DnsRecordData>(DnsRecord::VT_RDATA_TYPE, Some(DnsRecordData::NONE)).unwrap()
-  }
-  #[inline]
-  pub fn rdata(&self) -> Option<flatbuffers::Table<'a>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(DnsRecord::VT_RDATA, None)
-  }
-  #[inline]
-  pub fn dns_class(&self) -> DnsClass {
-    self._tab.get::<DnsClass>(DnsRecord::VT_DNS_CLASS, Some(DnsClass::IN)).unwrap()
-  }
-  #[inline]
-  pub fn ttl(&self) -> u32 {
-    self._tab.get::<u32>(DnsRecord::VT_TTL, Some(0)).unwrap()
-  }
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_a(&'a self) -> Option<DnsA> {
-    if self.rdata_type() == DnsRecordData::DnsA {
-      self.rdata().map(|u| DnsA::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn name(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DnsRecord::VT_NAME, None)
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_aaaa(&'a self) -> Option<DnsAaaa> {
-    if self.rdata_type() == DnsRecordData::DnsAaaa {
-      self.rdata().map(|u| DnsAaaa::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn rr_type(&self) -> DnsRecordType {
+        self._tab
+            .get::<DnsRecordType>(DnsRecord::VT_RR_TYPE, Some(DnsRecordType::A))
+            .unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_cname(&'a self) -> Option<DnsCname> {
-    if self.rdata_type() == DnsRecordData::DnsCname {
-      self.rdata().map(|u| DnsCname::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn rdata_type(&self) -> DnsRecordData {
+        self._tab
+            .get::<DnsRecordData>(DnsRecord::VT_RDATA_TYPE, Some(DnsRecordData::NONE))
+            .unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_mx(&'a self) -> Option<DnsMx> {
-    if self.rdata_type() == DnsRecordData::DnsMx {
-      self.rdata().map(|u| DnsMx::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn rdata(&self) -> Option<flatbuffers::Table<'a>> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(DnsRecord::VT_RDATA, None)
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_ns(&'a self) -> Option<DnsNs> {
-    if self.rdata_type() == DnsRecordData::DnsNs {
-      self.rdata().map(|u| DnsNs::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn dns_class(&self) -> DnsClass {
+        self._tab
+            .get::<DnsClass>(DnsRecord::VT_DNS_CLASS, Some(DnsClass::IN))
+            .unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_ptr(&'a self) -> Option<DnsPtr> {
-    if self.rdata_type() == DnsRecordData::DnsPtr {
-      self.rdata().map(|u| DnsPtr::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn ttl(&self) -> u32 {
+        self._tab.get::<u32>(DnsRecord::VT_TTL, Some(0)).unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_soa(&'a self) -> Option<DnsSoa> {
-    if self.rdata_type() == DnsRecordData::DnsSoa {
-      self.rdata().map(|u| DnsSoa::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_a(&'a self) -> Option<DnsA> {
+        if self.rdata_type() == DnsRecordData::DnsA {
+            self.rdata().map(|u| DnsA::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_srv(&'a self) -> Option<DnsSrv> {
-    if self.rdata_type() == DnsRecordData::DnsSrv {
-      self.rdata().map(|u| DnsSrv::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_aaaa(&'a self) -> Option<DnsAaaa> {
+        if self.rdata_type() == DnsRecordData::DnsAaaa {
+            self.rdata().map(|u| DnsAaaa::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn rdata_as_dns_txt(&'a self) -> Option<DnsTxt> {
-    if self.rdata_type() == DnsRecordData::DnsTxt {
-      self.rdata().map(|u| DnsTxt::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_cname(&'a self) -> Option<DnsCname> {
+        if self.rdata_type() == DnsRecordData::DnsCname {
+            self.rdata().map(|u| DnsCname::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_mx(&'a self) -> Option<DnsMx> {
+        if self.rdata_type() == DnsRecordData::DnsMx {
+            self.rdata().map(|u| DnsMx::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_ns(&'a self) -> Option<DnsNs> {
+        if self.rdata_type() == DnsRecordData::DnsNs {
+            self.rdata().map(|u| DnsNs::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_ptr(&'a self) -> Option<DnsPtr> {
+        if self.rdata_type() == DnsRecordData::DnsPtr {
+            self.rdata().map(|u| DnsPtr::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_soa(&'a self) -> Option<DnsSoa> {
+        if self.rdata_type() == DnsRecordData::DnsSoa {
+            self.rdata().map(|u| DnsSoa::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_srv(&'a self) -> Option<DnsSrv> {
+        if self.rdata_type() == DnsRecordData::DnsSrv {
+            self.rdata().map(|u| DnsSrv::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn rdata_as_dns_txt(&'a self) -> Option<DnsTxt> {
+        if self.rdata_type() == DnsRecordData::DnsTxt {
+            self.rdata().map(|u| DnsTxt::init_from_table(u))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct DnsRecordArgs<'a> {
-    pub name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
     pub rr_type: DnsRecordType,
     pub rdata_type: DnsRecordData,
     pub rdata: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
@@ -2453,54 +2463,62 @@ impl<'a> Default for DnsRecordArgs<'a> {
     }
 }
 pub struct DnsRecordBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsRecordBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsRecord::VT_NAME, name);
-  }
-  #[inline]
-  pub fn add_rr_type(&mut self, rr_type: DnsRecordType) {
-    self.fbb_.push_slot::<DnsRecordType>(DnsRecord::VT_RR_TYPE, rr_type, DnsRecordType::A);
-  }
-  #[inline]
-  pub fn add_rdata_type(&mut self, rdata_type: DnsRecordData) {
-    self.fbb_.push_slot::<DnsRecordData>(DnsRecord::VT_RDATA_TYPE, rdata_type, DnsRecordData::NONE);
-  }
-  #[inline]
-  pub fn add_rdata(&mut self, rdata: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsRecord::VT_RDATA, rdata);
-  }
-  #[inline]
-  pub fn add_dns_class(&mut self, dns_class: DnsClass) {
-    self.fbb_.push_slot::<DnsClass>(DnsRecord::VT_DNS_CLASS, dns_class, DnsClass::IN);
-  }
-  #[inline]
-  pub fn add_ttl(&mut self, ttl: u32) {
-    self.fbb_.push_slot::<u32>(DnsRecord::VT_TTL, ttl, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsRecordBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsRecordBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsRecord::VT_NAME, name);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsRecord<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_rr_type(&mut self, rr_type: DnsRecordType) {
+        self.fbb_
+            .push_slot::<DnsRecordType>(DnsRecord::VT_RR_TYPE, rr_type, DnsRecordType::A);
+    }
+    #[inline]
+    pub fn add_rdata_type(&mut self, rdata_type: DnsRecordData) {
+        self.fbb_.push_slot::<DnsRecordData>(
+            DnsRecord::VT_RDATA_TYPE,
+            rdata_type,
+            DnsRecordData::NONE,
+        );
+    }
+    #[inline]
+    pub fn add_rdata(&mut self, rdata: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsRecord::VT_RDATA, rdata);
+    }
+    #[inline]
+    pub fn add_dns_class(&mut self, dns_class: DnsClass) {
+        self.fbb_
+            .push_slot::<DnsClass>(DnsRecord::VT_DNS_CLASS, dns_class, DnsClass::IN);
+    }
+    #[inline]
+    pub fn add_ttl(&mut self, ttl: u32) {
+        self.fbb_.push_slot::<u32>(DnsRecord::VT_TTL, ttl, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsRecordBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsRecordBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsRecord<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DnsResponseOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DnsResponse<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DnsResponse<'a> {
@@ -2516,24 +2534,27 @@ impl<'a> flatbuffers::Follow<'a> for DnsResponse<'a> {
 impl<'a> DnsResponse<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DnsResponse {
-            _tab: table,
-        }
+        DnsResponse { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DnsResponseArgs<'args>) -> flatbuffers::WIPOffset<DnsResponse<'bldr>> {
-      let mut builder = DnsResponseBuilder::new(_fbb);
-      if let Some(x) = args.queries { builder.add_queries(x); }
-      if let Some(x) = args.answers { builder.add_answers(x); }
-      builder.add_id(args.id);
-      builder.add_response_code(args.response_code);
-      builder.add_truncated(args.truncated);
-      builder.add_authoritative(args.authoritative);
-      builder.add_message_type(args.message_type);
-      builder.add_op_code(args.op_code);
-      builder.finish()
+        args: &'args DnsResponseArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DnsResponse<'bldr>> {
+        let mut builder = DnsResponseBuilder::new(_fbb);
+        if let Some(x) = args.queries {
+            builder.add_queries(x);
+        }
+        if let Some(x) = args.answers {
+            builder.add_answers(x);
+        }
+        builder.add_id(args.id);
+        builder.add_response_code(args.response_code);
+        builder.add_truncated(args.truncated);
+        builder.add_authoritative(args.authoritative);
+        builder.add_message_type(args.message_type);
+        builder.add_op_code(args.op_code);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
@@ -2545,38 +2566,59 @@ impl<'a> DnsResponse<'a> {
     pub const VT_ANSWERS: flatbuffers::VOffsetT = 16;
     pub const VT_QUERIES: flatbuffers::VOffsetT = 18;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(DnsResponse::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn op_code(&self) -> DnsOpCode {
-    self._tab.get::<DnsOpCode>(DnsResponse::VT_OP_CODE, Some(DnsOpCode::Query)).unwrap()
-  }
-  #[inline]
-  pub fn message_type(&self) -> DnsMessageType {
-    self._tab.get::<DnsMessageType>(DnsResponse::VT_MESSAGE_TYPE, Some(DnsMessageType::Query)).unwrap()
-  }
-  #[inline]
-  pub fn authoritative(&self) -> bool {
-    self._tab.get::<bool>(DnsResponse::VT_AUTHORITATIVE, Some(false)).unwrap()
-  }
-  #[inline]
-  pub fn truncated(&self) -> bool {
-    self._tab.get::<bool>(DnsResponse::VT_TRUNCATED, Some(false)).unwrap()
-  }
-  #[inline]
-  pub fn response_code(&self) -> DnsResponseCode {
-    self._tab.get::<DnsResponseCode>(DnsResponse::VT_RESPONSE_CODE, Some(DnsResponseCode::NoError)).unwrap()
-  }
-  #[inline]
-  pub fn answers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>>>(DnsResponse::VT_ANSWERS, None)
-  }
-  #[inline]
-  pub fn queries(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>>>(DnsResponse::VT_QUERIES, None)
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(DnsResponse::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn op_code(&self) -> DnsOpCode {
+        self._tab
+            .get::<DnsOpCode>(DnsResponse::VT_OP_CODE, Some(DnsOpCode::Query))
+            .unwrap()
+    }
+    #[inline]
+    pub fn message_type(&self) -> DnsMessageType {
+        self._tab
+            .get::<DnsMessageType>(DnsResponse::VT_MESSAGE_TYPE, Some(DnsMessageType::Query))
+            .unwrap()
+    }
+    #[inline]
+    pub fn authoritative(&self) -> bool {
+        self._tab
+            .get::<bool>(DnsResponse::VT_AUTHORITATIVE, Some(false))
+            .unwrap()
+    }
+    #[inline]
+    pub fn truncated(&self) -> bool {
+        self._tab
+            .get::<bool>(DnsResponse::VT_TRUNCATED, Some(false))
+            .unwrap()
+    }
+    #[inline]
+    pub fn response_code(&self) -> DnsResponseCode {
+        self._tab
+            .get::<DnsResponseCode>(
+                DnsResponse::VT_RESPONSE_CODE,
+                Some(DnsResponseCode::NoError),
+            )
+            .unwrap()
+    }
+    #[inline]
+    pub fn answers(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsRecord<'a>>>,
+        >>(DnsResponse::VT_ANSWERS, None)
+    }
+    #[inline]
+    pub fn queries(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<DnsQuery<'a>>>,
+        >>(DnsResponse::VT_QUERIES, None)
+    }
 }
 
 pub struct DnsResponseArgs<'a> {
@@ -2586,8 +2628,14 @@ pub struct DnsResponseArgs<'a> {
     pub authoritative: bool,
     pub truncated: bool,
     pub response_code: DnsResponseCode,
-    pub answers: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<DnsRecord<'a >>>>>,
-    pub queries: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<DnsQuery<'a >>>>>,
+    pub answers: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<DnsRecord<'a>>>,
+        >,
+    >,
+    pub queries: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<DnsQuery<'a>>>>,
+    >,
 }
 impl<'a> Default for DnsResponseArgs<'a> {
     #[inline]
@@ -2605,62 +2653,85 @@ impl<'a> Default for DnsResponseArgs<'a> {
     }
 }
 pub struct DnsResponseBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DnsResponseBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(DnsResponse::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_op_code(&mut self, op_code: DnsOpCode) {
-    self.fbb_.push_slot::<DnsOpCode>(DnsResponse::VT_OP_CODE, op_code, DnsOpCode::Query);
-  }
-  #[inline]
-  pub fn add_message_type(&mut self, message_type: DnsMessageType) {
-    self.fbb_.push_slot::<DnsMessageType>(DnsResponse::VT_MESSAGE_TYPE, message_type, DnsMessageType::Query);
-  }
-  #[inline]
-  pub fn add_authoritative(&mut self, authoritative: bool) {
-    self.fbb_.push_slot::<bool>(DnsResponse::VT_AUTHORITATIVE, authoritative, false);
-  }
-  #[inline]
-  pub fn add_truncated(&mut self, truncated: bool) {
-    self.fbb_.push_slot::<bool>(DnsResponse::VT_TRUNCATED, truncated, false);
-  }
-  #[inline]
-  pub fn add_response_code(&mut self, response_code: DnsResponseCode) {
-    self.fbb_.push_slot::<DnsResponseCode>(DnsResponse::VT_RESPONSE_CODE, response_code, DnsResponseCode::NoError);
-  }
-  #[inline]
-  pub fn add_answers(&mut self, answers: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<DnsRecord<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsResponse::VT_ANSWERS, answers);
-  }
-  #[inline]
-  pub fn add_queries(&mut self, queries: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<DnsQuery<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DnsResponse::VT_QUERIES, queries);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsResponseBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DnsResponseBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(DnsResponse::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DnsResponse<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_op_code(&mut self, op_code: DnsOpCode) {
+        self.fbb_
+            .push_slot::<DnsOpCode>(DnsResponse::VT_OP_CODE, op_code, DnsOpCode::Query);
+    }
+    #[inline]
+    pub fn add_message_type(&mut self, message_type: DnsMessageType) {
+        self.fbb_.push_slot::<DnsMessageType>(
+            DnsResponse::VT_MESSAGE_TYPE,
+            message_type,
+            DnsMessageType::Query,
+        );
+    }
+    #[inline]
+    pub fn add_authoritative(&mut self, authoritative: bool) {
+        self.fbb_
+            .push_slot::<bool>(DnsResponse::VT_AUTHORITATIVE, authoritative, false);
+    }
+    #[inline]
+    pub fn add_truncated(&mut self, truncated: bool) {
+        self.fbb_
+            .push_slot::<bool>(DnsResponse::VT_TRUNCATED, truncated, false);
+    }
+    #[inline]
+    pub fn add_response_code(&mut self, response_code: DnsResponseCode) {
+        self.fbb_.push_slot::<DnsResponseCode>(
+            DnsResponse::VT_RESPONSE_CODE,
+            response_code,
+            DnsResponseCode::NoError,
+        );
+    }
+    #[inline]
+    pub fn add_answers(
+        &mut self,
+        answers: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<DnsRecord<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsResponse::VT_ANSWERS, answers);
+    }
+    #[inline]
+    pub fn add_queries(
+        &mut self,
+        queries: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<DnsQuery<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DnsResponse::VT_QUERIES, queries);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DnsResponseBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DnsResponseBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DnsResponse<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheGetOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheGet<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheGet<'a> {
@@ -2676,67 +2747,68 @@ impl<'a> flatbuffers::Follow<'a> for CacheGet<'a> {
 impl<'a> CacheGet<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheGet {
-            _tab: table,
-        }
+        CacheGet { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheGetArgs<'args>) -> flatbuffers::WIPOffset<CacheGet<'bldr>> {
-      let mut builder = CacheGetBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheGetArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheGet<'bldr>> {
+        let mut builder = CacheGetBuilder::new(_fbb);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheGet::VT_KEY, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheGet::VT_KEY, None)
+    }
 }
 
 pub struct CacheGetArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheGetArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CacheGetArgs {
-            key: None,
-        }
+        CacheGetArgs { key: None }
     }
 }
 pub struct CacheGetBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheGetBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheGet::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheGetBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheGetBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheGet::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheGet<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheGetBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheGetBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheGet<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheMetaOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheMeta<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheMeta<'a> {
@@ -2752,36 +2824,41 @@ impl<'a> flatbuffers::Follow<'a> for CacheMeta<'a> {
 impl<'a> CacheMeta<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheMeta {
-            _tab: table,
-        }
+        CacheMeta { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheMetaArgs<'args>) -> flatbuffers::WIPOffset<CacheMeta<'bldr>> {
-      let mut builder = CacheMetaBuilder::new(_fbb);
-      if let Some(x) = args.value { builder.add_value(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheMetaArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheMeta<'bldr>> {
+        let mut builder = CacheMetaBuilder::new(_fbb);
+        if let Some(x) = args.value {
+            builder.add_value(x);
+        }
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
     pub const VT_VALUE: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheMeta::VT_KEY, None)
-  }
-  #[inline]
-  pub fn value(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheMeta::VT_VALUE, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheMeta::VT_KEY, None)
+    }
+    #[inline]
+    pub fn value(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheMeta::VT_VALUE, None)
+    }
 }
 
 pub struct CacheMetaArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub value: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub value: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheMetaArgs<'a> {
     #[inline]
@@ -2793,38 +2870,40 @@ impl<'a> Default for CacheMetaArgs<'a> {
     }
 }
 pub struct CacheMetaBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheMetaBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheMeta::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_value(&mut self, value: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheMeta::VT_VALUE, value);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheMetaBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheMetaBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheMeta::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheMeta<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_value(&mut self, value: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheMeta::VT_VALUE, value);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheMetaBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheMetaBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheMeta<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheGetReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheGetReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheGetReady<'a> {
@@ -2840,43 +2919,47 @@ impl<'a> flatbuffers::Follow<'a> for CacheGetReady<'a> {
 impl<'a> CacheGetReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheGetReady {
-            _tab: table,
-        }
+        CacheGetReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheGetReadyArgs<'args>) -> flatbuffers::WIPOffset<CacheGetReady<'bldr>> {
-      let mut builder = CacheGetReadyBuilder::new(_fbb);
-      if let Some(x) = args.meta { builder.add_meta(x); }
-      builder.add_id(args.id);
-      builder.add_stream(args.stream);
-      builder.finish()
+        args: &'args CacheGetReadyArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheGetReady<'bldr>> {
+        let mut builder = CacheGetReadyBuilder::new(_fbb);
+        if let Some(x) = args.meta {
+            builder.add_meta(x);
+        }
+        builder.add_id(args.id);
+        builder.add_stream(args.stream);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
     pub const VT_STREAM: flatbuffers::VOffsetT = 6;
     pub const VT_META: flatbuffers::VOffsetT = 8;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(CacheGetReady::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn stream(&self) -> bool {
-    self._tab.get::<bool>(CacheGetReady::VT_STREAM, Some(false)).unwrap()
-  }
-  #[inline]
-  pub fn meta(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheGetReady::VT_META, None)
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(CacheGetReady::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn stream(&self) -> bool {
+        self._tab
+            .get::<bool>(CacheGetReady::VT_STREAM, Some(false))
+            .unwrap()
+    }
+    #[inline]
+    pub fn meta(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheGetReady::VT_META, None)
+    }
 }
 
 pub struct CacheGetReadyArgs<'a> {
     pub id: u32,
     pub stream: bool,
-    pub meta: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub meta: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheGetReadyArgs<'a> {
     #[inline]
@@ -2889,42 +2972,44 @@ impl<'a> Default for CacheGetReadyArgs<'a> {
     }
 }
 pub struct CacheGetReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheGetReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(CacheGetReady::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_stream(&mut self, stream: bool) {
-    self.fbb_.push_slot::<bool>(CacheGetReady::VT_STREAM, stream, false);
-  }
-  #[inline]
-  pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheGetReady::VT_META, meta);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheGetReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheGetReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(CacheGetReady::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheGetReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_stream(&mut self, stream: bool) {
+        self.fbb_
+            .push_slot::<bool>(CacheGetReady::VT_STREAM, stream, false);
+    }
+    #[inline]
+    pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheGetReady::VT_META, meta);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheGetReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheGetReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheGetReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheSetOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheSet<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheSet<'a> {
@@ -2940,20 +3025,25 @@ impl<'a> flatbuffers::Follow<'a> for CacheSet<'a> {
 impl<'a> CacheSet<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheSet {
-            _tab: table,
-        }
+        CacheSet { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheSetArgs<'args>) -> flatbuffers::WIPOffset<CacheSet<'bldr>> {
-      let mut builder = CacheSetBuilder::new(_fbb);
-      if let Some(x) = args.meta { builder.add_meta(x); }
-      if let Some(x) = args.tags { builder.add_tags(x); }
-      builder.add_ttl(args.ttl);
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheSetArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheSet<'bldr>> {
+        let mut builder = CacheSetBuilder::new(_fbb);
+        if let Some(x) = args.meta {
+            builder.add_meta(x);
+        }
+        if let Some(x) = args.tags {
+            builder.add_tags(x);
+        }
+        builder.add_ttl(args.ttl);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
@@ -2961,29 +3051,35 @@ impl<'a> CacheSet<'a> {
     pub const VT_TAGS: flatbuffers::VOffsetT = 8;
     pub const VT_META: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSet::VT_KEY, None)
-  }
-  #[inline]
-  pub fn ttl(&self) -> u32 {
-    self._tab.get::<u32>(CacheSet::VT_TTL, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn tags(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(CacheSet::VT_TAGS, None)
-  }
-  #[inline]
-  pub fn meta(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSet::VT_META, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheSet::VT_KEY, None)
+    }
+    #[inline]
+    pub fn ttl(&self) -> u32 {
+        self._tab.get::<u32>(CacheSet::VT_TTL, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn tags(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>,
+        >>(CacheSet::VT_TAGS, None)
+    }
+    #[inline]
+    pub fn meta(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheSet::VT_META, None)
+    }
 }
 
 pub struct CacheSetArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
     pub ttl: u32,
-    pub tags: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<&'a  str>>>>,
-    pub meta: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub tags: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>>,
+    >,
+    pub meta: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheSetArgs<'a> {
     #[inline]
@@ -2997,46 +3093,54 @@ impl<'a> Default for CacheSetArgs<'a> {
     }
 }
 pub struct CacheSetBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheSetBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSet::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_ttl(&mut self, ttl: u32) {
-    self.fbb_.push_slot::<u32>(CacheSet::VT_TTL, ttl, 0);
-  }
-  #[inline]
-  pub fn add_tags(&mut self, tags: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<&'b  str>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSet::VT_TAGS, tags);
-  }
-  #[inline]
-  pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSet::VT_META, meta);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheSetBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSet::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheSet<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_ttl(&mut self, ttl: u32) {
+        self.fbb_.push_slot::<u32>(CacheSet::VT_TTL, ttl, 0);
+    }
+    #[inline]
+    pub fn add_tags(
+        &mut self,
+        tags: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<&'b str>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSet::VT_TAGS, tags);
+    }
+    #[inline]
+    pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSet::VT_META, meta);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheSetBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheSet<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheSetReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheSetReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheSetReady<'a> {
@@ -3052,25 +3156,24 @@ impl<'a> flatbuffers::Follow<'a> for CacheSetReady<'a> {
 impl<'a> CacheSetReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheSetReady {
-            _tab: table,
-        }
+        CacheSetReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheSetReadyArgs) -> flatbuffers::WIPOffset<CacheSetReady<'bldr>> {
-      let mut builder = CacheSetReadyBuilder::new(_fbb);
-      builder.add_id(args.id);
-      builder.finish()
+        args: &'args CacheSetReadyArgs,
+    ) -> flatbuffers::WIPOffset<CacheSetReady<'bldr>> {
+        let mut builder = CacheSetReadyBuilder::new(_fbb);
+        builder.add_id(args.id);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(CacheSetReady::VT_ID, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(CacheSetReady::VT_ID, Some(0)).unwrap()
+    }
 }
 
 pub struct CacheSetReadyArgs {
@@ -3079,40 +3182,38 @@ pub struct CacheSetReadyArgs {
 impl<'a> Default for CacheSetReadyArgs {
     #[inline]
     fn default() -> Self {
-        CacheSetReadyArgs {
-            id: 0,
-        }
+        CacheSetReadyArgs { id: 0 }
     }
 }
 pub struct CacheSetReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheSetReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(CacheSetReady::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheSetReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(CacheSetReady::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheSetReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheDelOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheDel<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheDel<'a> {
@@ -3128,67 +3229,68 @@ impl<'a> flatbuffers::Follow<'a> for CacheDel<'a> {
 impl<'a> CacheDel<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheDel {
-            _tab: table,
-        }
+        CacheDel { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheDelArgs<'args>) -> flatbuffers::WIPOffset<CacheDel<'bldr>> {
-      let mut builder = CacheDelBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheDelArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheDel<'bldr>> {
+        let mut builder = CacheDelBuilder::new(_fbb);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheDel::VT_KEY, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheDel::VT_KEY, None)
+    }
 }
 
 pub struct CacheDelArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheDelArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CacheDelArgs {
-            key: None,
-        }
+        CacheDelArgs { key: None }
     }
 }
 pub struct CacheDelBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheDelBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheDel::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheDelBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheDelBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheDel::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheDel<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheDelBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheDelBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheDel<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheExpireOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheExpire<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheExpire<'a> {
@@ -3204,79 +3306,79 @@ impl<'a> flatbuffers::Follow<'a> for CacheExpire<'a> {
 impl<'a> CacheExpire<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheExpire {
-            _tab: table,
-        }
+        CacheExpire { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheExpireArgs<'args>) -> flatbuffers::WIPOffset<CacheExpire<'bldr>> {
-      let mut builder = CacheExpireBuilder::new(_fbb);
-      builder.add_ttl(args.ttl);
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheExpireArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheExpire<'bldr>> {
+        let mut builder = CacheExpireBuilder::new(_fbb);
+        builder.add_ttl(args.ttl);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
     pub const VT_TTL: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheExpire::VT_KEY, None)
-  }
-  #[inline]
-  pub fn ttl(&self) -> u32 {
-    self._tab.get::<u32>(CacheExpire::VT_TTL, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheExpire::VT_KEY, None)
+    }
+    #[inline]
+    pub fn ttl(&self) -> u32 {
+        self._tab.get::<u32>(CacheExpire::VT_TTL, Some(0)).unwrap()
+    }
 }
 
 pub struct CacheExpireArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
     pub ttl: u32,
 }
 impl<'a> Default for CacheExpireArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CacheExpireArgs {
-            key: None,
-            ttl: 0,
-        }
+        CacheExpireArgs { key: None, ttl: 0 }
     }
 }
 pub struct CacheExpireBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheExpireBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheExpire::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_ttl(&mut self, ttl: u32) {
-    self.fbb_.push_slot::<u32>(CacheExpire::VT_TTL, ttl, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheExpireBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheExpireBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheExpire::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheExpire<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_ttl(&mut self, ttl: u32) {
+        self.fbb_.push_slot::<u32>(CacheExpire::VT_TTL, ttl, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheExpireBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheExpireBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheExpire<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheNotifyDelOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheNotifyDel<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheNotifyDel<'a> {
@@ -3292,67 +3394,68 @@ impl<'a> flatbuffers::Follow<'a> for CacheNotifyDel<'a> {
 impl<'a> CacheNotifyDel<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheNotifyDel {
-            _tab: table,
-        }
+        CacheNotifyDel { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheNotifyDelArgs<'args>) -> flatbuffers::WIPOffset<CacheNotifyDel<'bldr>> {
-      let mut builder = CacheNotifyDelBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheNotifyDelArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheNotifyDel<'bldr>> {
+        let mut builder = CacheNotifyDelBuilder::new(_fbb);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyDel::VT_KEY, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyDel::VT_KEY, None)
+    }
 }
 
 pub struct CacheNotifyDelArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheNotifyDelArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CacheNotifyDelArgs {
-            key: None,
-        }
+        CacheNotifyDelArgs { key: None }
     }
 }
 pub struct CacheNotifyDelBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheNotifyDelBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyDel::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyDelBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheNotifyDelBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyDel::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyDel<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyDelBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheNotifyDelBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyDel<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheNotifyPurgeTagOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheNotifyPurgeTag<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheNotifyPurgeTag<'a> {
@@ -3368,67 +3471,70 @@ impl<'a> flatbuffers::Follow<'a> for CacheNotifyPurgeTag<'a> {
 impl<'a> CacheNotifyPurgeTag<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheNotifyPurgeTag {
-            _tab: table,
-        }
+        CacheNotifyPurgeTag { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheNotifyPurgeTagArgs<'args>) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'bldr>> {
-      let mut builder = CacheNotifyPurgeTagBuilder::new(_fbb);
-      if let Some(x) = args.tag { builder.add_tag(x); }
-      builder.finish()
+        args: &'args CacheNotifyPurgeTagArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'bldr>> {
+        let mut builder = CacheNotifyPurgeTagBuilder::new(_fbb);
+        if let Some(x) = args.tag {
+            builder.add_tag(x);
+        }
+        builder.finish()
     }
 
     pub const VT_TAG: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn tag(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyPurgeTag::VT_TAG, None)
-  }
+    #[inline]
+    pub fn tag(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheNotifyPurgeTag::VT_TAG, None)
+    }
 }
 
 pub struct CacheNotifyPurgeTagArgs<'a> {
-    pub tag: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub tag: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheNotifyPurgeTagArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CacheNotifyPurgeTagArgs {
-            tag: None,
-        }
+        CacheNotifyPurgeTagArgs { tag: None }
     }
 }
 pub struct CacheNotifyPurgeTagBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheNotifyPurgeTagBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyPurgeTag::VT_TAG, tag);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheNotifyPurgeTagBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheNotifyPurgeTagBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheNotifyPurgeTag::VT_TAG, tag);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> CacheNotifyPurgeTagBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheNotifyPurgeTagBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheNotifyPurgeTag<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheSetMetaOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheSetMeta<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheSetMeta<'a> {
@@ -3444,36 +3550,41 @@ impl<'a> flatbuffers::Follow<'a> for CacheSetMeta<'a> {
 impl<'a> CacheSetMeta<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheSetMeta {
-            _tab: table,
-        }
+        CacheSetMeta { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheSetMetaArgs<'args>) -> flatbuffers::WIPOffset<CacheSetMeta<'bldr>> {
-      let mut builder = CacheSetMetaBuilder::new(_fbb);
-      if let Some(x) = args.meta { builder.add_meta(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheSetMetaArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheSetMeta<'bldr>> {
+        let mut builder = CacheSetMetaBuilder::new(_fbb);
+        if let Some(x) = args.meta {
+            builder.add_meta(x);
+        }
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
     pub const VT_META: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_KEY, None)
-  }
-  #[inline]
-  pub fn meta(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_META, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_KEY, None)
+    }
+    #[inline]
+    pub fn meta(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetMeta::VT_META, None)
+    }
 }
 
 pub struct CacheSetMetaArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub meta: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub meta: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CacheSetMetaArgs<'a> {
     #[inline]
@@ -3485,38 +3596,40 @@ impl<'a> Default for CacheSetMetaArgs<'a> {
     }
 }
 pub struct CacheSetMetaBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheSetMetaBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetMeta::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetMeta::VT_META, meta);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetMetaBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheSetMetaBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetMeta::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetMeta<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_meta(&mut self, meta: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetMeta::VT_META, meta);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetMetaBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheSetMetaBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetMeta<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CacheSetTagsOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CacheSetTags<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CacheSetTags<'a> {
@@ -3532,36 +3645,44 @@ impl<'a> flatbuffers::Follow<'a> for CacheSetTags<'a> {
 impl<'a> CacheSetTags<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CacheSetTags {
-            _tab: table,
-        }
+        CacheSetTags { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CacheSetTagsArgs<'args>) -> flatbuffers::WIPOffset<CacheSetTags<'bldr>> {
-      let mut builder = CacheSetTagsBuilder::new(_fbb);
-      if let Some(x) = args.tags { builder.add_tags(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args CacheSetTagsArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CacheSetTags<'bldr>> {
+        let mut builder = CacheSetTagsBuilder::new(_fbb);
+        if let Some(x) = args.tags {
+            builder.add_tags(x);
+        }
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
     pub const VT_TAGS: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetTags::VT_KEY, None)
-  }
-  #[inline]
-  pub fn tags(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>>>(CacheSetTags::VT_TAGS, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CacheSetTags::VT_KEY, None)
+    }
+    #[inline]
+    pub fn tags(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<&'a str>>,
+        >>(CacheSetTags::VT_TAGS, None)
+    }
 }
 
 pub struct CacheSetTagsArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub tags: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<&'a  str>>>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub tags: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<&'a str>>>,
+    >,
 }
 impl<'a> Default for CacheSetTagsArgs<'a> {
     #[inline]
@@ -3573,38 +3694,45 @@ impl<'a> Default for CacheSetTagsArgs<'a> {
     }
 }
 pub struct CacheSetTagsBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CacheSetTagsBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetTags::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_tags(&mut self, tags: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<&'b  str>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetTags::VT_TAGS, tags);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetTagsBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CacheSetTagsBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetTags::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetTags<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_tags(
+        &mut self,
+        tags: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<&'b str>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CacheSetTags::VT_TAGS, tags);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CacheSetTagsBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CacheSetTagsBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CacheSetTags<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CachePurgeTagOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CachePurgeTag<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CachePurgeTag<'a> {
@@ -3620,67 +3748,68 @@ impl<'a> flatbuffers::Follow<'a> for CachePurgeTag<'a> {
 impl<'a> CachePurgeTag<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CachePurgeTag {
-            _tab: table,
-        }
+        CachePurgeTag { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CachePurgeTagArgs<'args>) -> flatbuffers::WIPOffset<CachePurgeTag<'bldr>> {
-      let mut builder = CachePurgeTagBuilder::new(_fbb);
-      if let Some(x) = args.tag { builder.add_tag(x); }
-      builder.finish()
+        args: &'args CachePurgeTagArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CachePurgeTag<'bldr>> {
+        let mut builder = CachePurgeTagBuilder::new(_fbb);
+        if let Some(x) = args.tag {
+            builder.add_tag(x);
+        }
+        builder.finish()
     }
 
     pub const VT_TAG: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn tag(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CachePurgeTag::VT_TAG, None)
-  }
+    #[inline]
+    pub fn tag(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CachePurgeTag::VT_TAG, None)
+    }
 }
 
 pub struct CachePurgeTagArgs<'a> {
-    pub tag: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub tag: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CachePurgeTagArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CachePurgeTagArgs {
-            tag: None,
-        }
+        CachePurgeTagArgs { tag: None }
     }
 }
 pub struct CachePurgeTagBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CachePurgeTagBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CachePurgeTag::VT_TAG, tag);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CachePurgeTagBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CachePurgeTagBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_tag(&mut self, tag: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CachePurgeTag::VT_TAG, tag);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CachePurgeTag<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CachePurgeTagBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CachePurgeTagBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CachePurgeTag<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DataPutOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DataPut<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DataPut<'a> {
@@ -3696,43 +3825,51 @@ impl<'a> flatbuffers::Follow<'a> for DataPut<'a> {
 impl<'a> DataPut<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataPut {
-            _tab: table,
-        }
+        DataPut { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataPutArgs<'args>) -> flatbuffers::WIPOffset<DataPut<'bldr>> {
-      let mut builder = DataPutBuilder::new(_fbb);
-      if let Some(x) = args.json { builder.add_json(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
+        args: &'args DataPutArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DataPut<'bldr>> {
+        let mut builder = DataPutBuilder::new(_fbb);
+        if let Some(x) = args.json {
+            builder.add_json(x);
+        }
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        if let Some(x) = args.collection {
+            builder.add_collection(x);
+        }
+        builder.finish()
     }
 
     pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
     pub const VT_KEY: flatbuffers::VOffsetT = 6;
     pub const VT_JSON: flatbuffers::VOffsetT = 8;
 
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_KEY, None)
-  }
-  #[inline]
-  pub fn json(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_JSON, None)
-  }
+    #[inline]
+    pub fn collection(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_COLLECTION, None)
+    }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_KEY, None)
+    }
+    #[inline]
+    pub fn json(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataPut::VT_JSON, None)
+    }
 }
 
 pub struct DataPutArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub json: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub collection: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub json: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DataPutArgs<'a> {
     #[inline]
@@ -3745,42 +3882,45 @@ impl<'a> Default for DataPutArgs<'a> {
     }
 }
 pub struct DataPutBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DataPutBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_JSON, json);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataPutBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataPutBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_COLLECTION, collection);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataPut<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_KEY, key);
+    }
+    #[inline]
+    pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataPut::VT_JSON, json);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataPutBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DataPutBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DataPut<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DataGetOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DataGet<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DataGet<'a> {
@@ -3796,36 +3936,41 @@ impl<'a> flatbuffers::Follow<'a> for DataGet<'a> {
 impl<'a> DataGet<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataGet {
-            _tab: table,
-        }
+        DataGet { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataGetArgs<'args>) -> flatbuffers::WIPOffset<DataGet<'bldr>> {
-      let mut builder = DataGetBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
+        args: &'args DataGetArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DataGet<'bldr>> {
+        let mut builder = DataGetBuilder::new(_fbb);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        if let Some(x) = args.collection {
+            builder.add_collection(x);
+        }
+        builder.finish()
     }
 
     pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
     pub const VT_KEY: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_KEY, None)
-  }
+    #[inline]
+    pub fn collection(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_COLLECTION, None)
+    }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataGet::VT_KEY, None)
+    }
 }
 
 pub struct DataGetArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub collection: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DataGetArgs<'a> {
     #[inline]
@@ -3837,38 +3982,40 @@ impl<'a> Default for DataGetArgs<'a> {
     }
 }
 pub struct DataGetBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DataGetBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataGetBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_COLLECTION, collection);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataGet<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataGet::VT_KEY, key);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DataGetBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DataGet<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DataGetReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DataGetReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DataGetReady<'a> {
@@ -3884,67 +4031,68 @@ impl<'a> flatbuffers::Follow<'a> for DataGetReady<'a> {
 impl<'a> DataGetReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataGetReady {
-            _tab: table,
-        }
+        DataGetReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataGetReadyArgs<'args>) -> flatbuffers::WIPOffset<DataGetReady<'bldr>> {
-      let mut builder = DataGetReadyBuilder::new(_fbb);
-      if let Some(x) = args.json { builder.add_json(x); }
-      builder.finish()
+        args: &'args DataGetReadyArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DataGetReady<'bldr>> {
+        let mut builder = DataGetReadyBuilder::new(_fbb);
+        if let Some(x) = args.json {
+            builder.add_json(x);
+        }
+        builder.finish()
     }
 
     pub const VT_JSON: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn json(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataGetReady::VT_JSON, None)
-  }
+    #[inline]
+    pub fn json(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataGetReady::VT_JSON, None)
+    }
 }
 
 pub struct DataGetReadyArgs<'a> {
-    pub json: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub json: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DataGetReadyArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DataGetReadyArgs {
-            json: None,
-        }
+        DataGetReadyArgs { json: None }
     }
 }
 pub struct DataGetReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DataGetReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataGetReady::VT_JSON, json);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataGetReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_json(&mut self, json: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataGetReady::VT_JSON, json);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataGetReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataGetReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DataGetReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DataGetReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DataDelOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DataDel<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DataDel<'a> {
@@ -3960,36 +4108,41 @@ impl<'a> flatbuffers::Follow<'a> for DataDel<'a> {
 impl<'a> DataDel<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataDel {
-            _tab: table,
-        }
+        DataDel { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataDelArgs<'args>) -> flatbuffers::WIPOffset<DataDel<'bldr>> {
-      let mut builder = DataDelBuilder::new(_fbb);
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
+        args: &'args DataDelArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DataDel<'bldr>> {
+        let mut builder = DataDelBuilder::new(_fbb);
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        if let Some(x) = args.collection {
+            builder.add_collection(x);
+        }
+        builder.finish()
     }
 
     pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
     pub const VT_KEY: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_KEY, None)
-  }
+    #[inline]
+    pub fn collection(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_COLLECTION, None)
+    }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataDel::VT_KEY, None)
+    }
 }
 
 pub struct DataDelArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub collection: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DataDelArgs<'a> {
     #[inline]
@@ -4001,38 +4154,40 @@ impl<'a> Default for DataDelArgs<'a> {
     }
 }
 pub struct DataDelBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DataDelBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_KEY, key);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDelBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataDelBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_COLLECTION, collection);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataDel<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataDel::VT_KEY, key);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDelBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DataDelBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DataDel<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DataDropCollectionOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DataDropCollection<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DataDropCollection<'a> {
@@ -4048,67 +4203,72 @@ impl<'a> flatbuffers::Follow<'a> for DataDropCollection<'a> {
 impl<'a> DataDropCollection<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataDropCollection {
-            _tab: table,
-        }
+        DataDropCollection { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataDropCollectionArgs<'args>) -> flatbuffers::WIPOffset<DataDropCollection<'bldr>> {
-      let mut builder = DataDropCollectionBuilder::new(_fbb);
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
+        args: &'args DataDropCollectionArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DataDropCollection<'bldr>> {
+        let mut builder = DataDropCollectionBuilder::new(_fbb);
+        if let Some(x) = args.collection {
+            builder.add_collection(x);
+        }
+        builder.finish()
     }
 
     pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataDropCollection::VT_COLLECTION, None)
-  }
+    #[inline]
+    pub fn collection(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataDropCollection::VT_COLLECTION, None)
+    }
 }
 
 pub struct DataDropCollectionArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub collection: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for DataDropCollectionArgs<'a> {
     #[inline]
     fn default() -> Self {
-        DataDropCollectionArgs {
-            collection: None,
-        }
+        DataDropCollectionArgs { collection: None }
     }
 }
 pub struct DataDropCollectionBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DataDropCollectionBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataDropCollection::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataDropCollectionBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataDropCollectionBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            DataDropCollection::VT_COLLECTION,
+            collection,
+        );
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataDropCollection<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> DataDropCollectionBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DataDropCollectionBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DataDropCollection<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum DataIncrOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct DataIncr<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for DataIncr<'a> {
@@ -4124,20 +4284,25 @@ impl<'a> flatbuffers::Follow<'a> for DataIncr<'a> {
 impl<'a> DataIncr<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        DataIncr {
-            _tab: table,
-        }
+        DataIncr { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args DataIncrArgs<'args>) -> flatbuffers::WIPOffset<DataIncr<'bldr>> {
-      let mut builder = DataIncrBuilder::new(_fbb);
-      builder.add_amount(args.amount);
-      if let Some(x) = args.field { builder.add_field(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      if let Some(x) = args.collection { builder.add_collection(x); }
-      builder.finish()
+        args: &'args DataIncrArgs<'args>,
+    ) -> flatbuffers::WIPOffset<DataIncr<'bldr>> {
+        let mut builder = DataIncrBuilder::new(_fbb);
+        builder.add_amount(args.amount);
+        if let Some(x) = args.field {
+            builder.add_field(x);
+        }
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        if let Some(x) = args.collection {
+            builder.add_collection(x);
+        }
+        builder.finish()
     }
 
     pub const VT_COLLECTION: flatbuffers::VOffsetT = 4;
@@ -4145,28 +4310,31 @@ impl<'a> DataIncr<'a> {
     pub const VT_FIELD: flatbuffers::VOffsetT = 8;
     pub const VT_AMOUNT: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn collection(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_COLLECTION, None)
-  }
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_KEY, None)
-  }
-  #[inline]
-  pub fn field(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_FIELD, None)
-  }
-  #[inline]
-  pub fn amount(&self) -> i32 {
-    self._tab.get::<i32>(DataIncr::VT_AMOUNT, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn collection(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_COLLECTION, None)
+    }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_KEY, None)
+    }
+    #[inline]
+    pub fn field(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(DataIncr::VT_FIELD, None)
+    }
+    #[inline]
+    pub fn amount(&self) -> i32 {
+        self._tab.get::<i32>(DataIncr::VT_AMOUNT, Some(0)).unwrap()
+    }
 }
 
 pub struct DataIncrArgs<'a> {
-    pub collection: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub field: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub collection: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub field: Option<flatbuffers::WIPOffset<&'a str>>,
     pub amount: i32,
 }
 impl<'a> Default for DataIncrArgs<'a> {
@@ -4181,46 +4349,49 @@ impl<'a> Default for DataIncrArgs<'a> {
     }
 }
 pub struct DataIncrBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> DataIncrBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_COLLECTION, collection);
-  }
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_field(&mut self, field: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_FIELD, field);
-  }
-  #[inline]
-  pub fn add_amount(&mut self, amount: i32) {
-    self.fbb_.push_slot::<i32>(DataIncr::VT_AMOUNT, amount, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataIncrBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    DataIncrBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_collection(&mut self, collection: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_COLLECTION, collection);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<DataIncr<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_KEY, key);
+    }
+    #[inline]
+    pub fn add_field(&mut self, field: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(DataIncr::VT_FIELD, field);
+    }
+    #[inline]
+    pub fn add_amount(&mut self, amount: i32) {
+        self.fbb_.push_slot::<i32>(DataIncr::VT_AMOUNT, amount, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> DataIncrBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        DataIncrBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<DataIncr<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum ImageWebPEncodeOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct ImageWebPEncode<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for ImageWebPEncode<'a> {
@@ -4236,20 +4407,19 @@ impl<'a> flatbuffers::Follow<'a> for ImageWebPEncode<'a> {
 impl<'a> ImageWebPEncode<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        ImageWebPEncode {
-            _tab: table,
-        }
+        ImageWebPEncode { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args ImageWebPEncodeArgs) -> flatbuffers::WIPOffset<ImageWebPEncode<'bldr>> {
-      let mut builder = ImageWebPEncodeBuilder::new(_fbb);
-      builder.add_alpha_quality(args.alpha_quality);
-      builder.add_quality(args.quality);
-      builder.add_near_lossless(args.near_lossless);
-      builder.add_lossless(args.lossless);
-      builder.finish()
+        args: &'args ImageWebPEncodeArgs,
+    ) -> flatbuffers::WIPOffset<ImageWebPEncode<'bldr>> {
+        let mut builder = ImageWebPEncodeBuilder::new(_fbb);
+        builder.add_alpha_quality(args.alpha_quality);
+        builder.add_quality(args.quality);
+        builder.add_near_lossless(args.near_lossless);
+        builder.add_lossless(args.lossless);
+        builder.finish()
     }
 
     pub const VT_QUALITY: flatbuffers::VOffsetT = 4;
@@ -4257,22 +4427,30 @@ impl<'a> ImageWebPEncode<'a> {
     pub const VT_LOSSLESS: flatbuffers::VOffsetT = 8;
     pub const VT_NEAR_LOSSLESS: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn quality(&self) -> f32 {
-    self._tab.get::<f32>(ImageWebPEncode::VT_QUALITY, Some(0.0)).unwrap()
-  }
-  #[inline]
-  pub fn alpha_quality(&self) -> f32 {
-    self._tab.get::<f32>(ImageWebPEncode::VT_ALPHA_QUALITY, Some(0.0)).unwrap()
-  }
-  #[inline]
-  pub fn lossless(&self) -> bool {
-    self._tab.get::<bool>(ImageWebPEncode::VT_LOSSLESS, Some(false)).unwrap()
-  }
-  #[inline]
-  pub fn near_lossless(&self) -> bool {
-    self._tab.get::<bool>(ImageWebPEncode::VT_NEAR_LOSSLESS, Some(false)).unwrap()
-  }
+    #[inline]
+    pub fn quality(&self) -> f32 {
+        self._tab
+            .get::<f32>(ImageWebPEncode::VT_QUALITY, Some(0.0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn alpha_quality(&self) -> f32 {
+        self._tab
+            .get::<f32>(ImageWebPEncode::VT_ALPHA_QUALITY, Some(0.0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn lossless(&self) -> bool {
+        self._tab
+            .get::<bool>(ImageWebPEncode::VT_LOSSLESS, Some(false))
+            .unwrap()
+    }
+    #[inline]
+    pub fn near_lossless(&self) -> bool {
+        self._tab
+            .get::<bool>(ImageWebPEncode::VT_NEAR_LOSSLESS, Some(false))
+            .unwrap()
+    }
 }
 
 pub struct ImageWebPEncodeArgs {
@@ -4293,46 +4471,50 @@ impl<'a> Default for ImageWebPEncodeArgs {
     }
 }
 pub struct ImageWebPEncodeBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> ImageWebPEncodeBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_quality(&mut self, quality: f32) {
-    self.fbb_.push_slot::<f32>(ImageWebPEncode::VT_QUALITY, quality, 0.0);
-  }
-  #[inline]
-  pub fn add_alpha_quality(&mut self, alpha_quality: f32) {
-    self.fbb_.push_slot::<f32>(ImageWebPEncode::VT_ALPHA_QUALITY, alpha_quality, 0.0);
-  }
-  #[inline]
-  pub fn add_lossless(&mut self, lossless: bool) {
-    self.fbb_.push_slot::<bool>(ImageWebPEncode::VT_LOSSLESS, lossless, false);
-  }
-  #[inline]
-  pub fn add_near_lossless(&mut self, near_lossless: bool) {
-    self.fbb_.push_slot::<bool>(ImageWebPEncode::VT_NEAR_LOSSLESS, near_lossless, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageWebPEncodeBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    ImageWebPEncodeBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_quality(&mut self, quality: f32) {
+        self.fbb_
+            .push_slot::<f32>(ImageWebPEncode::VT_QUALITY, quality, 0.0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<ImageWebPEncode<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_alpha_quality(&mut self, alpha_quality: f32) {
+        self.fbb_
+            .push_slot::<f32>(ImageWebPEncode::VT_ALPHA_QUALITY, alpha_quality, 0.0);
+    }
+    #[inline]
+    pub fn add_lossless(&mut self, lossless: bool) {
+        self.fbb_
+            .push_slot::<bool>(ImageWebPEncode::VT_LOSSLESS, lossless, false);
+    }
+    #[inline]
+    pub fn add_near_lossless(&mut self, near_lossless: bool) {
+        self.fbb_
+            .push_slot::<bool>(ImageWebPEncode::VT_NEAR_LOSSLESS, near_lossless, false);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageWebPEncodeBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        ImageWebPEncodeBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<ImageWebPEncode<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum ImageResizeOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct ImageResize<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for ImageResize<'a> {
@@ -4348,37 +4530,42 @@ impl<'a> flatbuffers::Follow<'a> for ImageResize<'a> {
 impl<'a> ImageResize<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        ImageResize {
-            _tab: table,
-        }
+        ImageResize { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args ImageResizeArgs) -> flatbuffers::WIPOffset<ImageResize<'bldr>> {
-      let mut builder = ImageResizeBuilder::new(_fbb);
-      builder.add_height(args.height);
-      builder.add_width(args.width);
-      builder.add_filter(args.filter);
-      builder.finish()
+        args: &'args ImageResizeArgs,
+    ) -> flatbuffers::WIPOffset<ImageResize<'bldr>> {
+        let mut builder = ImageResizeBuilder::new(_fbb);
+        builder.add_height(args.height);
+        builder.add_width(args.width);
+        builder.add_filter(args.filter);
+        builder.finish()
     }
 
     pub const VT_WIDTH: flatbuffers::VOffsetT = 4;
     pub const VT_HEIGHT: flatbuffers::VOffsetT = 6;
     pub const VT_FILTER: flatbuffers::VOffsetT = 8;
 
-  #[inline]
-  pub fn width(&self) -> u32 {
-    self._tab.get::<u32>(ImageResize::VT_WIDTH, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn height(&self) -> u32 {
-    self._tab.get::<u32>(ImageResize::VT_HEIGHT, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn filter(&self) -> ImageSamplingFilter {
-    self._tab.get::<ImageSamplingFilter>(ImageResize::VT_FILTER, Some(ImageSamplingFilter::Nearest)).unwrap()
-  }
+    #[inline]
+    pub fn width(&self) -> u32 {
+        self._tab
+            .get::<u32>(ImageResize::VT_WIDTH, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn height(&self) -> u32 {
+        self._tab
+            .get::<u32>(ImageResize::VT_HEIGHT, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn filter(&self) -> ImageSamplingFilter {
+        self._tab
+            .get::<ImageSamplingFilter>(ImageResize::VT_FILTER, Some(ImageSamplingFilter::Nearest))
+            .unwrap()
+    }
 }
 
 pub struct ImageResizeArgs {
@@ -4397,42 +4584,47 @@ impl<'a> Default for ImageResizeArgs {
     }
 }
 pub struct ImageResizeBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> ImageResizeBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_width(&mut self, width: u32) {
-    self.fbb_.push_slot::<u32>(ImageResize::VT_WIDTH, width, 0);
-  }
-  #[inline]
-  pub fn add_height(&mut self, height: u32) {
-    self.fbb_.push_slot::<u32>(ImageResize::VT_HEIGHT, height, 0);
-  }
-  #[inline]
-  pub fn add_filter(&mut self, filter: ImageSamplingFilter) {
-    self.fbb_.push_slot::<ImageSamplingFilter>(ImageResize::VT_FILTER, filter, ImageSamplingFilter::Nearest);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageResizeBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    ImageResizeBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_width(&mut self, width: u32) {
+        self.fbb_.push_slot::<u32>(ImageResize::VT_WIDTH, width, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<ImageResize<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_height(&mut self, height: u32) {
+        self.fbb_
+            .push_slot::<u32>(ImageResize::VT_HEIGHT, height, 0);
+    }
+    #[inline]
+    pub fn add_filter(&mut self, filter: ImageSamplingFilter) {
+        self.fbb_.push_slot::<ImageSamplingFilter>(
+            ImageResize::VT_FILTER,
+            filter,
+            ImageSamplingFilter::Nearest,
+        );
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageResizeBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        ImageResizeBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<ImageResize<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum ImageTransformOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct ImageTransform<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for ImageTransform<'a> {
@@ -4448,57 +4640,71 @@ impl<'a> flatbuffers::Follow<'a> for ImageTransform<'a> {
 impl<'a> ImageTransform<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        ImageTransform {
-            _tab: table,
-        }
+        ImageTransform { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args ImageTransformArgs) -> flatbuffers::WIPOffset<ImageTransform<'bldr>> {
-      let mut builder = ImageTransformBuilder::new(_fbb);
-      if let Some(x) = args.options { builder.add_options(x); }
-      builder.add_options_type(args.options_type);
-      builder.add_transform(args.transform);
-      builder.finish()
+        args: &'args ImageTransformArgs,
+    ) -> flatbuffers::WIPOffset<ImageTransform<'bldr>> {
+        let mut builder = ImageTransformBuilder::new(_fbb);
+        if let Some(x) = args.options {
+            builder.add_options(x);
+        }
+        builder.add_options_type(args.options_type);
+        builder.add_transform(args.transform);
+        builder.finish()
     }
 
     pub const VT_TRANSFORM: flatbuffers::VOffsetT = 4;
     pub const VT_OPTIONS_TYPE: flatbuffers::VOffsetT = 6;
     pub const VT_OPTIONS: flatbuffers::VOffsetT = 8;
 
-  #[inline]
-  pub fn transform(&self) -> ImageTransformType {
-    self._tab.get::<ImageTransformType>(ImageTransform::VT_TRANSFORM, Some(ImageTransformType::WebPEncode)).unwrap()
-  }
-  #[inline]
-  pub fn options_type(&self) -> ImageTransformOptions {
-    self._tab.get::<ImageTransformOptions>(ImageTransform::VT_OPTIONS_TYPE, Some(ImageTransformOptions::NONE)).unwrap()
-  }
-  #[inline]
-  pub fn options(&self) -> Option<flatbuffers::Table<'a>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(ImageTransform::VT_OPTIONS, None)
-  }
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn options_as_image_web_pencode(&'a self) -> Option<ImageWebPEncode> {
-    if self.options_type() == ImageTransformOptions::ImageWebPEncode {
-      self.options().map(|u| ImageWebPEncode::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn transform(&self) -> ImageTransformType {
+        self._tab
+            .get::<ImageTransformType>(
+                ImageTransform::VT_TRANSFORM,
+                Some(ImageTransformType::WebPEncode),
+            )
+            .unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn options_as_image_resize(&'a self) -> Option<ImageResize> {
-    if self.options_type() == ImageTransformOptions::ImageResize {
-      self.options().map(|u| ImageResize::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn options_type(&self) -> ImageTransformOptions {
+        self._tab
+            .get::<ImageTransformOptions>(
+                ImageTransform::VT_OPTIONS_TYPE,
+                Some(ImageTransformOptions::NONE),
+            )
+            .unwrap()
     }
-  }
+    #[inline]
+    pub fn options(&self) -> Option<flatbuffers::Table<'a>> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(
+                ImageTransform::VT_OPTIONS,
+                None,
+            )
+    }
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn options_as_image_web_pencode(&'a self) -> Option<ImageWebPEncode> {
+        if self.options_type() == ImageTransformOptions::ImageWebPEncode {
+            self.options().map(|u| ImageWebPEncode::init_from_table(u))
+        } else {
+            None
+        }
+    }
 
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn options_as_image_resize(&'a self) -> Option<ImageResize> {
+        if self.options_type() == ImageTransformOptions::ImageResize {
+            self.options().map(|u| ImageResize::init_from_table(u))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct ImageTransformArgs {
@@ -4517,42 +4723,51 @@ impl<'a> Default for ImageTransformArgs {
     }
 }
 pub struct ImageTransformBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> ImageTransformBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_transform(&mut self, transform: ImageTransformType) {
-    self.fbb_.push_slot::<ImageTransformType>(ImageTransform::VT_TRANSFORM, transform, ImageTransformType::WebPEncode);
-  }
-  #[inline]
-  pub fn add_options_type(&mut self, options_type: ImageTransformOptions) {
-    self.fbb_.push_slot::<ImageTransformOptions>(ImageTransform::VT_OPTIONS_TYPE, options_type, ImageTransformOptions::NONE);
-  }
-  #[inline]
-  pub fn add_options(&mut self, options: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(ImageTransform::VT_OPTIONS, options);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageTransformBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    ImageTransformBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_transform(&mut self, transform: ImageTransformType) {
+        self.fbb_.push_slot::<ImageTransformType>(
+            ImageTransform::VT_TRANSFORM,
+            transform,
+            ImageTransformType::WebPEncode,
+        );
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<ImageTransform<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_options_type(&mut self, options_type: ImageTransformOptions) {
+        self.fbb_.push_slot::<ImageTransformOptions>(
+            ImageTransform::VT_OPTIONS_TYPE,
+            options_type,
+            ImageTransformOptions::NONE,
+        );
+    }
+    #[inline]
+    pub fn add_options(&mut self, options: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(ImageTransform::VT_OPTIONS, options);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageTransformBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        ImageTransformBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<ImageTransform<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum ImageApplyTransformsOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct ImageApplyTransforms<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for ImageApplyTransforms<'a> {
@@ -4568,67 +4783,84 @@ impl<'a> flatbuffers::Follow<'a> for ImageApplyTransforms<'a> {
 impl<'a> ImageApplyTransforms<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        ImageApplyTransforms {
-            _tab: table,
-        }
+        ImageApplyTransforms { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args ImageApplyTransformsArgs<'args>) -> flatbuffers::WIPOffset<ImageApplyTransforms<'bldr>> {
-      let mut builder = ImageApplyTransformsBuilder::new(_fbb);
-      if let Some(x) = args.transforms { builder.add_transforms(x); }
-      builder.finish()
+        args: &'args ImageApplyTransformsArgs<'args>,
+    ) -> flatbuffers::WIPOffset<ImageApplyTransforms<'bldr>> {
+        let mut builder = ImageApplyTransformsBuilder::new(_fbb);
+        if let Some(x) = args.transforms {
+            builder.add_transforms(x);
+        }
+        builder.finish()
     }
 
     pub const VT_TRANSFORMS: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn transforms(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>>>(ImageApplyTransforms::VT_TRANSFORMS, None)
-  }
+    #[inline]
+    pub fn transforms(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<ImageTransform<'a>>>,
+        >>(ImageApplyTransforms::VT_TRANSFORMS, None)
+    }
 }
 
 pub struct ImageApplyTransformsArgs<'a> {
-    pub transforms: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<ImageTransform<'a >>>>>,
+    pub transforms: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<ImageTransform<'a>>>,
+        >,
+    >,
 }
 impl<'a> Default for ImageApplyTransformsArgs<'a> {
     #[inline]
     fn default() -> Self {
-        ImageApplyTransformsArgs {
-            transforms: None,
-        }
+        ImageApplyTransformsArgs { transforms: None }
     }
 }
 pub struct ImageApplyTransformsBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> ImageApplyTransformsBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_transforms(&mut self, transforms: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<ImageTransform<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(ImageApplyTransforms::VT_TRANSFORMS, transforms);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageApplyTransformsBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    ImageApplyTransformsBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_transforms(
+        &mut self,
+        transforms: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<ImageTransform<'b>>>,
+        >,
+    ) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            ImageApplyTransforms::VT_TRANSFORMS,
+            transforms,
+        );
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<ImageApplyTransforms<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> ImageApplyTransformsBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        ImageApplyTransformsBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<ImageApplyTransforms<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum ImageReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct ImageReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for ImageReady<'a> {
@@ -4644,31 +4876,32 @@ impl<'a> flatbuffers::Follow<'a> for ImageReady<'a> {
 impl<'a> ImageReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        ImageReady {
-            _tab: table,
-        }
+        ImageReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args ImageReadyArgs) -> flatbuffers::WIPOffset<ImageReady<'bldr>> {
-      let mut builder = ImageReadyBuilder::new(_fbb);
-      builder.add_out_id(args.out_id);
-      builder.add_in_id(args.in_id);
-      builder.finish()
+        args: &'args ImageReadyArgs,
+    ) -> flatbuffers::WIPOffset<ImageReady<'bldr>> {
+        let mut builder = ImageReadyBuilder::new(_fbb);
+        builder.add_out_id(args.out_id);
+        builder.add_in_id(args.in_id);
+        builder.finish()
     }
 
     pub const VT_IN_ID: flatbuffers::VOffsetT = 4;
     pub const VT_OUT_ID: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn in_id(&self) -> u32 {
-    self._tab.get::<u32>(ImageReady::VT_IN_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn out_id(&self) -> u32 {
-    self._tab.get::<u32>(ImageReady::VT_OUT_ID, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn in_id(&self) -> u32 {
+        self._tab.get::<u32>(ImageReady::VT_IN_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn out_id(&self) -> u32 {
+        self._tab
+            .get::<u32>(ImageReady::VT_OUT_ID, Some(0))
+            .unwrap()
+    }
 }
 
 pub struct ImageReadyArgs {
@@ -4685,38 +4918,38 @@ impl<'a> Default for ImageReadyArgs {
     }
 }
 pub struct ImageReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> ImageReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_in_id(&mut self, in_id: u32) {
-    self.fbb_.push_slot::<u32>(ImageReady::VT_IN_ID, in_id, 0);
-  }
-  #[inline]
-  pub fn add_out_id(&mut self, out_id: u32) {
-    self.fbb_.push_slot::<u32>(ImageReady::VT_OUT_ID, out_id, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    ImageReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_in_id(&mut self, in_id: u32) {
+        self.fbb_.push_slot::<u32>(ImageReady::VT_IN_ID, in_id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<ImageReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_out_id(&mut self, out_id: u32) {
+        self.fbb_.push_slot::<u32>(ImageReady::VT_OUT_ID, out_id, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> ImageReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        ImageReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<ImageReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum AcmeGetChallengeOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct AcmeGetChallenge<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for AcmeGetChallenge<'a> {
@@ -4732,36 +4965,41 @@ impl<'a> flatbuffers::Follow<'a> for AcmeGetChallenge<'a> {
 impl<'a> AcmeGetChallenge<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        AcmeGetChallenge {
-            _tab: table,
-        }
+        AcmeGetChallenge { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args AcmeGetChallengeArgs<'args>) -> flatbuffers::WIPOffset<AcmeGetChallenge<'bldr>> {
-      let mut builder = AcmeGetChallengeBuilder::new(_fbb);
-      if let Some(x) = args.token { builder.add_token(x); }
-      if let Some(x) = args.hostname { builder.add_hostname(x); }
-      builder.finish()
+        args: &'args AcmeGetChallengeArgs<'args>,
+    ) -> flatbuffers::WIPOffset<AcmeGetChallenge<'bldr>> {
+        let mut builder = AcmeGetChallengeBuilder::new(_fbb);
+        if let Some(x) = args.token {
+            builder.add_token(x);
+        }
+        if let Some(x) = args.hostname {
+            builder.add_hostname(x);
+        }
+        builder.finish()
     }
 
     pub const VT_HOSTNAME: flatbuffers::VOffsetT = 4;
     pub const VT_TOKEN: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn hostname(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallenge::VT_HOSTNAME, None)
-  }
-  #[inline]
-  pub fn token(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallenge::VT_TOKEN, None)
-  }
+    #[inline]
+    pub fn hostname(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallenge::VT_HOSTNAME, None)
+    }
+    #[inline]
+    pub fn token(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallenge::VT_TOKEN, None)
+    }
 }
 
 pub struct AcmeGetChallengeArgs<'a> {
-    pub hostname: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub token: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub hostname: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub token: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for AcmeGetChallengeArgs<'a> {
     #[inline]
@@ -4773,38 +5011,42 @@ impl<'a> Default for AcmeGetChallengeArgs<'a> {
     }
 }
 pub struct AcmeGetChallengeBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> AcmeGetChallengeBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_hostname(&mut self, hostname: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallenge::VT_HOSTNAME, hostname);
-  }
-  #[inline]
-  pub fn add_token(&mut self, token: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallenge::VT_TOKEN, token);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> AcmeGetChallengeBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    AcmeGetChallengeBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_hostname(&mut self, hostname: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallenge::VT_HOSTNAME, hostname);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<AcmeGetChallenge<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_token(&mut self, token: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallenge::VT_TOKEN, token);
+    }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> AcmeGetChallengeBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        AcmeGetChallengeBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<AcmeGetChallenge<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum AcmeGetChallengeReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct AcmeGetChallengeReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for AcmeGetChallengeReady<'a> {
@@ -4820,36 +5062,40 @@ impl<'a> flatbuffers::Follow<'a> for AcmeGetChallengeReady<'a> {
 impl<'a> AcmeGetChallengeReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        AcmeGetChallengeReady {
-            _tab: table,
-        }
+        AcmeGetChallengeReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args AcmeGetChallengeReadyArgs<'args>) -> flatbuffers::WIPOffset<AcmeGetChallengeReady<'bldr>> {
-      let mut builder = AcmeGetChallengeReadyBuilder::new(_fbb);
-      if let Some(x) = args.contents { builder.add_contents(x); }
-      builder.add_id(args.id);
-      builder.finish()
+        args: &'args AcmeGetChallengeReadyArgs<'args>,
+    ) -> flatbuffers::WIPOffset<AcmeGetChallengeReady<'bldr>> {
+        let mut builder = AcmeGetChallengeReadyBuilder::new(_fbb);
+        if let Some(x) = args.contents {
+            builder.add_contents(x);
+        }
+        builder.add_id(args.id);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
     pub const VT_CONTENTS: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(AcmeGetChallengeReady::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn contents(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallengeReady::VT_CONTENTS, None)
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab
+            .get::<u32>(AcmeGetChallengeReady::VT_ID, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn contents(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(AcmeGetChallengeReady::VT_CONTENTS, None)
+    }
 }
 
 pub struct AcmeGetChallengeReadyArgs<'a> {
     pub id: u32,
-    pub contents: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub contents: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for AcmeGetChallengeReadyArgs<'a> {
     #[inline]
@@ -4861,38 +5107,44 @@ impl<'a> Default for AcmeGetChallengeReadyArgs<'a> {
     }
 }
 pub struct AcmeGetChallengeReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> AcmeGetChallengeReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(AcmeGetChallengeReady::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_contents(&mut self, contents: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(AcmeGetChallengeReady::VT_CONTENTS, contents);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> AcmeGetChallengeReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    AcmeGetChallengeReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_
+            .push_slot::<u32>(AcmeGetChallengeReady::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<AcmeGetChallengeReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_contents(&mut self, contents: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            AcmeGetChallengeReady::VT_CONTENTS,
+            contents,
+        );
+    }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> AcmeGetChallengeReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        AcmeGetChallengeReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<AcmeGetChallengeReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum OsExitOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct OsExit<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for OsExit<'a> {
@@ -4908,25 +5160,24 @@ impl<'a> flatbuffers::Follow<'a> for OsExit<'a> {
 impl<'a> OsExit<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        OsExit {
-            _tab: table,
-        }
+        OsExit { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args OsExitArgs) -> flatbuffers::WIPOffset<OsExit<'bldr>> {
-      let mut builder = OsExitBuilder::new(_fbb);
-      builder.add_code(args.code);
-      builder.finish()
+        args: &'args OsExitArgs,
+    ) -> flatbuffers::WIPOffset<OsExit<'bldr>> {
+        let mut builder = OsExitBuilder::new(_fbb);
+        builder.add_code(args.code);
+        builder.finish()
     }
 
     pub const VT_CODE: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn code(&self) -> i32 {
-    self._tab.get::<i32>(OsExit::VT_CODE, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn code(&self) -> i32 {
+        self._tab.get::<i32>(OsExit::VT_CODE, Some(0)).unwrap()
+    }
 }
 
 pub struct OsExitArgs {
@@ -4935,40 +5186,38 @@ pub struct OsExitArgs {
 impl<'a> Default for OsExitArgs {
     #[inline]
     fn default() -> Self {
-        OsExitArgs {
-            code: 0,
-        }
+        OsExitArgs { code: 0 }
     }
 }
 pub struct OsExitBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> OsExitBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_code(&mut self, code: i32) {
-    self.fbb_.push_slot::<i32>(OsExit::VT_CODE, code, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> OsExitBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    OsExitBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_code(&mut self, code: i32) {
+        self.fbb_.push_slot::<i32>(OsExit::VT_CODE, code, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<OsExit<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> OsExitBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        OsExitBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<OsExit<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum BaseOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct Base<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for Base<'a> {
@@ -4984,22 +5233,25 @@ impl<'a> flatbuffers::Follow<'a> for Base<'a> {
 impl<'a> Base<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        Base {
-            _tab: table,
-        }
+        Base { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args BaseArgs<'args>) -> flatbuffers::WIPOffset<Base<'bldr>> {
-      let mut builder = BaseBuilder::new(_fbb);
-      if let Some(x) = args.msg { builder.add_msg(x); }
-      if let Some(x) = args.error { builder.add_error(x); }
-      builder.add_cmd_id(args.cmd_id);
-      builder.add_msg_type(args.msg_type);
-      builder.add_error_kind(args.error_kind);
-      builder.add_sync(args.sync);
-      builder.finish()
+        args: &'args BaseArgs<'args>,
+    ) -> flatbuffers::WIPOffset<Base<'bldr>> {
+        let mut builder = BaseBuilder::new(_fbb);
+        if let Some(x) = args.msg {
+            builder.add_msg(x);
+        }
+        if let Some(x) = args.error {
+            builder.add_error(x);
+        }
+        builder.add_cmd_id(args.cmd_id);
+        builder.add_msg_type(args.msg_type);
+        builder.add_error_kind(args.error_kind);
+        builder.add_sync(args.sync);
+        builder.finish()
     }
 
     pub const VT_CMD_ID: flatbuffers::VOffsetT = 4;
@@ -5009,457 +5261,464 @@ impl<'a> Base<'a> {
     pub const VT_MSG_TYPE: flatbuffers::VOffsetT = 12;
     pub const VT_MSG: flatbuffers::VOffsetT = 14;
 
-  #[inline]
-  pub fn cmd_id(&self) -> u32 {
-    self._tab.get::<u32>(Base::VT_CMD_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn sync(&self) -> bool {
-    self._tab.get::<bool>(Base::VT_SYNC, Some(false)).unwrap()
-  }
-  #[inline]
-  pub fn error_kind(&self) -> ErrorKind {
-    self._tab.get::<ErrorKind>(Base::VT_ERROR_KIND, Some(ErrorKind::NoError)).unwrap()
-  }
-  #[inline]
-  pub fn error(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Base::VT_ERROR, None)
-  }
-  #[inline]
-  pub fn msg_type(&self) -> Any {
-    self._tab.get::<Any>(Base::VT_MSG_TYPE, Some(Any::NONE)).unwrap()
-  }
-  #[inline]
-  pub fn msg(&self) -> Option<flatbuffers::Table<'a>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(Base::VT_MSG, None)
-  }
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_timer_start(&'a self) -> Option<TimerStart> {
-    if self.msg_type() == Any::TimerStart {
-      self.msg().map(|u| TimerStart::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn cmd_id(&self) -> u32 {
+        self._tab.get::<u32>(Base::VT_CMD_ID, Some(0)).unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_timer_ready(&'a self) -> Option<TimerReady> {
-    if self.msg_type() == Any::TimerReady {
-      self.msg().map(|u| TimerReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn sync(&self) -> bool {
+        self._tab.get::<bool>(Base::VT_SYNC, Some(false)).unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_timer_clear(&'a self) -> Option<TimerClear> {
-    if self.msg_type() == Any::TimerClear {
-      self.msg().map(|u| TimerClear::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn error_kind(&self) -> ErrorKind {
+        self._tab
+            .get::<ErrorKind>(Base::VT_ERROR_KIND, Some(ErrorKind::NoError))
+            .unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_http_request(&'a self) -> Option<HttpRequest> {
-    if self.msg_type() == Any::HttpRequest {
-      self.msg().map(|u| HttpRequest::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn error(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(Base::VT_ERROR, None)
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_http_response(&'a self) -> Option<HttpResponse> {
-    if self.msg_type() == Any::HttpResponse {
-      self.msg().map(|u| HttpResponse::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn msg_type(&self) -> Any {
+        self._tab
+            .get::<Any>(Base::VT_MSG_TYPE, Some(Any::NONE))
+            .unwrap()
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_stream_chunk(&'a self) -> Option<StreamChunk> {
-    if self.msg_type() == Any::StreamChunk {
-      self.msg().map(|u| StreamChunk::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    pub fn msg(&self) -> Option<flatbuffers::Table<'a>> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Table<'a>>>(Base::VT_MSG, None)
     }
-  }
-
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_http_request_start(&'a self) -> Option<HttpRequestStart> {
-    if self.msg_type() == Any::HttpRequestStart {
-      self.msg().map(|u| HttpRequestStart::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_timer_start(&'a self) -> Option<TimerStart> {
+        if self.msg_type() == Any::TimerStart {
+            self.msg().map(|u| TimerStart::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_fetch_http_response(&'a self) -> Option<FetchHttpResponse> {
-    if self.msg_type() == Any::FetchHttpResponse {
-      self.msg().map(|u| FetchHttpResponse::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_timer_ready(&'a self) -> Option<TimerReady> {
+        if self.msg_type() == Any::TimerReady {
+            self.msg().map(|u| TimerReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_get(&'a self) -> Option<CacheGet> {
-    if self.msg_type() == Any::CacheGet {
-      self.msg().map(|u| CacheGet::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_timer_clear(&'a self) -> Option<TimerClear> {
+        if self.msg_type() == Any::TimerClear {
+            self.msg().map(|u| TimerClear::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_get_ready(&'a self) -> Option<CacheGetReady> {
-    if self.msg_type() == Any::CacheGetReady {
-      self.msg().map(|u| CacheGetReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_http_request(&'a self) -> Option<HttpRequest> {
+        if self.msg_type() == Any::HttpRequest {
+            self.msg().map(|u| HttpRequest::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_set(&'a self) -> Option<CacheSet> {
-    if self.msg_type() == Any::CacheSet {
-      self.msg().map(|u| CacheSet::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_http_response(&'a self) -> Option<HttpResponse> {
+        if self.msg_type() == Any::HttpResponse {
+            self.msg().map(|u| HttpResponse::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_set_ready(&'a self) -> Option<CacheSetReady> {
-    if self.msg_type() == Any::CacheSetReady {
-      self.msg().map(|u| CacheSetReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_stream_chunk(&'a self) -> Option<StreamChunk> {
+        if self.msg_type() == Any::StreamChunk {
+            self.msg().map(|u| StreamChunk::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_del(&'a self) -> Option<CacheDel> {
-    if self.msg_type() == Any::CacheDel {
-      self.msg().map(|u| CacheDel::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_http_request_start(&'a self) -> Option<HttpRequestStart> {
+        if self.msg_type() == Any::HttpRequestStart {
+            self.msg().map(|u| HttpRequestStart::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_expire(&'a self) -> Option<CacheExpire> {
-    if self.msg_type() == Any::CacheExpire {
-      self.msg().map(|u| CacheExpire::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_fetch_http_response(&'a self) -> Option<FetchHttpResponse> {
+        if self.msg_type() == Any::FetchHttpResponse {
+            self.msg().map(|u| FetchHttpResponse::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_notify_del(&'a self) -> Option<CacheNotifyDel> {
-    if self.msg_type() == Any::CacheNotifyDel {
-      self.msg().map(|u| CacheNotifyDel::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_get(&'a self) -> Option<CacheGet> {
+        if self.msg_type() == Any::CacheGet {
+            self.msg().map(|u| CacheGet::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_notify_purge_tag(&'a self) -> Option<CacheNotifyPurgeTag> {
-    if self.msg_type() == Any::CacheNotifyPurgeTag {
-      self.msg().map(|u| CacheNotifyPurgeTag::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_get_ready(&'a self) -> Option<CacheGetReady> {
+        if self.msg_type() == Any::CacheGetReady {
+            self.msg().map(|u| CacheGetReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_set_tags(&'a self) -> Option<CacheSetTags> {
-    if self.msg_type() == Any::CacheSetTags {
-      self.msg().map(|u| CacheSetTags::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_set(&'a self) -> Option<CacheSet> {
+        if self.msg_type() == Any::CacheSet {
+            self.msg().map(|u| CacheSet::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_purge_tag(&'a self) -> Option<CachePurgeTag> {
-    if self.msg_type() == Any::CachePurgeTag {
-      self.msg().map(|u| CachePurgeTag::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_set_ready(&'a self) -> Option<CacheSetReady> {
+        if self.msg_type() == Any::CacheSetReady {
+            self.msg().map(|u| CacheSetReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_cache_set_meta(&'a self) -> Option<CacheSetMeta> {
-    if self.msg_type() == Any::CacheSetMeta {
-      self.msg().map(|u| CacheSetMeta::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_del(&'a self) -> Option<CacheDel> {
+        if self.msg_type() == Any::CacheDel {
+            self.msg().map(|u| CacheDel::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_crypto_digest(&'a self) -> Option<CryptoDigest> {
-    if self.msg_type() == Any::CryptoDigest {
-      self.msg().map(|u| CryptoDigest::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_expire(&'a self) -> Option<CacheExpire> {
+        if self.msg_type() == Any::CacheExpire {
+            self.msg().map(|u| CacheExpire::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_crypto_digest_ready(&'a self) -> Option<CryptoDigestReady> {
-    if self.msg_type() == Any::CryptoDigestReady {
-      self.msg().map(|u| CryptoDigestReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_notify_del(&'a self) -> Option<CacheNotifyDel> {
+        if self.msg_type() == Any::CacheNotifyDel {
+            self.msg().map(|u| CacheNotifyDel::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_crypto_random_values(&'a self) -> Option<CryptoRandomValues> {
-    if self.msg_type() == Any::CryptoRandomValues {
-      self.msg().map(|u| CryptoRandomValues::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_notify_purge_tag(&'a self) -> Option<CacheNotifyPurgeTag> {
+        if self.msg_type() == Any::CacheNotifyPurgeTag {
+            self.msg().map(|u| CacheNotifyPurgeTag::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_crypto_random_values_ready(&'a self) -> Option<CryptoRandomValuesReady> {
-    if self.msg_type() == Any::CryptoRandomValuesReady {
-      self.msg().map(|u| CryptoRandomValuesReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_set_tags(&'a self) -> Option<CacheSetTags> {
+        if self.msg_type() == Any::CacheSetTags {
+            self.msg().map(|u| CacheSetTags::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_source_map(&'a self) -> Option<SourceMap> {
-    if self.msg_type() == Any::SourceMap {
-      self.msg().map(|u| SourceMap::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_purge_tag(&'a self) -> Option<CachePurgeTag> {
+        if self.msg_type() == Any::CachePurgeTag {
+            self.msg().map(|u| CachePurgeTag::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_source_map_ready(&'a self) -> Option<SourceMapReady> {
-    if self.msg_type() == Any::SourceMapReady {
-      self.msg().map(|u| SourceMapReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_cache_set_meta(&'a self) -> Option<CacheSetMeta> {
+        if self.msg_type() == Any::CacheSetMeta {
+            self.msg().map(|u| CacheSetMeta::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_data_put(&'a self) -> Option<DataPut> {
-    if self.msg_type() == Any::DataPut {
-      self.msg().map(|u| DataPut::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_crypto_digest(&'a self) -> Option<CryptoDigest> {
+        if self.msg_type() == Any::CryptoDigest {
+            self.msg().map(|u| CryptoDigest::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_data_get(&'a self) -> Option<DataGet> {
-    if self.msg_type() == Any::DataGet {
-      self.msg().map(|u| DataGet::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_crypto_digest_ready(&'a self) -> Option<CryptoDigestReady> {
+        if self.msg_type() == Any::CryptoDigestReady {
+            self.msg().map(|u| CryptoDigestReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_data_get_ready(&'a self) -> Option<DataGetReady> {
-    if self.msg_type() == Any::DataGetReady {
-      self.msg().map(|u| DataGetReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_crypto_random_values(&'a self) -> Option<CryptoRandomValues> {
+        if self.msg_type() == Any::CryptoRandomValues {
+            self.msg().map(|u| CryptoRandomValues::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_data_del(&'a self) -> Option<DataDel> {
-    if self.msg_type() == Any::DataDel {
-      self.msg().map(|u| DataDel::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_crypto_random_values_ready(&'a self) -> Option<CryptoRandomValuesReady> {
+        if self.msg_type() == Any::CryptoRandomValuesReady {
+            self.msg()
+                .map(|u| CryptoRandomValuesReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_data_incr(&'a self) -> Option<DataIncr> {
-    if self.msg_type() == Any::DataIncr {
-      self.msg().map(|u| DataIncr::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_source_map(&'a self) -> Option<SourceMap> {
+        if self.msg_type() == Any::SourceMap {
+            self.msg().map(|u| SourceMap::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_data_drop_collection(&'a self) -> Option<DataDropCollection> {
-    if self.msg_type() == Any::DataDropCollection {
-      self.msg().map(|u| DataDropCollection::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_source_map_ready(&'a self) -> Option<SourceMapReady> {
+        if self.msg_type() == Any::SourceMapReady {
+            self.msg().map(|u| SourceMapReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_dns_query(&'a self) -> Option<DnsQuery> {
-    if self.msg_type() == Any::DnsQuery {
-      self.msg().map(|u| DnsQuery::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_data_put(&'a self) -> Option<DataPut> {
+        if self.msg_type() == Any::DataPut {
+            self.msg().map(|u| DataPut::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_dns_request(&'a self) -> Option<DnsRequest> {
-    if self.msg_type() == Any::DnsRequest {
-      self.msg().map(|u| DnsRequest::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_data_get(&'a self) -> Option<DataGet> {
+        if self.msg_type() == Any::DataGet {
+            self.msg().map(|u| DataGet::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_dns_response(&'a self) -> Option<DnsResponse> {
-    if self.msg_type() == Any::DnsResponse {
-      self.msg().map(|u| DnsResponse::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_data_get_ready(&'a self) -> Option<DataGetReady> {
+        if self.msg_type() == Any::DataGetReady {
+            self.msg().map(|u| DataGetReady::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_add_event_listener(&'a self) -> Option<AddEventListener> {
-    if self.msg_type() == Any::AddEventListener {
-      self.msg().map(|u| AddEventListener::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_data_del(&'a self) -> Option<DataDel> {
+        if self.msg_type() == Any::DataDel {
+            self.msg().map(|u| DataDel::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_load_module(&'a self) -> Option<LoadModule> {
-    if self.msg_type() == Any::LoadModule {
-      self.msg().map(|u| LoadModule::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_data_incr(&'a self) -> Option<DataIncr> {
+        if self.msg_type() == Any::DataIncr {
+            self.msg().map(|u| DataIncr::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_load_module_resp(&'a self) -> Option<LoadModuleResp> {
-    if self.msg_type() == Any::LoadModuleResp {
-      self.msg().map(|u| LoadModuleResp::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_data_drop_collection(&'a self) -> Option<DataDropCollection> {
+        if self.msg_type() == Any::DataDropCollection {
+            self.msg().map(|u| DataDropCollection::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_image_apply_transforms(&'a self) -> Option<ImageApplyTransforms> {
-    if self.msg_type() == Any::ImageApplyTransforms {
-      self.msg().map(|u| ImageApplyTransforms::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_dns_query(&'a self) -> Option<DnsQuery> {
+        if self.msg_type() == Any::DnsQuery {
+            self.msg().map(|u| DnsQuery::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_image_ready(&'a self) -> Option<ImageReady> {
-    if self.msg_type() == Any::ImageReady {
-      self.msg().map(|u| ImageReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_dns_request(&'a self) -> Option<DnsRequest> {
+        if self.msg_type() == Any::DnsRequest {
+            self.msg().map(|u| DnsRequest::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_acme_get_challenge(&'a self) -> Option<AcmeGetChallenge> {
-    if self.msg_type() == Any::AcmeGetChallenge {
-      self.msg().map(|u| AcmeGetChallenge::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_dns_response(&'a self) -> Option<DnsResponse> {
+        if self.msg_type() == Any::DnsResponse {
+            self.msg().map(|u| DnsResponse::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_acme_get_challenge_ready(&'a self) -> Option<AcmeGetChallengeReady> {
-    if self.msg_type() == Any::AcmeGetChallengeReady {
-      self.msg().map(|u| AcmeGetChallengeReady::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_add_event_listener(&'a self) -> Option<AddEventListener> {
+        if self.msg_type() == Any::AddEventListener {
+            self.msg().map(|u| AddEventListener::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
-  #[inline]
-  #[allow(non_snake_case)]
-  pub fn msg_as_os_exit(&'a self) -> Option<OsExit> {
-    if self.msg_type() == Any::OsExit {
-      self.msg().map(|u| OsExit::init_from_table(u))
-    } else {
-      None
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_load_module(&'a self) -> Option<LoadModule> {
+        if self.msg_type() == Any::LoadModule {
+            self.msg().map(|u| LoadModule::init_from_table(u))
+        } else {
+            None
+        }
     }
-  }
 
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_load_module_resp(&'a self) -> Option<LoadModuleResp> {
+        if self.msg_type() == Any::LoadModuleResp {
+            self.msg().map(|u| LoadModuleResp::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_image_apply_transforms(&'a self) -> Option<ImageApplyTransforms> {
+        if self.msg_type() == Any::ImageApplyTransforms {
+            self.msg().map(|u| ImageApplyTransforms::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_image_ready(&'a self) -> Option<ImageReady> {
+        if self.msg_type() == Any::ImageReady {
+            self.msg().map(|u| ImageReady::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_acme_get_challenge(&'a self) -> Option<AcmeGetChallenge> {
+        if self.msg_type() == Any::AcmeGetChallenge {
+            self.msg().map(|u| AcmeGetChallenge::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_acme_get_challenge_ready(&'a self) -> Option<AcmeGetChallengeReady> {
+        if self.msg_type() == Any::AcmeGetChallengeReady {
+            self.msg()
+                .map(|u| AcmeGetChallengeReady::init_from_table(u))
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    pub fn msg_as_os_exit(&'a self) -> Option<OsExit> {
+        if self.msg_type() == Any::OsExit {
+            self.msg().map(|u| OsExit::init_from_table(u))
+        } else {
+            None
+        }
+    }
 }
 
 pub struct BaseArgs<'a> {
     pub cmd_id: u32,
     pub sync: bool,
     pub error_kind: ErrorKind,
-    pub error: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub error: Option<flatbuffers::WIPOffset<&'a str>>,
     pub msg_type: Any,
     pub msg: Option<flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>>,
 }
@@ -5477,54 +5736,58 @@ impl<'a> Default for BaseArgs<'a> {
     }
 }
 pub struct BaseBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> BaseBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_cmd_id(&mut self, cmd_id: u32) {
-    self.fbb_.push_slot::<u32>(Base::VT_CMD_ID, cmd_id, 0);
-  }
-  #[inline]
-  pub fn add_sync(&mut self, sync: bool) {
-    self.fbb_.push_slot::<bool>(Base::VT_SYNC, sync, false);
-  }
-  #[inline]
-  pub fn add_error_kind(&mut self, error_kind: ErrorKind) {
-    self.fbb_.push_slot::<ErrorKind>(Base::VT_ERROR_KIND, error_kind, ErrorKind::NoError);
-  }
-  #[inline]
-  pub fn add_error(&mut self, error: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Base::VT_ERROR, error);
-  }
-  #[inline]
-  pub fn add_msg_type(&mut self, msg_type: Any) {
-    self.fbb_.push_slot::<Any>(Base::VT_MSG_TYPE, msg_type, Any::NONE);
-  }
-  #[inline]
-  pub fn add_msg(&mut self, msg: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Base::VT_MSG, msg);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> BaseBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    BaseBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_cmd_id(&mut self, cmd_id: u32) {
+        self.fbb_.push_slot::<u32>(Base::VT_CMD_ID, cmd_id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<Base<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_sync(&mut self, sync: bool) {
+        self.fbb_.push_slot::<bool>(Base::VT_SYNC, sync, false);
+    }
+    #[inline]
+    pub fn add_error_kind(&mut self, error_kind: ErrorKind) {
+        self.fbb_
+            .push_slot::<ErrorKind>(Base::VT_ERROR_KIND, error_kind, ErrorKind::NoError);
+    }
+    #[inline]
+    pub fn add_error(&mut self, error: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Base::VT_ERROR, error);
+    }
+    #[inline]
+    pub fn add_msg_type(&mut self, msg_type: Any) {
+        self.fbb_
+            .push_slot::<Any>(Base::VT_MSG_TYPE, msg_type, Any::NONE);
+    }
+    #[inline]
+    pub fn add_msg(&mut self, msg: flatbuffers::WIPOffset<flatbuffers::UnionWIPOffset>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Base::VT_MSG, msg);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> BaseBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        BaseBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<Base<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum TimerStartOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct TimerStart<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for TimerStart<'a> {
@@ -5540,31 +5803,30 @@ impl<'a> flatbuffers::Follow<'a> for TimerStart<'a> {
 impl<'a> TimerStart<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        TimerStart {
-            _tab: table,
-        }
+        TimerStart { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args TimerStartArgs) -> flatbuffers::WIPOffset<TimerStart<'bldr>> {
-      let mut builder = TimerStartBuilder::new(_fbb);
-      builder.add_delay(args.delay);
-      builder.add_id(args.id);
-      builder.finish()
+        args: &'args TimerStartArgs,
+    ) -> flatbuffers::WIPOffset<TimerStart<'bldr>> {
+        let mut builder = TimerStartBuilder::new(_fbb);
+        builder.add_delay(args.delay);
+        builder.add_id(args.id);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
     pub const VT_DELAY: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(TimerStart::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn delay(&self) -> u32 {
-    self._tab.get::<u32>(TimerStart::VT_DELAY, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(TimerStart::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn delay(&self) -> u32 {
+        self._tab.get::<u32>(TimerStart::VT_DELAY, Some(0)).unwrap()
+    }
 }
 
 pub struct TimerStartArgs {
@@ -5574,45 +5836,42 @@ pub struct TimerStartArgs {
 impl<'a> Default for TimerStartArgs {
     #[inline]
     fn default() -> Self {
-        TimerStartArgs {
-            id: 0,
-            delay: 0,
-        }
+        TimerStartArgs { id: 0, delay: 0 }
     }
 }
 pub struct TimerStartBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> TimerStartBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(TimerStart::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_delay(&mut self, delay: u32) {
-    self.fbb_.push_slot::<u32>(TimerStart::VT_DELAY, delay, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TimerStartBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    TimerStartBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(TimerStart::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<TimerStart<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_delay(&mut self, delay: u32) {
+        self.fbb_.push_slot::<u32>(TimerStart::VT_DELAY, delay, 0);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TimerStartBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        TimerStartBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<TimerStart<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum TimerReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct TimerReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for TimerReady<'a> {
@@ -5628,31 +5887,32 @@ impl<'a> flatbuffers::Follow<'a> for TimerReady<'a> {
 impl<'a> TimerReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        TimerReady {
-            _tab: table,
-        }
+        TimerReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args TimerReadyArgs) -> flatbuffers::WIPOffset<TimerReady<'bldr>> {
-      let mut builder = TimerReadyBuilder::new(_fbb);
-      builder.add_id(args.id);
-      builder.add_canceled(args.canceled);
-      builder.finish()
+        args: &'args TimerReadyArgs,
+    ) -> flatbuffers::WIPOffset<TimerReady<'bldr>> {
+        let mut builder = TimerReadyBuilder::new(_fbb);
+        builder.add_id(args.id);
+        builder.add_canceled(args.canceled);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
     pub const VT_CANCELED: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(TimerReady::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn canceled(&self) -> bool {
-    self._tab.get::<bool>(TimerReady::VT_CANCELED, Some(false)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(TimerReady::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn canceled(&self) -> bool {
+        self._tab
+            .get::<bool>(TimerReady::VT_CANCELED, Some(false))
+            .unwrap()
+    }
 }
 
 pub struct TimerReadyArgs {
@@ -5669,38 +5929,39 @@ impl<'a> Default for TimerReadyArgs {
     }
 }
 pub struct TimerReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> TimerReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(TimerReady::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_canceled(&mut self, canceled: bool) {
-    self.fbb_.push_slot::<bool>(TimerReady::VT_CANCELED, canceled, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TimerReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    TimerReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(TimerReady::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<TimerReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_canceled(&mut self, canceled: bool) {
+        self.fbb_
+            .push_slot::<bool>(TimerReady::VT_CANCELED, canceled, false);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TimerReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        TimerReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<TimerReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum TimerClearOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct TimerClear<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for TimerClear<'a> {
@@ -5716,25 +5977,24 @@ impl<'a> flatbuffers::Follow<'a> for TimerClear<'a> {
 impl<'a> TimerClear<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        TimerClear {
-            _tab: table,
-        }
+        TimerClear { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args TimerClearArgs) -> flatbuffers::WIPOffset<TimerClear<'bldr>> {
-      let mut builder = TimerClearBuilder::new(_fbb);
-      builder.add_id(args.id);
-      builder.finish()
+        args: &'args TimerClearArgs,
+    ) -> flatbuffers::WIPOffset<TimerClear<'bldr>> {
+        let mut builder = TimerClearBuilder::new(_fbb);
+        builder.add_id(args.id);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(TimerClear::VT_ID, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(TimerClear::VT_ID, Some(0)).unwrap()
+    }
 }
 
 pub struct TimerClearArgs {
@@ -5743,40 +6003,38 @@ pub struct TimerClearArgs {
 impl<'a> Default for TimerClearArgs {
     #[inline]
     fn default() -> Self {
-        TimerClearArgs {
-            id: 0,
-        }
+        TimerClearArgs { id: 0 }
     }
 }
 pub struct TimerClearBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> TimerClearBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(TimerClear::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TimerClearBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    TimerClearBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(TimerClear::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<TimerClear<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> TimerClearBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        TimerClearBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<TimerClear<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum HttpHeaderOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct HttpHeader<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for HttpHeader<'a> {
@@ -5792,36 +6050,41 @@ impl<'a> flatbuffers::Follow<'a> for HttpHeader<'a> {
 impl<'a> HttpHeader<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        HttpHeader {
-            _tab: table,
-        }
+        HttpHeader { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args HttpHeaderArgs<'args>) -> flatbuffers::WIPOffset<HttpHeader<'bldr>> {
-      let mut builder = HttpHeaderBuilder::new(_fbb);
-      if let Some(x) = args.value { builder.add_value(x); }
-      if let Some(x) = args.key { builder.add_key(x); }
-      builder.finish()
+        args: &'args HttpHeaderArgs<'args>,
+    ) -> flatbuffers::WIPOffset<HttpHeader<'bldr>> {
+        let mut builder = HttpHeaderBuilder::new(_fbb);
+        if let Some(x) = args.value {
+            builder.add_value(x);
+        }
+        if let Some(x) = args.key {
+            builder.add_key(x);
+        }
+        builder.finish()
     }
 
     pub const VT_KEY: flatbuffers::VOffsetT = 4;
     pub const VT_VALUE: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn key(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpHeader::VT_KEY, None)
-  }
-  #[inline]
-  pub fn value(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpHeader::VT_VALUE, None)
-  }
+    #[inline]
+    pub fn key(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(HttpHeader::VT_KEY, None)
+    }
+    #[inline]
+    pub fn value(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(HttpHeader::VT_VALUE, None)
+    }
 }
 
 pub struct HttpHeaderArgs<'a> {
-    pub key: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub value: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub key: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub value: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for HttpHeaderArgs<'a> {
     #[inline]
@@ -5833,38 +6096,40 @@ impl<'a> Default for HttpHeaderArgs<'a> {
     }
 }
 pub struct HttpHeaderBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> HttpHeaderBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpHeader::VT_KEY, key);
-  }
-  #[inline]
-  pub fn add_value(&mut self, value: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpHeader::VT_VALUE, value);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpHeaderBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    HttpHeaderBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_key(&mut self, key: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(HttpHeader::VT_KEY, key);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<HttpHeader<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_value(&mut self, value: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(HttpHeader::VT_VALUE, value);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpHeaderBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        HttpHeaderBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<HttpHeader<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum StreamChunkOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct StreamChunk<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for StreamChunk<'a> {
@@ -5880,31 +6145,32 @@ impl<'a> flatbuffers::Follow<'a> for StreamChunk<'a> {
 impl<'a> StreamChunk<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        StreamChunk {
-            _tab: table,
-        }
+        StreamChunk { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args StreamChunkArgs) -> flatbuffers::WIPOffset<StreamChunk<'bldr>> {
-      let mut builder = StreamChunkBuilder::new(_fbb);
-      builder.add_id(args.id);
-      builder.add_done(args.done);
-      builder.finish()
+        args: &'args StreamChunkArgs,
+    ) -> flatbuffers::WIPOffset<StreamChunk<'bldr>> {
+        let mut builder = StreamChunkBuilder::new(_fbb);
+        builder.add_id(args.id);
+        builder.add_done(args.done);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
     pub const VT_DONE: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(StreamChunk::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn done(&self) -> bool {
-    self._tab.get::<bool>(StreamChunk::VT_DONE, Some(false)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(StreamChunk::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn done(&self) -> bool {
+        self._tab
+            .get::<bool>(StreamChunk::VT_DONE, Some(false))
+            .unwrap()
+    }
 }
 
 pub struct StreamChunkArgs {
@@ -5914,45 +6180,43 @@ pub struct StreamChunkArgs {
 impl<'a> Default for StreamChunkArgs {
     #[inline]
     fn default() -> Self {
-        StreamChunkArgs {
-            id: 0,
-            done: false,
-        }
+        StreamChunkArgs { id: 0, done: false }
     }
 }
 pub struct StreamChunkBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> StreamChunkBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(StreamChunk::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_done(&mut self, done: bool) {
-    self.fbb_.push_slot::<bool>(StreamChunk::VT_DONE, done, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> StreamChunkBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    StreamChunkBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(StreamChunk::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<StreamChunk<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_done(&mut self, done: bool) {
+        self.fbb_
+            .push_slot::<bool>(StreamChunk::VT_DONE, done, false);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> StreamChunkBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        StreamChunkBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<StreamChunk<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum HttpRequestOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct HttpRequest<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for HttpRequest<'a> {
@@ -5968,22 +6232,27 @@ impl<'a> flatbuffers::Follow<'a> for HttpRequest<'a> {
 impl<'a> HttpRequest<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        HttpRequest {
-            _tab: table,
-        }
+        HttpRequest { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args HttpRequestArgs<'args>) -> flatbuffers::WIPOffset<HttpRequest<'bldr>> {
-      let mut builder = HttpRequestBuilder::new(_fbb);
-      if let Some(x) = args.remote_addr { builder.add_remote_addr(x); }
-      if let Some(x) = args.headers { builder.add_headers(x); }
-      if let Some(x) = args.url { builder.add_url(x); }
-      builder.add_id(args.id);
-      builder.add_has_body(args.has_body);
-      builder.add_method(args.method);
-      builder.finish()
+        args: &'args HttpRequestArgs<'args>,
+    ) -> flatbuffers::WIPOffset<HttpRequest<'bldr>> {
+        let mut builder = HttpRequestBuilder::new(_fbb);
+        if let Some(x) = args.remote_addr {
+            builder.add_remote_addr(x);
+        }
+        if let Some(x) = args.headers {
+            builder.add_headers(x);
+        }
+        if let Some(x) = args.url {
+            builder.add_url(x);
+        }
+        builder.add_id(args.id);
+        builder.add_has_body(args.has_body);
+        builder.add_method(args.method);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
@@ -5993,38 +6262,52 @@ impl<'a> HttpRequest<'a> {
     pub const VT_REMOTE_ADDR: flatbuffers::VOffsetT = 12;
     pub const VT_HAS_BODY: flatbuffers::VOffsetT = 14;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(HttpRequest::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn method(&self) -> HttpMethod {
-    self._tab.get::<HttpMethod>(HttpRequest::VT_METHOD, Some(HttpMethod::Get)).unwrap()
-  }
-  #[inline]
-  pub fn url(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpRequest::VT_URL, None)
-  }
-  #[inline]
-  pub fn headers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(HttpRequest::VT_HEADERS, None)
-  }
-  #[inline]
-  pub fn remote_addr(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(HttpRequest::VT_REMOTE_ADDR, None)
-  }
-  #[inline]
-  pub fn has_body(&self) -> bool {
-    self._tab.get::<bool>(HttpRequest::VT_HAS_BODY, Some(false)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(HttpRequest::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn method(&self) -> HttpMethod {
+        self._tab
+            .get::<HttpMethod>(HttpRequest::VT_METHOD, Some(HttpMethod::Get))
+            .unwrap()
+    }
+    #[inline]
+    pub fn url(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(HttpRequest::VT_URL, None)
+    }
+    #[inline]
+    pub fn headers(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>,
+        >>(HttpRequest::VT_HEADERS, None)
+    }
+    #[inline]
+    pub fn remote_addr(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(HttpRequest::VT_REMOTE_ADDR, None)
+    }
+    #[inline]
+    pub fn has_body(&self) -> bool {
+        self._tab
+            .get::<bool>(HttpRequest::VT_HAS_BODY, Some(false))
+            .unwrap()
+    }
 }
 
 pub struct HttpRequestArgs<'a> {
     pub id: u32,
     pub method: HttpMethod,
-    pub url: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub headers: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<HttpHeader<'a >>>>>,
-    pub remote_addr: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub url: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub headers: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<HttpHeader<'a>>>,
+        >,
+    >,
+    pub remote_addr: Option<flatbuffers::WIPOffset<&'a str>>,
     pub has_body: bool,
 }
 impl<'a> Default for HttpRequestArgs<'a> {
@@ -6041,54 +6324,66 @@ impl<'a> Default for HttpRequestArgs<'a> {
     }
 }
 pub struct HttpRequestBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> HttpRequestBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(HttpRequest::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_method(&mut self, method: HttpMethod) {
-    self.fbb_.push_slot::<HttpMethod>(HttpRequest::VT_METHOD, method, HttpMethod::Get);
-  }
-  #[inline]
-  pub fn add_url(&mut self, url: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_URL, url);
-  }
-  #[inline]
-  pub fn add_headers(&mut self, headers: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<HttpHeader<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_HEADERS, headers);
-  }
-  #[inline]
-  pub fn add_remote_addr(&mut self, remote_addr: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_REMOTE_ADDR, remote_addr);
-  }
-  #[inline]
-  pub fn add_has_body(&mut self, has_body: bool) {
-    self.fbb_.push_slot::<bool>(HttpRequest::VT_HAS_BODY, has_body, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpRequestBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    HttpRequestBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(HttpRequest::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<HttpRequest<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_method(&mut self, method: HttpMethod) {
+        self.fbb_
+            .push_slot::<HttpMethod>(HttpRequest::VT_METHOD, method, HttpMethod::Get);
+    }
+    #[inline]
+    pub fn add_url(&mut self, url: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_URL, url);
+    }
+    #[inline]
+    pub fn add_headers(
+        &mut self,
+        headers: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<HttpHeader<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(HttpRequest::VT_HEADERS, headers);
+    }
+    #[inline]
+    pub fn add_remote_addr(&mut self, remote_addr: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            HttpRequest::VT_REMOTE_ADDR,
+            remote_addr,
+        );
+    }
+    #[inline]
+    pub fn add_has_body(&mut self, has_body: bool) {
+        self.fbb_
+            .push_slot::<bool>(HttpRequest::VT_HAS_BODY, has_body, false);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpRequestBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        HttpRequestBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<HttpRequest<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum HttpResponseOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct HttpResponse<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for HttpResponse<'a> {
@@ -6104,20 +6399,21 @@ impl<'a> flatbuffers::Follow<'a> for HttpResponse<'a> {
 impl<'a> HttpResponse<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        HttpResponse {
-            _tab: table,
-        }
+        HttpResponse { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args HttpResponseArgs<'args>) -> flatbuffers::WIPOffset<HttpResponse<'bldr>> {
-      let mut builder = HttpResponseBuilder::new(_fbb);
-      if let Some(x) = args.headers { builder.add_headers(x); }
-      builder.add_id(args.id);
-      builder.add_status(args.status);
-      builder.add_has_body(args.has_body);
-      builder.finish()
+        args: &'args HttpResponseArgs<'args>,
+    ) -> flatbuffers::WIPOffset<HttpResponse<'bldr>> {
+        let mut builder = HttpResponseBuilder::new(_fbb);
+        if let Some(x) = args.headers {
+            builder.add_headers(x);
+        }
+        builder.add_id(args.id);
+        builder.add_status(args.status);
+        builder.add_has_body(args.has_body);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
@@ -6125,27 +6421,39 @@ impl<'a> HttpResponse<'a> {
     pub const VT_STATUS: flatbuffers::VOffsetT = 8;
     pub const VT_HAS_BODY: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(HttpResponse::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn headers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(HttpResponse::VT_HEADERS, None)
-  }
-  #[inline]
-  pub fn status(&self) -> u16 {
-    self._tab.get::<u16>(HttpResponse::VT_STATUS, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn has_body(&self) -> bool {
-    self._tab.get::<bool>(HttpResponse::VT_HAS_BODY, Some(false)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab.get::<u32>(HttpResponse::VT_ID, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn headers(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>,
+        >>(HttpResponse::VT_HEADERS, None)
+    }
+    #[inline]
+    pub fn status(&self) -> u16 {
+        self._tab
+            .get::<u16>(HttpResponse::VT_STATUS, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn has_body(&self) -> bool {
+        self._tab
+            .get::<bool>(HttpResponse::VT_HAS_BODY, Some(false))
+            .unwrap()
+    }
 }
 
 pub struct HttpResponseArgs<'a> {
     pub id: u32,
-    pub headers: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<HttpHeader<'a >>>>>,
+    pub headers: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<HttpHeader<'a>>>,
+        >,
+    >,
     pub status: u16,
     pub has_body: bool,
 }
@@ -6161,46 +6469,54 @@ impl<'a> Default for HttpResponseArgs<'a> {
     }
 }
 pub struct HttpResponseBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> HttpResponseBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(HttpResponse::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_headers(&mut self, headers: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<HttpHeader<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(HttpResponse::VT_HEADERS, headers);
-  }
-  #[inline]
-  pub fn add_status(&mut self, status: u16) {
-    self.fbb_.push_slot::<u16>(HttpResponse::VT_STATUS, status, 0);
-  }
-  #[inline]
-  pub fn add_has_body(&mut self, has_body: bool) {
-    self.fbb_.push_slot::<bool>(HttpResponse::VT_HAS_BODY, has_body, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpResponseBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    HttpResponseBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(HttpResponse::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<HttpResponse<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_headers(
+        &mut self,
+        headers: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<HttpHeader<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(HttpResponse::VT_HEADERS, headers);
+    }
+    #[inline]
+    pub fn add_status(&mut self, status: u16) {
+        self.fbb_
+            .push_slot::<u16>(HttpResponse::VT_STATUS, status, 0);
+    }
+    #[inline]
+    pub fn add_has_body(&mut self, has_body: bool) {
+        self.fbb_
+            .push_slot::<bool>(HttpResponse::VT_HAS_BODY, has_body, false);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpResponseBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        HttpResponseBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<HttpResponse<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum HttpRequestStartOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct HttpRequestStart<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for HttpRequestStart<'a> {
@@ -6216,25 +6532,26 @@ impl<'a> flatbuffers::Follow<'a> for HttpRequestStart<'a> {
 impl<'a> HttpRequestStart<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        HttpRequestStart {
-            _tab: table,
-        }
+        HttpRequestStart { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args HttpRequestStartArgs) -> flatbuffers::WIPOffset<HttpRequestStart<'bldr>> {
-      let mut builder = HttpRequestStartBuilder::new(_fbb);
-      builder.add_id(args.id);
-      builder.finish()
+        args: &'args HttpRequestStartArgs,
+    ) -> flatbuffers::WIPOffset<HttpRequestStart<'bldr>> {
+        let mut builder = HttpRequestStartBuilder::new(_fbb);
+        builder.add_id(args.id);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(HttpRequestStart::VT_ID, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab
+            .get::<u32>(HttpRequestStart::VT_ID, Some(0))
+            .unwrap()
+    }
 }
 
 pub struct HttpRequestStartArgs {
@@ -6243,40 +6560,40 @@ pub struct HttpRequestStartArgs {
 impl<'a> Default for HttpRequestStartArgs {
     #[inline]
     fn default() -> Self {
-        HttpRequestStartArgs {
-            id: 0,
-        }
+        HttpRequestStartArgs { id: 0 }
     }
 }
 pub struct HttpRequestStartBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> HttpRequestStartBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(HttpRequestStart::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> HttpRequestStartBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    HttpRequestStartBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(HttpRequestStart::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<HttpRequestStart<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> HttpRequestStartBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        HttpRequestStartBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<HttpRequestStart<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum FetchHttpResponseOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct FetchHttpResponse<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for FetchHttpResponse<'a> {
@@ -6292,20 +6609,21 @@ impl<'a> flatbuffers::Follow<'a> for FetchHttpResponse<'a> {
 impl<'a> FetchHttpResponse<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        FetchHttpResponse {
-            _tab: table,
-        }
+        FetchHttpResponse { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args FetchHttpResponseArgs<'args>) -> flatbuffers::WIPOffset<FetchHttpResponse<'bldr>> {
-      let mut builder = FetchHttpResponseBuilder::new(_fbb);
-      if let Some(x) = args.headers { builder.add_headers(x); }
-      builder.add_id(args.id);
-      builder.add_status(args.status);
-      builder.add_has_body(args.has_body);
-      builder.finish()
+        args: &'args FetchHttpResponseArgs<'args>,
+    ) -> flatbuffers::WIPOffset<FetchHttpResponse<'bldr>> {
+        let mut builder = FetchHttpResponseBuilder::new(_fbb);
+        if let Some(x) = args.headers {
+            builder.add_headers(x);
+        }
+        builder.add_id(args.id);
+        builder.add_status(args.status);
+        builder.add_has_body(args.has_body);
+        builder.finish()
     }
 
     pub const VT_ID: flatbuffers::VOffsetT = 4;
@@ -6313,27 +6631,41 @@ impl<'a> FetchHttpResponse<'a> {
     pub const VT_STATUS: flatbuffers::VOffsetT = 8;
     pub const VT_HAS_BODY: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn id(&self) -> u32 {
-    self._tab.get::<u32>(FetchHttpResponse::VT_ID, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn headers(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>>>(FetchHttpResponse::VT_HEADERS, None)
-  }
-  #[inline]
-  pub fn status(&self) -> u16 {
-    self._tab.get::<u16>(FetchHttpResponse::VT_STATUS, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn has_body(&self) -> bool {
-    self._tab.get::<bool>(FetchHttpResponse::VT_HAS_BODY, Some(false)).unwrap()
-  }
+    #[inline]
+    pub fn id(&self) -> u32 {
+        self._tab
+            .get::<u32>(FetchHttpResponse::VT_ID, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn headers(
+        &self,
+    ) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<HttpHeader<'a>>>,
+        >>(FetchHttpResponse::VT_HEADERS, None)
+    }
+    #[inline]
+    pub fn status(&self) -> u16 {
+        self._tab
+            .get::<u16>(FetchHttpResponse::VT_STATUS, Some(0))
+            .unwrap()
+    }
+    #[inline]
+    pub fn has_body(&self) -> bool {
+        self._tab
+            .get::<bool>(FetchHttpResponse::VT_HAS_BODY, Some(false))
+            .unwrap()
+    }
 }
 
 pub struct FetchHttpResponseArgs<'a> {
     pub id: u32,
-    pub headers: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<HttpHeader<'a >>>>>,
+    pub headers: Option<
+        flatbuffers::WIPOffset<
+            flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<HttpHeader<'a>>>,
+        >,
+    >,
     pub status: u16,
     pub has_body: bool,
 }
@@ -6349,46 +6681,56 @@ impl<'a> Default for FetchHttpResponseArgs<'a> {
     }
 }
 pub struct FetchHttpResponseBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> FetchHttpResponseBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_id(&mut self, id: u32) {
-    self.fbb_.push_slot::<u32>(FetchHttpResponse::VT_ID, id, 0);
-  }
-  #[inline]
-  pub fn add_headers(&mut self, headers: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<HttpHeader<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(FetchHttpResponse::VT_HEADERS, headers);
-  }
-  #[inline]
-  pub fn add_status(&mut self, status: u16) {
-    self.fbb_.push_slot::<u16>(FetchHttpResponse::VT_STATUS, status, 0);
-  }
-  #[inline]
-  pub fn add_has_body(&mut self, has_body: bool) {
-    self.fbb_.push_slot::<bool>(FetchHttpResponse::VT_HAS_BODY, has_body, false);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> FetchHttpResponseBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    FetchHttpResponseBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_id(&mut self, id: u32) {
+        self.fbb_.push_slot::<u32>(FetchHttpResponse::VT_ID, id, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<FetchHttpResponse<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_headers(
+        &mut self,
+        headers: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<HttpHeader<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(FetchHttpResponse::VT_HEADERS, headers);
+    }
+    #[inline]
+    pub fn add_status(&mut self, status: u16) {
+        self.fbb_
+            .push_slot::<u16>(FetchHttpResponse::VT_STATUS, status, 0);
+    }
+    #[inline]
+    pub fn add_has_body(&mut self, has_body: bool) {
+        self.fbb_
+            .push_slot::<bool>(FetchHttpResponse::VT_HAS_BODY, has_body, false);
+    }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> FetchHttpResponseBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        FetchHttpResponseBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<FetchHttpResponse<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CryptoDigestOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CryptoDigest<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CryptoDigest<'a> {
@@ -6404,67 +6746,68 @@ impl<'a> flatbuffers::Follow<'a> for CryptoDigest<'a> {
 impl<'a> CryptoDigest<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CryptoDigest {
-            _tab: table,
-        }
+        CryptoDigest { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CryptoDigestArgs<'args>) -> flatbuffers::WIPOffset<CryptoDigest<'bldr>> {
-      let mut builder = CryptoDigestBuilder::new(_fbb);
-      if let Some(x) = args.algo { builder.add_algo(x); }
-      builder.finish()
+        args: &'args CryptoDigestArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CryptoDigest<'bldr>> {
+        let mut builder = CryptoDigestBuilder::new(_fbb);
+        if let Some(x) = args.algo {
+            builder.add_algo(x);
+        }
+        builder.finish()
     }
 
     pub const VT_ALGO: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn algo(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(CryptoDigest::VT_ALGO, None)
-  }
+    #[inline]
+    pub fn algo(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(CryptoDigest::VT_ALGO, None)
+    }
 }
 
 pub struct CryptoDigestArgs<'a> {
-    pub algo: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub algo: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for CryptoDigestArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CryptoDigestArgs {
-            algo: None,
-        }
+        CryptoDigestArgs { algo: None }
     }
 }
 pub struct CryptoDigestBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CryptoDigestBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_algo(&mut self, algo: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CryptoDigest::VT_ALGO, algo);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CryptoDigestBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CryptoDigestBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_algo(&mut self, algo: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CryptoDigest::VT_ALGO, algo);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CryptoDigest<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CryptoDigestBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CryptoDigestBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CryptoDigest<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CryptoDigestReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CryptoDigestReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CryptoDigestReady<'a> {
@@ -6480,67 +6823,74 @@ impl<'a> flatbuffers::Follow<'a> for CryptoDigestReady<'a> {
 impl<'a> CryptoDigestReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CryptoDigestReady {
-            _tab: table,
-        }
+        CryptoDigestReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CryptoDigestReadyArgs<'args>) -> flatbuffers::WIPOffset<CryptoDigestReady<'bldr>> {
-      let mut builder = CryptoDigestReadyBuilder::new(_fbb);
-      if let Some(x) = args.buffer { builder.add_buffer(x); }
-      builder.finish()
+        args: &'args CryptoDigestReadyArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CryptoDigestReady<'bldr>> {
+        let mut builder = CryptoDigestReadyBuilder::new(_fbb);
+        if let Some(x) = args.buffer {
+            builder.add_buffer(x);
+        }
+        builder.finish()
     }
 
     pub const VT_BUFFER: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn buffer(&self) -> Option<&'a [u8]> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(CryptoDigestReady::VT_BUFFER, None).map(|v| v.safe_slice())
-  }
+    #[inline]
+    pub fn buffer(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                CryptoDigestReady::VT_BUFFER,
+                None,
+            )
+            .map(|v| v.safe_slice())
+    }
 }
 
 pub struct CryptoDigestReadyArgs<'a> {
-    pub buffer: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a ,  u8>>>,
+    pub buffer: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
 }
 impl<'a> Default for CryptoDigestReadyArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CryptoDigestReadyArgs {
-            buffer: None,
-        }
+        CryptoDigestReadyArgs { buffer: None }
     }
 }
 pub struct CryptoDigestReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CryptoDigestReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_buffer(&mut self, buffer: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CryptoDigestReady::VT_BUFFER, buffer);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CryptoDigestReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CryptoDigestReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_buffer(&mut self, buffer: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(CryptoDigestReady::VT_BUFFER, buffer);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CryptoDigestReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> CryptoDigestReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CryptoDigestReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CryptoDigestReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CryptoRandomValuesOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CryptoRandomValues<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CryptoRandomValues<'a> {
@@ -6556,25 +6906,26 @@ impl<'a> flatbuffers::Follow<'a> for CryptoRandomValues<'a> {
 impl<'a> CryptoRandomValues<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CryptoRandomValues {
-            _tab: table,
-        }
+        CryptoRandomValues { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CryptoRandomValuesArgs) -> flatbuffers::WIPOffset<CryptoRandomValues<'bldr>> {
-      let mut builder = CryptoRandomValuesBuilder::new(_fbb);
-      builder.add_len(args.len);
-      builder.finish()
+        args: &'args CryptoRandomValuesArgs,
+    ) -> flatbuffers::WIPOffset<CryptoRandomValues<'bldr>> {
+        let mut builder = CryptoRandomValuesBuilder::new(_fbb);
+        builder.add_len(args.len);
+        builder.finish()
     }
 
     pub const VT_LEN: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn len(&self) -> u32 {
-    self._tab.get::<u32>(CryptoRandomValues::VT_LEN, Some(0)).unwrap()
-  }
+    #[inline]
+    pub fn len(&self) -> u32 {
+        self._tab
+            .get::<u32>(CryptoRandomValues::VT_LEN, Some(0))
+            .unwrap()
+    }
 }
 
 pub struct CryptoRandomValuesArgs {
@@ -6583,40 +6934,41 @@ pub struct CryptoRandomValuesArgs {
 impl<'a> Default for CryptoRandomValuesArgs {
     #[inline]
     fn default() -> Self {
-        CryptoRandomValuesArgs {
-            len: 0,
-        }
+        CryptoRandomValuesArgs { len: 0 }
     }
 }
 pub struct CryptoRandomValuesBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CryptoRandomValuesBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_len(&mut self, len: u32) {
-    self.fbb_.push_slot::<u32>(CryptoRandomValues::VT_LEN, len, 0);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CryptoRandomValuesBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CryptoRandomValuesBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_len(&mut self, len: u32) {
+        self.fbb_
+            .push_slot::<u32>(CryptoRandomValues::VT_LEN, len, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CryptoRandomValues<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> CryptoRandomValuesBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CryptoRandomValuesBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CryptoRandomValues<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum CryptoRandomValuesReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct CryptoRandomValuesReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for CryptoRandomValuesReady<'a> {
@@ -6632,67 +6984,76 @@ impl<'a> flatbuffers::Follow<'a> for CryptoRandomValuesReady<'a> {
 impl<'a> CryptoRandomValuesReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        CryptoRandomValuesReady {
-            _tab: table,
-        }
+        CryptoRandomValuesReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args CryptoRandomValuesReadyArgs<'args>) -> flatbuffers::WIPOffset<CryptoRandomValuesReady<'bldr>> {
-      let mut builder = CryptoRandomValuesReadyBuilder::new(_fbb);
-      if let Some(x) = args.buffer { builder.add_buffer(x); }
-      builder.finish()
+        args: &'args CryptoRandomValuesReadyArgs<'args>,
+    ) -> flatbuffers::WIPOffset<CryptoRandomValuesReady<'bldr>> {
+        let mut builder = CryptoRandomValuesReadyBuilder::new(_fbb);
+        if let Some(x) = args.buffer {
+            builder.add_buffer(x);
+        }
+        builder.finish()
     }
 
     pub const VT_BUFFER: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn buffer(&self) -> Option<&'a [u8]> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(CryptoRandomValuesReady::VT_BUFFER, None).map(|v| v.safe_slice())
-  }
+    #[inline]
+    pub fn buffer(&self) -> Option<&'a [u8]> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<'a, u8>>>(
+                CryptoRandomValuesReady::VT_BUFFER,
+                None,
+            )
+            .map(|v| v.safe_slice())
+    }
 }
 
 pub struct CryptoRandomValuesReadyArgs<'a> {
-    pub buffer: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a ,  u8>>>,
+    pub buffer: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a, u8>>>,
 }
 impl<'a> Default for CryptoRandomValuesReadyArgs<'a> {
     #[inline]
     fn default() -> Self {
-        CryptoRandomValuesReadyArgs {
-            buffer: None,
-        }
+        CryptoRandomValuesReadyArgs { buffer: None }
     }
 }
 pub struct CryptoRandomValuesReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> CryptoRandomValuesReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_buffer(&mut self, buffer: flatbuffers::WIPOffset<flatbuffers::Vector<'b , u8>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(CryptoRandomValuesReady::VT_BUFFER, buffer);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> CryptoRandomValuesReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    CryptoRandomValuesReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_buffer(&mut self, buffer: flatbuffers::WIPOffset<flatbuffers::Vector<'b, u8>>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            CryptoRandomValuesReady::VT_BUFFER,
+            buffer,
+        );
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<CryptoRandomValuesReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> CryptoRandomValuesReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        CryptoRandomValuesReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<CryptoRandomValuesReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum FrameOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct Frame<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for Frame<'a> {
@@ -6708,20 +7069,23 @@ impl<'a> flatbuffers::Follow<'a> for Frame<'a> {
 impl<'a> Frame<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        Frame {
-            _tab: table,
-        }
+        Frame { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args FrameArgs<'args>) -> flatbuffers::WIPOffset<Frame<'bldr>> {
-      let mut builder = FrameBuilder::new(_fbb);
-      if let Some(x) = args.name { builder.add_name(x); }
-      if let Some(x) = args.filename { builder.add_filename(x); }
-      builder.add_col(args.col);
-      builder.add_line(args.line);
-      builder.finish()
+        args: &'args FrameArgs<'args>,
+    ) -> flatbuffers::WIPOffset<Frame<'bldr>> {
+        let mut builder = FrameBuilder::new(_fbb);
+        if let Some(x) = args.name {
+            builder.add_name(x);
+        }
+        if let Some(x) = args.filename {
+            builder.add_filename(x);
+        }
+        builder.add_col(args.col);
+        builder.add_line(args.line);
+        builder.finish()
     }
 
     pub const VT_LINE: flatbuffers::VOffsetT = 4;
@@ -6729,29 +7093,31 @@ impl<'a> Frame<'a> {
     pub const VT_FILENAME: flatbuffers::VOffsetT = 8;
     pub const VT_NAME: flatbuffers::VOffsetT = 10;
 
-  #[inline]
-  pub fn line(&self) -> u32 {
-    self._tab.get::<u32>(Frame::VT_LINE, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn col(&self) -> u32 {
-    self._tab.get::<u32>(Frame::VT_COL, Some(0)).unwrap()
-  }
-  #[inline]
-  pub fn filename(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Frame::VT_FILENAME, None)
-  }
-  #[inline]
-  pub fn name(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(Frame::VT_NAME, None)
-  }
+    #[inline]
+    pub fn line(&self) -> u32 {
+        self._tab.get::<u32>(Frame::VT_LINE, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn col(&self) -> u32 {
+        self._tab.get::<u32>(Frame::VT_COL, Some(0)).unwrap()
+    }
+    #[inline]
+    pub fn filename(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(Frame::VT_FILENAME, None)
+    }
+    #[inline]
+    pub fn name(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(Frame::VT_NAME, None)
+    }
 }
 
 pub struct FrameArgs<'a> {
     pub line: u32,
     pub col: u32,
-    pub filename: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub name: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub filename: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub name: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for FrameArgs<'a> {
     #[inline]
@@ -6765,46 +7131,48 @@ impl<'a> Default for FrameArgs<'a> {
     }
 }
 pub struct FrameBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> FrameBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_line(&mut self, line: u32) {
-    self.fbb_.push_slot::<u32>(Frame::VT_LINE, line, 0);
-  }
-  #[inline]
-  pub fn add_col(&mut self, col: u32) {
-    self.fbb_.push_slot::<u32>(Frame::VT_COL, col, 0);
-  }
-  #[inline]
-  pub fn add_filename(&mut self, filename: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Frame::VT_FILENAME, filename);
-  }
-  #[inline]
-  pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(Frame::VT_NAME, name);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> FrameBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    FrameBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_line(&mut self, line: u32) {
+        self.fbb_.push_slot::<u32>(Frame::VT_LINE, line, 0);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<Frame<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_col(&mut self, col: u32) {
+        self.fbb_.push_slot::<u32>(Frame::VT_COL, col, 0);
+    }
+    #[inline]
+    pub fn add_filename(&mut self, filename: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Frame::VT_FILENAME, filename);
+    }
+    #[inline]
+    pub fn add_name(&mut self, name: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(Frame::VT_NAME, name);
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> FrameBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        FrameBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<Frame<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum SourceMapOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct SourceMap<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for SourceMap<'a> {
@@ -6820,67 +7188,76 @@ impl<'a> flatbuffers::Follow<'a> for SourceMap<'a> {
 impl<'a> SourceMap<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        SourceMap {
-            _tab: table,
-        }
+        SourceMap { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args SourceMapArgs<'args>) -> flatbuffers::WIPOffset<SourceMap<'bldr>> {
-      let mut builder = SourceMapBuilder::new(_fbb);
-      if let Some(x) = args.frames { builder.add_frames(x); }
-      builder.finish()
+        args: &'args SourceMapArgs<'args>,
+    ) -> flatbuffers::WIPOffset<SourceMap<'bldr>> {
+        let mut builder = SourceMapBuilder::new(_fbb);
+        if let Some(x) = args.frames {
+            builder.add_frames(x);
+        }
+        builder.finish()
     }
 
     pub const VT_FRAMES: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn frames(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>>>(SourceMap::VT_FRAMES, None)
-  }
+    #[inline]
+    pub fn frames(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>,
+        >>(SourceMap::VT_FRAMES, None)
+    }
 }
 
 pub struct SourceMapArgs<'a> {
-    pub frames: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<Frame<'a >>>>>,
+    pub frames: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Frame<'a>>>>,
+    >,
 }
 impl<'a> Default for SourceMapArgs<'a> {
     #[inline]
     fn default() -> Self {
-        SourceMapArgs {
-            frames: None,
-        }
+        SourceMapArgs { frames: None }
     }
 }
 pub struct SourceMapBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> SourceMapBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_frames(&mut self, frames: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Frame<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(SourceMap::VT_FRAMES, frames);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> SourceMapBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    SourceMapBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_frames(
+        &mut self,
+        frames: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<Frame<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(SourceMap::VT_FRAMES, frames);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<SourceMap<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> SourceMapBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        SourceMapBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<SourceMap<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum SourceMapReadyOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct SourceMapReady<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for SourceMapReady<'a> {
@@ -6896,67 +7273,76 @@ impl<'a> flatbuffers::Follow<'a> for SourceMapReady<'a> {
 impl<'a> SourceMapReady<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        SourceMapReady {
-            _tab: table,
-        }
+        SourceMapReady { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args SourceMapReadyArgs<'args>) -> flatbuffers::WIPOffset<SourceMapReady<'bldr>> {
-      let mut builder = SourceMapReadyBuilder::new(_fbb);
-      if let Some(x) = args.frames { builder.add_frames(x); }
-      builder.finish()
+        args: &'args SourceMapReadyArgs<'args>,
+    ) -> flatbuffers::WIPOffset<SourceMapReady<'bldr>> {
+        let mut builder = SourceMapReadyBuilder::new(_fbb);
+        if let Some(x) = args.frames {
+            builder.add_frames(x);
+        }
+        builder.finish()
     }
 
     pub const VT_FRAMES: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn frames(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>>>(SourceMapReady::VT_FRAMES, None)
-  }
+    #[inline]
+    pub fn frames(&self) -> Option<flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>> {
+        self._tab.get::<flatbuffers::ForwardsUOffset<
+            flatbuffers::Vector<flatbuffers::ForwardsUOffset<Frame<'a>>>,
+        >>(SourceMapReady::VT_FRAMES, None)
+    }
 }
 
 pub struct SourceMapReadyArgs<'a> {
-    pub frames: Option<flatbuffers::WIPOffset<flatbuffers::Vector<'a , flatbuffers::ForwardsUOffset<Frame<'a >>>>>,
+    pub frames: Option<
+        flatbuffers::WIPOffset<flatbuffers::Vector<'a, flatbuffers::ForwardsUOffset<Frame<'a>>>>,
+    >,
 }
 impl<'a> Default for SourceMapReadyArgs<'a> {
     #[inline]
     fn default() -> Self {
-        SourceMapReadyArgs {
-            frames: None,
-        }
+        SourceMapReadyArgs { frames: None }
     }
 }
 pub struct SourceMapReadyBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> SourceMapReadyBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_frames(&mut self, frames: flatbuffers::WIPOffset<flatbuffers::Vector<'b , flatbuffers::ForwardsUOffset<Frame<'b >>>>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(SourceMapReady::VT_FRAMES, frames);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> SourceMapReadyBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    SourceMapReadyBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_frames(
+        &mut self,
+        frames: flatbuffers::WIPOffset<
+            flatbuffers::Vector<'b, flatbuffers::ForwardsUOffset<Frame<'b>>>,
+        >,
+    ) {
+        self.fbb_
+            .push_slot_always::<flatbuffers::WIPOffset<_>>(SourceMapReady::VT_FRAMES, frames);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<SourceMapReady<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> SourceMapReadyBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        SourceMapReadyBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<SourceMapReady<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum AddEventListenerOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct AddEventListener<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for AddEventListener<'a> {
@@ -6972,25 +7358,26 @@ impl<'a> flatbuffers::Follow<'a> for AddEventListener<'a> {
 impl<'a> AddEventListener<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        AddEventListener {
-            _tab: table,
-        }
+        AddEventListener { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args AddEventListenerArgs) -> flatbuffers::WIPOffset<AddEventListener<'bldr>> {
-      let mut builder = AddEventListenerBuilder::new(_fbb);
-      builder.add_event(args.event);
-      builder.finish()
+        args: &'args AddEventListenerArgs,
+    ) -> flatbuffers::WIPOffset<AddEventListener<'bldr>> {
+        let mut builder = AddEventListenerBuilder::new(_fbb);
+        builder.add_event(args.event);
+        builder.finish()
     }
 
     pub const VT_EVENT: flatbuffers::VOffsetT = 4;
 
-  #[inline]
-  pub fn event(&self) -> EventType {
-    self._tab.get::<EventType>(AddEventListener::VT_EVENT, Some(EventType::Fetch)).unwrap()
-  }
+    #[inline]
+    pub fn event(&self) -> EventType {
+        self._tab
+            .get::<EventType>(AddEventListener::VT_EVENT, Some(EventType::Fetch))
+            .unwrap()
+    }
 }
 
 pub struct AddEventListenerArgs {
@@ -7005,34 +7392,37 @@ impl<'a> Default for AddEventListenerArgs {
     }
 }
 pub struct AddEventListenerBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> AddEventListenerBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_event(&mut self, event: EventType) {
-    self.fbb_.push_slot::<EventType>(AddEventListener::VT_EVENT, event, EventType::Fetch);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> AddEventListenerBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    AddEventListenerBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_event(&mut self, event: EventType) {
+        self.fbb_
+            .push_slot::<EventType>(AddEventListener::VT_EVENT, event, EventType::Fetch);
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<AddEventListener<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn new(
+        _fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    ) -> AddEventListenerBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        AddEventListenerBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<AddEventListener<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum LoadModuleOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct LoadModule<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for LoadModule<'a> {
@@ -7048,36 +7438,41 @@ impl<'a> flatbuffers::Follow<'a> for LoadModule<'a> {
 impl<'a> LoadModule<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        LoadModule {
-            _tab: table,
-        }
+        LoadModule { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args LoadModuleArgs<'args>) -> flatbuffers::WIPOffset<LoadModule<'bldr>> {
-      let mut builder = LoadModuleBuilder::new(_fbb);
-      if let Some(x) = args.referer_origin_url { builder.add_referer_origin_url(x); }
-      if let Some(x) = args.specifier_url { builder.add_specifier_url(x); }
-      builder.finish()
+        args: &'args LoadModuleArgs<'args>,
+    ) -> flatbuffers::WIPOffset<LoadModule<'bldr>> {
+        let mut builder = LoadModuleBuilder::new(_fbb);
+        if let Some(x) = args.referer_origin_url {
+            builder.add_referer_origin_url(x);
+        }
+        if let Some(x) = args.specifier_url {
+            builder.add_specifier_url(x);
+        }
+        builder.finish()
     }
 
     pub const VT_SPECIFIER_URL: flatbuffers::VOffsetT = 4;
     pub const VT_REFERER_ORIGIN_URL: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn specifier_url(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_SPECIFIER_URL, None)
-  }
-  #[inline]
-  pub fn referer_origin_url(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_REFERER_ORIGIN_URL, None)
-  }
+    #[inline]
+    pub fn specifier_url(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_SPECIFIER_URL, None)
+    }
+    #[inline]
+    pub fn referer_origin_url(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(LoadModule::VT_REFERER_ORIGIN_URL, None)
+    }
 }
 
 pub struct LoadModuleArgs<'a> {
-    pub specifier_url: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub referer_origin_url: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub specifier_url: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub referer_origin_url: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for LoadModuleArgs<'a> {
     #[inline]
@@ -7089,38 +7484,44 @@ impl<'a> Default for LoadModuleArgs<'a> {
     }
 }
 pub struct LoadModuleBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> LoadModuleBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_specifier_url(&mut self, specifier_url: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModule::VT_SPECIFIER_URL, specifier_url);
-  }
-  #[inline]
-  pub fn add_referer_origin_url(&mut self, referer_origin_url: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModule::VT_REFERER_ORIGIN_URL, referer_origin_url);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> LoadModuleBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    LoadModuleBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_specifier_url(&mut self, specifier_url: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            LoadModule::VT_SPECIFIER_URL,
+            specifier_url,
+        );
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<LoadModule<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_referer_origin_url(&mut self, referer_origin_url: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            LoadModule::VT_REFERER_ORIGIN_URL,
+            referer_origin_url,
+        );
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> LoadModuleBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        LoadModuleBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<LoadModule<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 pub enum LoadModuleRespOffset {}
 #[derive(Copy, Clone, Debug, PartialEq)]
 
 pub struct LoadModuleResp<'a> {
-  pub _tab: flatbuffers::Table<'a>,
+    pub _tab: flatbuffers::Table<'a>,
 }
 
 impl<'a> flatbuffers::Follow<'a> for LoadModuleResp<'a> {
@@ -7136,36 +7537,41 @@ impl<'a> flatbuffers::Follow<'a> for LoadModuleResp<'a> {
 impl<'a> LoadModuleResp<'a> {
     #[inline]
     pub fn init_from_table(table: flatbuffers::Table<'a>) -> Self {
-        LoadModuleResp {
-            _tab: table,
-        }
+        LoadModuleResp { _tab: table }
     }
     #[allow(unused_mut)]
     pub fn create<'bldr: 'args, 'args: 'mut_bldr, 'mut_bldr>(
         _fbb: &'mut_bldr mut flatbuffers::FlatBufferBuilder<'bldr>,
-        args: &'args LoadModuleRespArgs<'args>) -> flatbuffers::WIPOffset<LoadModuleResp<'bldr>> {
-      let mut builder = LoadModuleRespBuilder::new(_fbb);
-      if let Some(x) = args.source_code { builder.add_source_code(x); }
-      if let Some(x) = args.origin_url { builder.add_origin_url(x); }
-      builder.finish()
+        args: &'args LoadModuleRespArgs<'args>,
+    ) -> flatbuffers::WIPOffset<LoadModuleResp<'bldr>> {
+        let mut builder = LoadModuleRespBuilder::new(_fbb);
+        if let Some(x) = args.source_code {
+            builder.add_source_code(x);
+        }
+        if let Some(x) = args.origin_url {
+            builder.add_origin_url(x);
+        }
+        builder.finish()
     }
 
     pub const VT_ORIGIN_URL: flatbuffers::VOffsetT = 4;
     pub const VT_SOURCE_CODE: flatbuffers::VOffsetT = 6;
 
-  #[inline]
-  pub fn origin_url(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_ORIGIN_URL, None)
-  }
-  #[inline]
-  pub fn source_code(&self) -> Option<&'a str> {
-    self._tab.get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_SOURCE_CODE, None)
-  }
+    #[inline]
+    pub fn origin_url(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_ORIGIN_URL, None)
+    }
+    #[inline]
+    pub fn source_code(&self) -> Option<&'a str> {
+        self._tab
+            .get::<flatbuffers::ForwardsUOffset<&str>>(LoadModuleResp::VT_SOURCE_CODE, None)
+    }
 }
 
 pub struct LoadModuleRespArgs<'a> {
-    pub origin_url: Option<flatbuffers::WIPOffset<&'a  str>>,
-    pub source_code: Option<flatbuffers::WIPOffset<&'a  str>>,
+    pub origin_url: Option<flatbuffers::WIPOffset<&'a str>>,
+    pub source_code: Option<flatbuffers::WIPOffset<&'a str>>,
 }
 impl<'a> Default for LoadModuleRespArgs<'a> {
     #[inline]
@@ -7177,51 +7583,61 @@ impl<'a> Default for LoadModuleRespArgs<'a> {
     }
 }
 pub struct LoadModuleRespBuilder<'a: 'b, 'b> {
-  fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-  start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
+    fbb_: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    start_: flatbuffers::WIPOffset<flatbuffers::TableUnfinishedWIPOffset>,
 }
 impl<'a: 'b, 'b> LoadModuleRespBuilder<'a, 'b> {
-  #[inline]
-  pub fn add_origin_url(&mut self, origin_url: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModuleResp::VT_ORIGIN_URL, origin_url);
-  }
-  #[inline]
-  pub fn add_source_code(&mut self, source_code: flatbuffers::WIPOffset<&'b  str>) {
-    self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(LoadModuleResp::VT_SOURCE_CODE, source_code);
-  }
-  #[inline]
-  pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> LoadModuleRespBuilder<'a, 'b> {
-    let start = _fbb.start_table();
-    LoadModuleRespBuilder {
-      fbb_: _fbb,
-      start_: start,
+    #[inline]
+    pub fn add_origin_url(&mut self, origin_url: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            LoadModuleResp::VT_ORIGIN_URL,
+            origin_url,
+        );
     }
-  }
-  #[inline]
-  pub fn finish(self) -> flatbuffers::WIPOffset<LoadModuleResp<'a>> {
-    let o = self.fbb_.end_table(self.start_);
-    flatbuffers::WIPOffset::new(o.value())
-  }
+    #[inline]
+    pub fn add_source_code(&mut self, source_code: flatbuffers::WIPOffset<&'b str>) {
+        self.fbb_.push_slot_always::<flatbuffers::WIPOffset<_>>(
+            LoadModuleResp::VT_SOURCE_CODE,
+            source_code,
+        );
+    }
+    #[inline]
+    pub fn new(_fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>) -> LoadModuleRespBuilder<'a, 'b> {
+        let start = _fbb.start_table();
+        LoadModuleRespBuilder {
+            fbb_: _fbb,
+            start_: start,
+        }
+    }
+    #[inline]
+    pub fn finish(self) -> flatbuffers::WIPOffset<LoadModuleResp<'a>> {
+        let o = self.fbb_.end_table(self.start_);
+        flatbuffers::WIPOffset::new(o.value())
+    }
 }
 
 #[inline]
 pub fn get_root_as_base<'a>(buf: &'a [u8]) -> Base<'a> {
-  flatbuffers::get_root::<Base<'a>>(buf)
+    flatbuffers::get_root::<Base<'a>>(buf)
 }
 
 #[inline]
 pub fn get_size_prefixed_root_as_base<'a>(buf: &'a [u8]) -> Base<'a> {
-  flatbuffers::get_size_prefixed_root::<Base<'a>>(buf)
+    flatbuffers::get_size_prefixed_root::<Base<'a>>(buf)
 }
 
 #[inline]
 pub fn finish_base_buffer<'a, 'b>(
     fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
-    root: flatbuffers::WIPOffset<Base<'a>>) {
-  fbb.finish(root, None);
+    root: flatbuffers::WIPOffset<Base<'a>>,
+) {
+    fbb.finish(root, None);
 }
 
 #[inline]
-pub fn finish_size_prefixed_base_buffer<'a, 'b>(fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>, root: flatbuffers::WIPOffset<Base<'a>>) {
-  fbb.finish_size_prefixed(root, None);
+pub fn finish_size_prefixed_base_buffer<'a, 'b>(
+    fbb: &'b mut flatbuffers::FlatBufferBuilder<'a>,
+    root: flatbuffers::WIPOffset<Base<'a>>,
+) {
+    fbb.finish_size_prefixed(root, None);
 }

@@ -239,8 +239,7 @@ fn main() {
                 Conn::Tcp(c) => (c.peer_addr(), false),
                 Conn::Tls(c) => (c.get_ref().get_ref().peer_addr(), true),
             };
-            let remote_addr = remote_addr
-                .unwrap_or_else(|_| "0.0.0.0:0".parse().unwrap());
+            let remote_addr = remote_addr.unwrap_or_else(|_| "0.0.0.0:0".parse().unwrap());
             service_fn(move |req| {
                 serve_http(tls, req, unsafe { SELECTOR.as_ref().unwrap() }, remote_addr)
             })

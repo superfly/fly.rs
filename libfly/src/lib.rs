@@ -93,7 +93,11 @@ pub fn version() -> String {
 
 type RecvCb = unsafe extern "C" fn(rt: *const js_runtime, buf: fly_buf, data_buf: fly_buf);
 type PrintCb = unsafe extern "C" fn(rt: *const js_runtime, lvl: i8, msg: *const c_char);
-type ResolveCb = unsafe extern "C" fn(rt: *const js_runtime, specifier: *const c_char, referer_identity_hash: i32) -> js_compiled_module;
+type ResolveCb = unsafe extern "C" fn(
+    rt: *const js_runtime,
+    specifier: *const c_char,
+    referer_identity_hash: i32,
+) -> js_compiled_module;
 
 extern "C" {
     pub fn js_init();
@@ -110,7 +114,10 @@ extern "C" {
 
     pub fn js_eval(rt: *const js_runtime, filename: *const c_char, code: *const c_char) -> bool;
     pub fn js_run_module(rt: *const js_runtime, module_data: js_compiled_module) -> bool;
-    pub fn js_compile_module(rt: *const js_runtime, module_data: js_module_data) -> js_compile_module_result;
+    pub fn js_compile_module(
+        rt: *const js_runtime,
+        module_data: js_module_data,
+    ) -> js_compile_module_result;
 }
 
 #[no_mangle]
